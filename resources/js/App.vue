@@ -1,8 +1,22 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router';
-import { useUiStore } from './stores/ui';
+import { RouterLink, RouterView, useRouter } from 'vue-router';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useAuthStore } from './stores/auth';
+import FormErrors from './components/ui/FormErrors.vue';
 
-const ui = useUiStore();
+const auth = useAuthStore();
+const router = useRouter();
+const error = ref(null);
+const busy = ref(false);
+let removeErrorHandler;
+onMounted(() => { removeErrorHandler = router.onError(e => { error.value = e; }); });
+onUnmounted(() => removeErrorHandler?.());
+async function logout() {
+    error.value = null; busy.value = true;
+    try { await auth.logout(); await router.replace('/app/login'); }
+    catch (e) { error.value = e; }
+    finally { busy.value = false; }
+}
 </script>
 
 <template>
@@ -13,16 +27,16 @@ const ui = useUiStore();
                 <RouterLink :to="{ name: 'home' }" class="text-xl font-semibold tracking-tight text-teal-800">
                     Afri Clinic
                 </RouterLink>
-                <span class="text-sm text-slate-500">Healthcare platform</span>
+                <nav aria-label="Account" class="flex flex-wrap items-center gap-4 text-sm">
+                    <RouterLink v-if="auth.user?.is_platform_admin" to="/app/admin">Administration</RouterLink>
+                    <RouterLink v-if="auth.user" to="/app/clinics">Clinics</RouterLink>
+                    <button v-if="auth.user" :disabled="busy" @click="logout">Sign out</button>
+                    <RouterLink v-else to="/app/login">Sign in</RouterLink>
+                </nav>
             </div>
         </header>
         <main id="main" class="mx-auto max-w-5xl space-y-6 px-6 py-10">
-            <div v-if="ui.notice" role="status" class="flex items-start justify-between gap-4 rounded-xl bg-teal-50 p-4 text-sm text-teal-900">
-                <p>{{ ui.notice }}</p>
-                <button type="button" class="shrink-0 rounded px-2 font-medium underline focus-visible:outline-2 focus-visible:outline-offset-4" @click="ui.dismissNotice">
-                    Dismiss
-                </button>
-            </div>
+            <FormErrors :error="error" />
             <RouterView />
         </main>
     </div>
