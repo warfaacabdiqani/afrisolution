@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::view('/', 'app');
+
+// Keep SPA navigation under /app so API and infrastructure routes retain
+// their normal responses, including JSON 404s for unknown API endpoints.
+Route::view('/app/{path?}', 'app')->where('path', '.*');
