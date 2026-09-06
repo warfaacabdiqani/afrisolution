@@ -7,6 +7,7 @@ use App\Http\Requests\SubscriptionRequest;
 use App\Http\Requests\TenantRequest;
 use App\Http\Resources\AuditResource;
 use App\Http\Resources\PlanResource;
+use App\Http\Resources\PlatformDashboardResource;
 use App\Http\Resources\SubscriptionResource;
 use App\Http\Resources\TenantResource;
 use App\Models\Plan;
@@ -17,6 +18,44 @@ use Illuminate\Support\Facades\Gate;
 
 class PlatformController extends Controller
 {
+    public function dashboard()
+    {
+        Gate::authorize('viewAny', Tenant::class);
+
+        $now = now();
+        $soon = $now->copy()->addDays(14);
+
+        $stats = [
+            'total_clinics' => DB::table('tenants')->count(),
+            'active_clinics' => DB::table('tenants')->where('status', 'active')->count(),
+            'suspended_clinics' => DB::table('tenants')->where('status', 'suspended')->count(),
+            'trial_clinics' => DB::table('subscriptions')->where('status', 'trial')->where('trial_ends_at', '>', $now)->count(),
+            'active_subscriptions' => DB::table('subscriptions')->where('status', 'active')->count(),
+            'total_members' => DB::table('tenant_memberships')->where('status', 'active')->count(),
+        ];
+
+        $expiringTrials = DB::table('subscriptions')
+            ->join('tenants', 'tenants.id', '=', 'subscriptions.tenant_id')
+            ->join('plans', 'plans.id', '=', 'subscriptions.plan_id')
+            ->where('subscriptions.status', 'trial')
+            ->whereBetween('subscriptions.trial_ends_at', [$now, $soon])
+            ->orderBy('subscriptions.trial_ends_at')
+            ->limit(6)
+            ->get(['tenants.id', 'tenants.name', 'plans.name as plan_name', 'subscriptions.trial_ends_at']);
+
+        $recentActivity = DB::table('platform_audit_logs')
+            ->leftJoin('users', 'users.id', '=', 'platform_audit_logs.actor_id')
+            ->latest('platform_audit_logs.id')
+            ->limit(8)
+            ->get(['platform_audit_logs.id', 'platform_audit_logs.action', 'platform_audit_logs.subject_type', 'platform_audit_logs.subject_id', 'platform_audit_logs.created_at', 'users.name as actor_name']);
+
+        return new PlatformDashboardResource([
+            'stats' => $stats,
+            'expiring_trials' => $expiringTrials,
+            'recent_activity' => $recentActivity,
+        ]);
+    }
+
     public function tenants()
     {
         Gate::authorize('viewAny', Tenant::class);

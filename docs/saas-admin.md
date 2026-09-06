@@ -10,7 +10,7 @@ Create the first platform administrator with:
 & "C:\php84\php.exe" artisan saas:create-admin
 ```
 
-The command prompts for name, email, and a hidden password. It creates a new account only; it will not promote an existing user or install default credentials.
+The command prompts for name, email, and a hidden password. It creates a new account only; it will not promote an existing user or install default credentials. The database seeder deliberately does not create an administrator or a default password.
 
 Start Laravel and Vite in separate terminals, then open `/app/login`. Sign in, open **Administration**, create a plan, and create a clinic. Onboarding atomically creates the clinic, a new owner account, main branch, trial subscription, and audit event. No emails are sent automatically.
 
@@ -54,4 +54,3 @@ Browser tests reset only `storage/framework/testing/saas-browser.sqlite`, guarde
 PHPUnit defaults to in-memory SQLite. For database-engine verification, set DB_CONNECTION and DB_DATABASE in the shell to a dedicated, disposable MySQL/MariaDB test database before running PHPUnit. Never point RefreshDatabase tests at the development database.
 
 The installed development server is MariaDB 10.4.32, accessed through Laravel's mysql driver. Verification on it does not certify MySQL compatibility or production readiness. Before deployment, use the intended supported database/runtime, HTTPS secure cookies, trusted Sanctum domains, APP_DEBUG=false, secret management, backups, and concurrency/load checks.
-

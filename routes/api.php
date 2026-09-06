@@ -10,6 +10,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('session', [AuthController::class, 'session']);
     Route::post('session/clinic', [AuthController::class, 'select']);
     Route::prefix('platform')->middleware('platform')->group(function () {
+        Route::get('dashboard', [PlatformController::class, 'dashboard']);
         Route::get('tenants', [PlatformController::class, 'tenants']);
         Route::post('tenants', [PlatformController::class, 'store']);
         Route::patch('tenants/{tenant}', [PlatformController::class, 'update']);

@@ -201,4 +201,17 @@ class SaasFoundationTest extends TestCase
         $this->putJson('/api/v1/platform/tenants/'.$t->id.'/subscription', ['plan_id' => $plan->id, 'status' => 'cancelled'])->assertOk()->assertJsonPath('data.status', 'cancelled');
         $this->getJson('/api/v1/platform/audits')->assertOk()->assertJsonPath('data.0.action', 'subscription.updated');
     }
+
+    public function test_dashboard_reports_real_platform_data(): void
+    {
+        $admin = $this->admin();
+        $this->clinic($admin);
+        $this->actingAs($admin)->getJson('/api/v1/platform/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.stats.total_clinics', 1)
+            ->assertJsonPath('data.stats.active_clinics', 1)
+            ->assertJsonPath('data.stats.trial_clinics', 1)
+            ->assertJsonPath('data.stats.total_members', 1)
+            ->assertJsonCount(1, 'data.recent_activity');
+    }
 }

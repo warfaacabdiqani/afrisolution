@@ -1,11 +1,12 @@
 <script setup>
-import { RouterLink, RouterView, useRouter } from 'vue-router';
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from './stores/auth';
 import FormErrors from './components/ui/FormErrors.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const error = ref(null);
 const busy = ref(false);
 let removeErrorHandler;
@@ -22,7 +23,7 @@ async function logout() {
 <template>
     <div class="min-h-screen bg-slate-50 text-slate-900">
         <a href="#main" class="sr-only focus:not-sr-only focus:block focus:p-4">Skip to content</a>
-        <header class="border-b border-slate-200 bg-white">
+        <header v-if="route.name !== 'admin'" class="border-b border-slate-200 bg-white">
             <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
                 <RouterLink :to="{ name: 'home' }" class="text-xl font-semibold tracking-tight text-teal-800">
                     Afri Clinic
@@ -35,9 +36,10 @@ async function logout() {
                 </nav>
             </div>
         </header>
-        <main id="main" class="mx-auto max-w-5xl space-y-6 px-6 py-10">
+        <main v-if="route.name !== 'admin'" id="main" class="mx-auto max-w-5xl space-y-6 px-6 py-10">
             <FormErrors :error="error" />
             <RouterView />
         </main>
+        <main v-else id="main"><RouterView /></main>
     </div>
 </template>

@@ -5,25 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\SelectTenantRequest;
 use App\Http\Resources\SessionResource;
+use App\Services\SessionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request, SessionService $service)
     {
-        if (! Auth::guard('web')->attempt($request->safe()->only(['email', 'password']))) {
-            throw ValidationException::withMessages(['email' => 'The credentials provided are incorrect.']);
-        }
-        $request->session()->regenerate();
-        $request->session()->forget('tenant_id');
-        $ids = DB::table('tenant_memberships')->join('tenants', 'tenants.id', '=', 'tenant_memberships.tenant_id')
-            ->where('user_id', $request->user()->id)->where('tenant_memberships.status', 'active')->where('tenants.status', 'active')->pluck('tenants.id');
-        if ($ids->count() === 1) {
-            $request->session()->put('tenant_id', (int) $ids->first());
-        }
+        $service->login($request, $request->safe()->only(['email', 'password']));
 
         return new SessionResource($request->user());
     }
@@ -33,23 +22,16 @@ class AuthController extends Controller
         return new SessionResource($request->user());
     }
 
-    public function select(SelectTenantRequest $request)
+    public function select(SelectTenantRequest $request, SessionService $service)
     {
-        $id = $request->integer('clinic_id');
-        abort_unless(DB::table('tenant_memberships')->join('tenants', 'tenants.id', '=', 'tenant_memberships.tenant_id')
-            ->where('user_id', $request->user()->id)->where('tenant_memberships.tenant_id', $id)
-            ->where('tenant_memberships.status', 'active')->where('tenants.status', 'active')->exists(), 403);
-        $request->session()->put('tenant_id', $id);
-        $request->session()->regenerate();
+        $service->select($request, $request->integer('clinic_id'));
 
         return new SessionResource($request->user());
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request, SessionService $service)
     {
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $service->logout($request);
 
         return response()->noContent();
     }
