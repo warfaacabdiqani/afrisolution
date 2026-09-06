@@ -1,0 +1,1 @@
+<script setup>defineProps({status:{type:String,default:'unknown'}})</script><template><span :class="['badge',status==='active'?'badge-green':status==='trial'?'badge-amber':'badge-rose']">{{status}}</span></template>

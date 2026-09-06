@@ -214,4 +214,22 @@ class SaasFoundationTest extends TestCase
             ->assertJsonPath('data.stats.total_members', 1)
             ->assertJsonCount(1, 'data.recent_activity');
     }
+
+    public function test_tenant_list_and_detail_include_real_management_summary(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->clinic($admin);
+        $this->actingAs($admin)->getJson('/api/v1/platform/tenants')
+            ->assertOk()
+            ->assertJsonPath('data.0.owner.email', 'alpha@example.test')
+            ->assertJsonPath('data.0.plan_name', 'Starter')
+            ->assertJsonPath('data.0.members_count', 1)
+            ->assertJsonPath('data.0.branches_count', 1);
+        $this->getJson('/api/v1/platform/tenants/'.$tenant->id)
+            ->assertOk()
+            ->assertJsonPath('data.slug', 'alpha');
+        $this->getJson('/api/v1/platform/tenants/'.$tenant->id.'/audits')
+            ->assertOk()
+            ->assertJsonPath('data.0.action', 'tenant.created');
+    }
 }

@@ -40,6 +40,29 @@
     .empty-state { @apply py-10 text-center text-sm text-slate-500; }
     .section-title { @apply mt-7 border-t border-slate-100 pt-6 font-bold; }
     .compact-select { @apply rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm; }
+    .page-header { @apply mb-6 flex flex-wrap items-end justify-between gap-4; }
+    .page-header h1 { @apply text-3xl font-bold tracking-tight text-slate-950; }
+    .page-header p:not(.eyebrow) { @apply mt-1 text-sm text-slate-500; }
+    .eyebrow { @apply mb-1 text-sm font-semibold text-teal-700; }
+    .back-link { @apply text-sm font-semibold text-teal-700 hover:underline; }
+    .filter-input { @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100; }
+    .form-section-title { @apply border-b border-slate-100 pb-4 text-lg font-bold; }
+    .form-grid { @apply mt-5 grid gap-4 md:grid-cols-2; }
+    .hint { @apply text-xs font-normal text-slate-500; }
+    .sticky-actions { @apply sticky bottom-0 flex justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur; }
+    .summary-card { @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm; }
+    .summary-card p { @apply text-sm text-slate-500; }
+    .summary-card strong { @apply mt-2 block text-xl text-slate-950; }
+    .clinic-tabs { @apply mb-6 flex gap-1 overflow-x-auto border-b border-slate-200; }
+    .clinic-tabs a { @apply whitespace-nowrap border-b-2 border-transparent px-4 py-3 text-sm font-semibold text-slate-500; }
+    .clinic-tabs a.router-link-exact-active { @apply border-teal-700 text-teal-700; }
+    .detail-list { @apply divide-y divide-slate-100; }
+    .detail-list div { @apply grid gap-1 py-3 sm:grid-cols-2; }
+    .detail-list dt { @apply text-sm text-slate-500; }
+    .detail-list dd { @apply font-medium text-slate-800; }
+    .loading-state { @apply rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500; }
+    .modal-backdrop { @apply fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4; }
+    .modal-card { @apply max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl; }
 }
 
 @theme {

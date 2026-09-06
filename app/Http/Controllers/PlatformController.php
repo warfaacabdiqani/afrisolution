@@ -60,7 +60,26 @@ class PlatformController extends Controller
     {
         Gate::authorize('viewAny', Tenant::class);
 
-        return TenantResource::collection(Tenant::latest('id')->paginate(20));
+        $query = $this->tenantSummaryQuery();
+        if ($search = request()->string('search')->trim()->toString()) {
+            $query->where(fn ($builder) => $builder->where('name', 'like', "%{$search}%")->orWhere('slug', 'like', "%{$search}%"));
+        }
+        if (in_array(request('status'), ['active', 'suspended'], true)) {
+            $query->where('status', request('status'));
+        }
+        if (request()->filled('plan_id')) {
+            $query->whereExists(fn ($builder) => $builder->selectRaw('1')->from('subscriptions')
+                ->whereColumn('subscriptions.tenant_id', 'tenants.id')->where('subscriptions.plan_id', request('plan_id')));
+        }
+
+        return TenantResource::collection($query->latest('tenants.id')->paginate(20));
+    }
+
+    public function show(Tenant $tenant)
+    {
+        Gate::authorize('update', $tenant);
+
+        return new TenantResource($this->tenantSummaryQuery()->findOrFail($tenant->id));
     }
 
     public function store(TenantRequest $request, PlatformService $service)
@@ -110,5 +129,42 @@ class PlatformController extends Controller
         Gate::authorize('viewAny', Tenant::class);
 
         return AuditResource::collection(DB::table('platform_audit_logs')->latest('id')->paginate(30));
+    }
+
+    public function tenantAudits(Tenant $tenant)
+    {
+        Gate::authorize('update', $tenant);
+
+        return AuditResource::collection(
+            DB::table('platform_audit_logs')
+                ->where('subject_type', 'tenant')
+                ->where('subject_id', $tenant->id)
+                ->latest('id')
+                ->paginate(30)
+        );
+    }
+
+    private function tenantSummaryQuery()
+    {
+        return Tenant::query()->addSelect([
+            'owner_name' => DB::table('tenant_memberships')
+                ->join('users', 'users.id', '=', 'tenant_memberships.user_id')
+                ->select('users.name')->whereColumn('tenant_memberships.tenant_id', 'tenants.id')
+                ->where('tenant_memberships.role', 'owner')->where('tenant_memberships.status', 'active')->limit(1),
+            'owner_email' => DB::table('tenant_memberships')
+                ->join('users', 'users.id', '=', 'tenant_memberships.user_id')
+                ->select('users.email')->whereColumn('tenant_memberships.tenant_id', 'tenants.id')
+                ->where('tenant_memberships.role', 'owner')->where('tenant_memberships.status', 'active')->limit(1),
+            'plan_name' => DB::table('subscriptions')->join('plans', 'plans.id', '=', 'subscriptions.plan_id')
+                ->select('plans.name')->whereColumn('subscriptions.tenant_id', 'tenants.id')->limit(1),
+            'subscription_status' => DB::table('subscriptions')->select('status')
+                ->whereColumn('subscriptions.tenant_id', 'tenants.id')->limit(1),
+            'trial_ends_at' => DB::table('subscriptions')->select('trial_ends_at')
+                ->whereColumn('subscriptions.tenant_id', 'tenants.id')->limit(1),
+            'members_count' => DB::table('tenant_memberships')->selectRaw('count(*)')
+                ->whereColumn('tenant_memberships.tenant_id', 'tenants.id')->where('status', 'active'),
+            'branches_count' => DB::table('branches')->selectRaw('count(*)')
+                ->whereColumn('branches.tenant_id', 'tenants.id'),
+        ]);
     }
 }

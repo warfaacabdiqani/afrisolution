@@ -30,4 +30,3 @@ async function submit() {
         </form>
     </BaseCard>
 </template>
-

@@ -13,7 +13,9 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('dashboard', [PlatformController::class, 'dashboard']);
         Route::get('tenants', [PlatformController::class, 'tenants']);
         Route::post('tenants', [PlatformController::class, 'store']);
+        Route::get('tenants/{tenant}', [PlatformController::class, 'show']);
         Route::patch('tenants/{tenant}', [PlatformController::class, 'update']);
+        Route::get('tenants/{tenant}/audits', [PlatformController::class, 'tenantAudits']);
         Route::get('tenants/{tenant}/subscription', [PlatformController::class, 'subscription']);
         Route::put('tenants/{tenant}/subscription', [PlatformController::class, 'updateSubscription']);
         Route::get('plans', [PlatformController::class, 'plans']);
