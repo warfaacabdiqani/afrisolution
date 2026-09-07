@@ -2,15 +2,17 @@
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from './stores/auth';
+import { usePlatformSettingsStore } from './stores/platformSettings';
 import FormErrors from './components/ui/FormErrors.vue';
 
 const auth = useAuthStore();
+const platformSettings = usePlatformSettingsStore();
 const router = useRouter();
 const route = useRoute();
 const error = ref(null);
 const busy = ref(false);
 let removeErrorHandler;
-onMounted(() => { removeErrorHandler = router.onError(e => { error.value = e; }); });
+onMounted(() => { platformSettings.load(); removeErrorHandler = router.onError(e => { error.value = e; }); });
 onUnmounted(() => removeErrorHandler?.());
 async function logout() {
     error.value = null; busy.value = true;
@@ -26,7 +28,7 @@ async function logout() {
         <header v-if="!route.meta.adminLayout" class="border-b border-slate-200 bg-white">
             <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
                 <RouterLink :to="{ name: 'home' }" class="text-xl font-semibold tracking-tight text-teal-800">
-                    Afri Clinic
+                    {{ platformSettings.name }}
                 </RouterLink>
                 <nav aria-label="Account" class="flex flex-wrap items-center gap-4 text-sm">
                     <RouterLink v-if="auth.user?.is_platform_admin" to="/app/admin">Administration</RouterLink>

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\PlatformAdmin;
 use App\Http\Middleware\PlatformPermission;
+use App\Http\Middleware\CheckPlatformAvailability;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'platform' => PlatformAdmin::class,
             'platform.permission' => PlatformPermission::class,
+            'platform.available' => CheckPlatformAvailability::class,
             'tenant' => ResolveTenant::class,
         ]);
     })

@@ -6,7 +6,10 @@ use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\PlatformRoleController;
 use App\Http\Controllers\PlatformUserController;
 use App\Http\Controllers\ProvisioningController;
+use App\Http\Controllers\SystemSettingsController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('v1/public/settings', [SystemSettingsController::class, 'publicSettings']);
 
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('session', [AuthController::class, 'session']);
@@ -38,13 +41,19 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('plans/{plan}/audits', [PlatformController::class, 'planAudits'])->middleware('platform.permission:plans.view');
         Route::get('audits', [PlatformController::class, 'audits'])->middleware('platform.permission:audit.view');
         Route::get('audits/export', [PlatformController::class, 'exportAudits'])->middleware('platform.permission:audit.view');
+        Route::get('settings', [SystemSettingsController::class, 'index'])->middleware('platform.permission:settings.view');
+        Route::put('settings/{section}', [SystemSettingsController::class, 'update'])->whereIn('section',['general','branding','localization','email','notifications','security','backup'])->middleware('platform.permission:settings.update');
+        Route::post('settings/email/test', [SystemSettingsController::class, 'testEmail'])->middleware('platform.permission:settings.update');
+        Route::get('settings/system-info', [SystemSettingsController::class, 'systemInfo'])->middleware('platform.permission:settings.view');
+        Route::post('settings/cache/clear', [SystemSettingsController::class, 'clearCache'])->middleware('platform.permission:settings.maintenance');
+        Route::post('settings/maintenance', [SystemSettingsController::class, 'maintenance'])->middleware('platform.permission:settings.maintenance');
         Route::get('tenants/{tenant}/members', [ProvisioningController::class, 'members'])->middleware('platform.permission:tenants.view');
         Route::post('tenants/{tenant}/members', [ProvisioningController::class, 'addMember'])->middleware('platform.permission:tenants.manage');
         Route::patch('tenants/{tenant}/members/{member}', [ProvisioningController::class, 'updateMember'])->whereNumber('member')->middleware('platform.permission:tenants.manage');
         Route::get('tenants/{tenant}/branches', [ProvisioningController::class, 'branches'])->middleware('platform.permission:tenants.view');
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
-    Route::prefix('clinic')->middleware('tenant')->group(function () {
+    Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
         Route::get('branches', [ClinicController::class, 'branches']);
         Route::get('branches/{branch}', [ClinicController::class, 'branch'])->whereNumber('branch');
     });

@@ -2,8 +2,10 @@
 import { computed, ref } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { usePlatformSettingsStore } from '../stores/platformSettings';
 
 const auth = useAuthStore();
+const platformSettings = usePlatformSettingsStore();
 const route = useRoute();
 const router = useRouter();
 const menu = ref(false);
@@ -30,8 +32,8 @@ async function logout() {
         <div v-if="menu" class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" @click="menu = false"></div>
         <aside :class="['admin-sidebar', menu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
             <div class="flex h-20 items-center gap-3 border-b border-white/10 px-6">
-                <div class="grid size-11 place-items-center rounded-2xl bg-white text-xl text-teal-800">&hearts;</div>
-                <div><p class="text-xl font-bold">Afri Clinic</p><p class="text-xs text-teal-100">Healthcare SaaS</p></div>
+                <div class="grid size-11 place-items-center overflow-hidden rounded-2xl bg-white text-xl text-teal-800"><img v-if="platformSettings.smallLogo" :src="platformSettings.smallLogo" alt=""><span v-else>&hearts;</span></div>
+                <div><p class="text-xl font-bold">{{ platformSettings.name }}</p><p class="text-xs text-teal-100">{{ platformSettings.footer }}</p></div>
             </div>
             <nav class="flex-1 space-y-1 px-3 py-6" aria-label="Platform administration">
                 <RouterLink v-for="[name, label, icon] in links" :key="name" :to="{ name }" :class="['admin-nav', route.name === name || route.name?.startsWith(name + '.') ? 'admin-nav-active' : '']" @click="menu = false">

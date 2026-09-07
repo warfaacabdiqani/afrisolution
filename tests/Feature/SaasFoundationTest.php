@@ -12,6 +12,8 @@ use App\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -338,5 +340,42 @@ class SaasFoundationTest extends TestCase
 
         $normal = User::factory()->create();
         $this->actingAs($normal)->getJson('/api/v1/platform/audits')->assertForbidden();
+    }
+
+    public function test_system_settings_persist_branding_encrypt_secrets_and_are_authorized(): void
+    {
+        Storage::fake('public');
+        $admin = $this->admin();
+        $this->actingAs($admin)->getJson('/api/v1/platform/settings')
+            ->assertOk()->assertJsonPath('data.general.platform_name','Afri Clinic');
+
+        $general = ['platform_name'=>'Afri Health','platform_url'=>'https://afri.example','support_email'=>'support@afri.example','support_phone'=>'+252 61 0000000','organization_name'=>'Afri Health Ltd','default_trial_days'=>21,'default_plan_id'=>null,'registration_enabled'=>true,'platform_status'=>'active'];
+        $this->putJson('/api/v1/platform/settings/general',$general)
+            ->assertOk()->assertJsonPath('data.platform_name','Afri Health');
+        $this->putJson('/api/v1/platform/settings/general',array_merge($general,['support_email'=>'invalid']))->assertUnprocessable();
+
+        $this->post('/api/v1/platform/settings/branding',['_method'=>'PUT','display_name'=>'Afri Health','footer_text'=>'Healthcare SaaS','logo'=>UploadedFile::fake()->image('logo.png',300,100)])
+            ->assertOk()->assertJsonPath('data.display_name','Afri Health');
+        $this->assertCount(1, Storage::disk('public')->files('branding'));
+
+        $email = ['mailer'=>'smtp','smtp_host'=>'smtp.example.test','smtp_port'=>587,'smtp_username'=>'mailer','smtp_password'=>'top-secret-password','encryption'=>'tls','from_email'=>'mail@afri.example','from_name'=>'Afri Health'];
+        $this->putJson('/api/v1/platform/settings/email',$email)->assertOk()->assertJsonPath('data.smtp_password','••••••••••');
+        $stored = DB::table('system_settings')->where('key','email.smtp_password')->first();
+        $this->assertTrue((bool)$stored->is_encrypted);
+        $this->assertStringNotContainsString('top-secret-password',$stored->value);
+        $this->getJson('/api/v1/platform/settings')->assertOk()->assertJsonPath('data.email.smtp_password','••••••••••');
+        $this->getJson('/api/v1/public/settings')->assertOk()->assertJsonFragment(['general.platform_name'=>'Afri Health'])->assertJsonMissingPath('data.email.smtp_password');
+        $audit = DB::table('platform_audit_logs')->where('action','settings.email.updated')->latest('id')->first();
+        $this->assertStringNotContainsString('top-secret-password',(string)$audit->new_values);
+
+        $this->postJson('/api/v1/platform/settings/maintenance',['enabled'=>true,'message'=>'Scheduled maintenance.'])->assertOk();
+        $this->getJson('/api/v1/clinic/branches')->assertStatus(503)->assertJsonPath('message','Scheduled maintenance.');
+        $this->postJson('/api/v1/platform/settings/maintenance',['enabled'=>false,'message'=>'Scheduled maintenance.'])->assertOk();
+        $this->assertDatabaseHas('platform_audit_logs',['action'=>'maintenance.enabled']);
+        $this->assertDatabaseHas('platform_audit_logs',['action'=>'maintenance.disabled']);
+
+        $normal = User::factory()->create();
+        $this->actingAs($normal)->getJson('/api/v1/platform/settings')->assertForbidden();
+        $this->putJson('/api/v1/platform/settings/general',$general)->assertForbidden();
     }
 }
