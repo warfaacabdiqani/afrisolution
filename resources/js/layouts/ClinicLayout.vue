@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useClinicContextStore } from '../stores/clinicContext';
 import { useAuthStore } from '../stores/auth';
@@ -10,6 +10,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const drawer = ref(false);
+watch(() => route.fullPath, () => { drawer.value = false; });
 const error = ref(null);
 const trialDays = computed(() => Math.max(0, Math.ceil((new Date(clinic.data?.subscription?.trial_ends_at) - new Date()) / 86400000)));
 async function switchBranch(event) {
@@ -50,7 +51,8 @@ async function logout() {
             </header>
             <div class="clinic-content">
                 <FormErrors :error="error || clinic.error" />
-                <div v-if="clinic.error" class="clinic-panel"><p>Unable to load your clinic.</p><button class="btn mt-4" @click="clinic.load()">Try again</button><RouterLink class="ml-4" to="/app/clinics?switch=1">Switch clinic</RouterLink></div>
+                <RouterView v-if="route.meta.clinicSelection" />
+                <div v-else-if="clinic.error" class="clinic-panel"><p>Unable to load your clinic.</p><button class="btn mt-4" @click="clinic.load()">Try again</button><RouterLink class="ml-4" to="/app/clinics?switch=1">Switch clinic</RouterLink></div>
                 <div v-else-if="!clinic.data" class="clinic-panel" role="status">Loading clinic…</div>
                 <div v-else-if="!clinic.data.operational" class="clinic-panel"><AppIcon name="roles" :size="36" /><h1 class="mt-4 text-2xl font-bold">Clinic access restricted</h1><p class="mt-3 text-slate-500">{{ clinic.data.restriction }}</p><p class="mt-3">Subscription: {{ clinic.data.subscription?.status || 'Unavailable' }}</p><RouterLink class="mt-5 inline-block btn" to="/app/clinics?switch=1">Switch clinic</RouterLink></div>
                 <template v-else>

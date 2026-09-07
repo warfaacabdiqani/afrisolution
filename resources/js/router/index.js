@@ -84,8 +84,8 @@ const router = createRouter({
                 { path: 'settings', name: 'admin.settings', component: SettingsIndex, meta: { title: 'System Settings' } },
             ],
         },
-        { path: '/app/clinics', name: 'clinics', component: ClinicsView, meta: { auth: true } },
         { path: '/app', component: ClinicLayout, meta: { auth: true, clinicLayout: true }, children: [
+            { path: 'clinics', name: 'clinics', component: ClinicsView, meta: { clinicSelection: true } },
             { path: '', redirect: '/app/dashboard' },
             { path: 'dashboard', name: 'clinic.dashboard', component: ClinicDashboard, meta: { clinicModule: 'dashboard' } },
             { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
@@ -110,7 +110,11 @@ router.beforeEach(async (to) => {
     if (to.meta.platform && !auth.user?.is_platform_admin) return { name: 'clinics' };
     if (to.name === 'clinics' && auth.user?.active_tenant_id && to.query.switch !== '1') return { name: 'clinic.dashboard' };
     if (to.meta.clinicLayout) {
-        if (!auth.user?.active_tenant_id) return { name: 'clinics' };
+        if (!auth.user?.active_tenant_id) {
+            if (!to.meta.clinicSelection) return { name: 'clinics' };
+            useClinicContextStore().$reset();
+            return;
+        }
         const clinic = useClinicContextStore();
         await clinic.load();
         if (!clinic.data?.operational) return;

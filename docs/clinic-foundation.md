@@ -2,6 +2,8 @@
 
 Signing in with a selected clinic opens `/app/dashboard` directly. Existing `/app/clinics` bookmarks also enter the dashboard when a clinic is selected. Explicit Switch Clinic links use `/app/clinics?switch=1` to show the chooser; selecting a clinic opens its dashboard. Platform administration remains under `/app/admin/*`.
 
+The chooser shares the clinic sidebar and topbar. Its workspace banner, clinic cards, current-branch details, and optional search use the dashboard design. Users without a selected clinic, or with a restricted subscription, can still reach the chooser to select an authorized clinic.
+
 ## Added files
 
 - `config/clinic.php`: clinic module catalog, feature mapping, and default role permissions.

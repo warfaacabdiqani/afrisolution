@@ -83,6 +83,8 @@ test('clinic administration uses dedicated routes and preserves tenant access', 
     await expect(page).toHaveURL(/app\/dashboard$/);
     await page.goto('/app/clinics?switch=1');
     await expect(page.getByRole('heading', { name: 'Choose your clinic' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+    await page.screenshot({ path: 'test-results/clinic-switcher-mobile.png', fullPage: true });
     await page.getByRole('button', { name: /Browser Clinic/ }).click();
     await expect(page).toHaveURL(/app\/dashboard$/);
     await expect(page.getByRole('heading', { name: 'Browser Clinic', exact: true })).toBeVisible();
