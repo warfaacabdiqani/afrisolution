@@ -13,10 +13,23 @@ use Illuminate\Validation\ValidationException;
 
 class PlatformService
 {
-    public function audit(int $actor, string $action, string $type, int $id, array $metadata = []): void
+    public function audit(int $actor, string $action, string $type, int $id, array $metadata = [], array $oldValues = [], array $newValues = []): void
     {
-        DB::table('platform_audit_logs')->insert(['actor_id' => $actor, 'action' => $action, 'subject_type' => $type, 'subject_id' => $id, 'metadata' => $metadata ? json_encode($metadata) : null, 'created_at' => now()]);
+        $actorUser=User::find($actor); $subject=$this->auditSubject($type,$id); $tenant=$type==='tenant'?Tenant::find($id):null;
+        $request=app()->runningInConsole()?null:request();
+        DB::table('platform_audit_logs')->insert([
+            'actor_id'=>$actor,'actor_name'=>$actorUser?->name,'actor_email'=>$actorUser?->email,
+            'action'=>$action,'module'=>$this->auditModule($action),'description'=>$this->auditDescription($action,$subject['name']??null),
+            'tenant_id'=>$tenant?->id,'tenant_name'=>$tenant?->name,'subject_type'=>$type,'subject_id'=>$id,'subject_name'=>$subject['name']??null,
+            'metadata'=>$metadata?json_encode($this->redact($metadata)):null,'old_values'=>$oldValues?json_encode($this->redact($oldValues)):null,'new_values'=>$newValues?json_encode($this->redact($newValues)):null,
+            'ip_address'=>$request?->ip(),'user_agent'=>$request?->userAgent(),'request_method'=>$request?->method(),'request_url'=>$request?->path(),'result'=>'success','created_at'=>now(),
+        ]);
     }
+
+    private function auditSubject(string $type,int $id): array { return match($type){'plan'=>['name'=>Plan::find($id)?->name],'tenant'=>['name'=>Tenant::find($id)?->name],'user'=>['name'=>User::find($id)?->name],'platform_role'=>['name'=>PlatformRole::find($id)?->name],default=>[]}; }
+    private function auditModule(string $action): string { return match(strtok($action,'.')){'plan'=>'Subscription Plans','tenant','branch','member'=>'Clinics','subscription'=>'Subscriptions','admin'=>'Users','role','permission'=>'Roles & Permissions','login','logout'=>'Authentication',default=>'System'}; }
+    private function auditDescription(string $action,?string $name): string { $label=str_replace('.',' ',ucwords($action,'.')); return trim($label.($name?' - '.$name:'')); }
+    private function redact(mixed $value,?string $key=null): mixed { $sensitive=['password','password_confirmation','current_password','token','access_token','refresh_token','api_key','secret','authorization','cookie','session']; if($key&&in_array(strtolower($key),$sensitive,true))return '[REDACTED]'; if(is_array($value))foreach($value as $k=>$v)$value[$k]=$this->redact($v,(string)$k); return $value; }
 
     public function createTenant(array $data, int $actor): Tenant
     {
@@ -64,7 +77,8 @@ class PlatformService
             $changed = collect(array_keys($data))->filter(
                 fn (string $key) => json_encode($plan->getAttribute($key)) !== json_encode($before[$key])
             )->values()->all();
-            $this->audit($actor, 'plan.updated', 'plan', $plan->id, ['changed' => $changed]);
+            $after=$plan->only($changed); $beforeChanged=collect($before)->only($changed)->all();
+            $this->audit($actor, 'plan.updated', 'plan', $plan->id, ['changed' => $changed], $beforeChanged, $after);
 
             // Subscription limits are snapshots. Existing clinic subscriptions are intentionally unchanged.
             return $plan->refresh();

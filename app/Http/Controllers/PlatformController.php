@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PlanRequest;
 use App\Http\Requests\PlatformSubscriptionIndexRequest;
+use App\Http\Requests\AuditIndexRequest;
 use App\Http\Requests\SubscriptionRequest;
 use App\Http\Requests\TenantRequest;
 use App\Http\Resources\AuditResource;
@@ -210,11 +211,20 @@ class PlatformController extends Controller
         return new SubscriptionResource($service->updateSubscription($tenant, $request->validated(), $request->user()->id));
     }
 
-    public function audits()
+    public function audits(AuditIndexRequest $request)
     {
-        Gate::authorize('viewAny', Tenant::class);
+        $query=$this->filteredAuditQuery($request->validated());
+        $paginator=$query->paginate($request->integer('per_page',25));
+        return AuditResource::collection($paginator)->additional([
+            'stats'=>['total'=>DB::table('platform_audit_logs')->count(),'today'=>DB::table('platform_audit_logs')->whereDate('created_at',today())->count(),'security'=>DB::table('platform_audit_logs')->whereIn('module',['Authentication','Security'])->count(),'failed'=>DB::table('platform_audit_logs')->where('result','failed')->count()],
+            'filters'=>['actions'=>DB::table('platform_audit_logs')->distinct()->orderBy('action')->pluck('action'),'actors'=>DB::table('platform_audit_logs')->leftJoin('users','users.id','=','platform_audit_logs.actor_id')->whereNotNull('platform_audit_logs.actor_id')->select('platform_audit_logs.actor_id',DB::raw('coalesce(platform_audit_logs.actor_name, users.name) as actor_name'))->distinct()->get(),'tenants'=>DB::table('platform_audit_logs')->whereNotNull('tenant_id')->select('tenant_id','tenant_name')->distinct()->get(),'modules'=>DB::table('platform_audit_logs')->whereNotNull('module')->distinct()->orderBy('module')->pluck('module')],
+        ]);
+    }
 
-        return AuditResource::collection(DB::table('platform_audit_logs')->latest('id')->paginate(30));
+    public function exportAudits(AuditIndexRequest $request)
+    {
+        $rows=$this->filteredAuditQuery($request->validated())->limit(10000)->get();
+        return response()->streamDownload(function()use($rows){$out=fopen('php://output','w');fputcsv($out,['Event','Description','Actor','Actor Email','Module','Target','Clinic','Date','IP Address']);foreach($rows as $row)fputcsv($out,[$row->action,$row->description,$row->actor_name,$row->actor_email,$row->module,$row->subject_name,$row->tenant_name,$row->created_at,$row->ip_address]);fclose($out);},'audit-log-'.now()->format('Y-m-d').'.csv',['Content-Type'=>'text/csv']);
     }
 
     public function tenantAudits(Tenant $tenant)
@@ -264,5 +274,16 @@ class PlatformController extends Controller
             'trial_subscriptions_count' => DB::table('subscriptions')->selectRaw('count(*)')
                 ->whereColumn('subscriptions.plan_id', 'plans.id')->where('status', 'trial'),
         ]);
+    }
+
+    private function filteredAuditQuery(array $filters)
+    {
+        $query=DB::table('platform_audit_logs')->leftJoin('users','users.id','=','platform_audit_logs.actor_id')->select('platform_audit_logs.*',DB::raw('coalesce(platform_audit_logs.actor_name, users.name) as actor_display_name'),DB::raw('coalesce(platform_audit_logs.actor_email, users.email) as actor_display_email'));
+        if(!empty($filters['search'])){$search=$filters['search'];$query->where(function($q)use($search){$q->where('platform_audit_logs.action','like',"%{$search}%")->orWhere('platform_audit_logs.description','like',"%{$search}%")->orWhere('platform_audit_logs.actor_name','like',"%{$search}%")->orWhere('platform_audit_logs.actor_email','like',"%{$search}%")->orWhere('platform_audit_logs.subject_name','like',"%{$search}%")->orWhere('platform_audit_logs.tenant_name','like',"%{$search}%");if(ctype_digit($search))$q->orWhere('platform_audit_logs.subject_id',(int)$search);});}
+        foreach(['action','module','actor_id','tenant_id'] as $key)if(!empty($filters[$key]))$query->where('platform_audit_logs.'.$key,$filters[$key]);
+        if(($filters['date']??null)==='today')$query->whereDate('platform_audit_logs.created_at',today());
+        elseif(($filters['date']??null)==='yesterday')$query->whereDate('platform_audit_logs.created_at',today()->subDay());
+        elseif(in_array($filters['date']??null,['7','30'],true))$query->where('platform_audit_logs.created_at','>=',now()->subDays((int)$filters['date']));
+        $sort=$filters['sort']??'created_at';$direction=$filters['direction']??'desc';return $query->orderBy('platform_audit_logs.'.$sort,$direction)->orderByDesc('platform_audit_logs.id');
     }
 }

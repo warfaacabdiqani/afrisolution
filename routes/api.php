@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('plans/{plan}/subscriptions', [PlatformController::class, 'planSubscriptions'])->middleware('platform.permission:plans.view');
         Route::get('plans/{plan}/audits', [PlatformController::class, 'planAudits'])->middleware('platform.permission:plans.view');
         Route::get('audits', [PlatformController::class, 'audits'])->middleware('platform.permission:audit.view');
+        Route::get('audits/export', [PlatformController::class, 'exportAudits'])->middleware('platform.permission:audit.view');
         Route::get('tenants/{tenant}/members', [ProvisioningController::class, 'members'])->middleware('platform.permission:tenants.view');
         Route::post('tenants/{tenant}/members', [ProvisioningController::class, 'addMember'])->middleware('platform.permission:tenants.manage');
         Route::patch('tenants/{tenant}/members/{member}', [ProvisioningController::class, 'updateMember'])->whereNumber('member')->middleware('platform.permission:tenants.manage');

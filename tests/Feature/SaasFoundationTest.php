@@ -303,4 +303,40 @@ class SaasFoundationTest extends TestCase
         $this->flushSession();
         $this->actingAs($billing)->getJson('/api/v1/platform/plans')->assertForbidden();
     }
+
+    public function test_audit_log_is_filtered_exportable_immutable_and_redacts_secrets(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->clinic($admin);
+        $this->actingAs($admin);
+
+        app(PlatformService::class)->audit(
+            $admin->id,
+            'security.checked',
+            'tenant',
+            $tenant->id,
+            ['password' => 'plain-text', 'nested' => ['api_key' => 'secret-key'], 'safe' => 'visible'],
+            ['token' => 'old-token'],
+            ['token' => 'new-token'],
+        );
+
+        $response = $this->getJson('/api/v1/platform/audits?action=security.checked&tenant_id='.$tenant->id.'&search='.$tenant->id)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.action', 'security.checked')
+            ->assertJsonPath('data.0.metadata.password', '[REDACTED]')
+            ->assertJsonPath('data.0.metadata.nested.api_key', '[REDACTED]')
+            ->assertJsonPath('data.0.metadata.safe', 'visible')
+            ->assertJsonPath('data.0.old_values.token', '[REDACTED]')
+            ->assertJsonPath('data.0.new_values.token', '[REDACTED]');
+        $this->assertSame($admin->email, $response->json('data.0.actor_email'));
+        $this->assertSame($tenant->name, $response->json('data.0.tenant_name'));
+
+        $this->get('/api/v1/platform/audits/export?action=security.checked')->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
+        $this->putJson('/api/v1/platform/audits/1', [])->assertNotFound();
+        $this->deleteJson('/api/v1/platform/audits/1')->assertNotFound();
+
+        $normal = User::factory()->create();
+        $this->actingAs($normal)->getJson('/api/v1/platform/audits')->assertForbidden();
+    }
 }

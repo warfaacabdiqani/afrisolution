@@ -1,0 +1,1 @@
+<script setup>import{auditLabel,auditTone}from'../../../config/auditEvents';defineProps({event:String})</script><template><span :class="['audit-badge','audit-'+auditTone(event)]">{{auditLabel(event)}}</span></template>

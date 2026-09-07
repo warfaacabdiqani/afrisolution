@@ -29,6 +29,7 @@ import SubscriptionsIndex from '../pages/admin/subscriptions/SubscriptionsIndex.
 import UsersIndex from '../pages/admin/users/UsersIndex.vue';
 import UserFormPage from '../pages/admin/users/UserFormPage.vue';
 import RolesIndex from '../pages/admin/users/RolesIndex.vue';
+import AuditIndex from '../pages/admin/audit/AuditIndex.vue';
 import ClinicsView from '../views/ClinicsView.vue';
 
 const router = createRouter({
@@ -72,7 +73,8 @@ const router = createRouter({
                 { path: 'users/create', name: 'admin.users.create', component: UserFormPage, meta: { title: 'Add Administrator' } },
                 { path: 'users/:id/edit', name: 'admin.users.edit', component: UserFormPage, meta: { title: 'Edit Administrator' } },
                 { path: 'roles', name: 'admin.roles', component: RolesIndex, meta: { title: 'Roles & Permissions' } },
-                { path: 'audit', name: 'admin.audit', component: AdminSimplePage, meta: { title: 'Audit Log' } },
+                { path: 'audit-log', name: 'admin.audit', component: AuditIndex, meta: { title: 'Audit Log' } },
+                { path: 'audit', redirect: { name: 'admin.audit' } },
                 { path: 'settings', name: 'admin.settings', component: AdminSimplePage, meta: { title: 'System Settings' } },
             ],
         },
