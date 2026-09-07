@@ -34,7 +34,11 @@ class PlatformController extends Controller
             'trial_clinics' => DB::table('subscriptions')->where('status', 'trial')->where('trial_ends_at', '>', $now)->count(),
             'active_subscriptions' => DB::table('subscriptions')->where('status', 'active')->count(),
             'total_members' => DB::table('tenant_memberships')->where('status', 'active')->count(),
+            'total_plans' => DB::table('plans')->count(),
+            'new_clinics_30_days' => DB::table('tenants')->where('created_at', '>=', $now->copy()->subDays(30))->count(),
         ];
+        $stats['monthly_revenue'] = (float) DB::table('subscriptions')->join('plans','plans.id','=','subscriptions.plan_id')
+            ->where('subscriptions.status','active')->selectRaw("coalesce(sum(case when plans.billing_period = 'yearly' then plans.price / 12 else plans.price end), 0) as revenue")->value('revenue');
 
         $expiringTrials = DB::table('subscriptions')
             ->join('tenants', 'tenants.id', '=', 'subscriptions.tenant_id')
@@ -43,7 +47,8 @@ class PlatformController extends Controller
             ->whereBetween('subscriptions.trial_ends_at', [$now, $soon])
             ->orderBy('subscriptions.trial_ends_at')
             ->limit(6)
-            ->get(['tenants.id', 'tenants.name', 'plans.name as plan_name', 'subscriptions.trial_ends_at']);
+            ->get(['tenants.id', 'tenants.name', 'plans.name as plan_name', 'subscriptions.trial_ends_at'])
+            ->map(function ($trial) use ($now) { $trial->days_left = $now->copy()->startOfDay()->diffInDays(\Illuminate\Support\Carbon::parse($trial->trial_ends_at)->startOfDay(), false); return $trial; });
 
         $recentActivity = DB::table('platform_audit_logs')
             ->leftJoin('users', 'users.id', '=', 'platform_audit_logs.actor_id')
