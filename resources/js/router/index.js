@@ -32,6 +32,11 @@ import RolesIndex from '../pages/admin/users/RolesIndex.vue';
 import AuditIndex from '../pages/admin/audit/AuditIndex.vue';
 import SettingsIndex from '../pages/admin/settings/SettingsIndex.vue';
 import ClinicsView from '../views/ClinicsView.vue';
+import ClinicLayout from '../layouts/ClinicLayout.vue';
+import ClinicDashboard from '../pages/clinic/Dashboard.vue';
+import ModuleAccess from '../pages/clinic/ModuleAccess.vue';
+import { useClinicContextStore } from '../stores/clinicContext';
+import api from '../services/api';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -80,7 +85,19 @@ const router = createRouter({
             ],
         },
         { path: '/app/clinics', name: 'clinics', component: ClinicsView, meta: { auth: true } },
-        { path: '/app', redirect: { name: 'home' } },
+        { path: '/app', component: ClinicLayout, meta: { auth: true, clinicLayout: true }, children: [
+            { path: '', redirect: '/app/dashboard' },
+            { path: 'dashboard', name: 'clinic.dashboard', component: ClinicDashboard, meta: { clinicModule: 'dashboard' } },
+            { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
+            { path: 'support', component: ModuleAccess, meta: { title: 'Help & Support', support: true } },
+            ...[
+                ['patients', 'Patients'], ['patients/create', 'Add Patient'], ['patients/:id', 'Patient'],
+                ['appointments', 'Appointments'], ['appointments/create', 'Book Appointment'], ['appointments/:id', 'Appointment'],
+                ['doctors', 'Doctors / Clinicians'], ['consultations', 'Consultations'], ['prescriptions', 'Prescriptions'],
+                ['prescriptions/create', 'Create Prescription'], ['pharmacy', 'Pharmacy'], ['billing', 'Billing'],
+                ['billing/invoices/create', 'New Invoice'], ['reports', 'Reports'], ['staff', 'Users / Staff'], ['settings', 'Clinic Settings'],
+            ].map(([path, title]) => ({ path, component: ModuleAccess, meta: { title, clinicModule: path.split('/')[0], create: path.endsWith('/create') } })),
+        ] },
         { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
     ],
     scrollBehavior: () => ({ top: 0 }),
@@ -91,7 +108,21 @@ router.beforeEach(async (to) => {
     if (!auth.loaded) await auth.restore();
     if (to.meta.auth && !auth.user) return { name: 'login' };
     if (to.meta.platform && !auth.user?.is_platform_admin) return { name: 'clinics' };
-    if (to.name === 'login' && auth.user) return { name: auth.user.is_platform_admin ? 'admin.dashboard' : 'clinics' };
+    if (to.name === 'clinics' && auth.user?.active_tenant_id && to.query.switch !== '1') return { name: 'clinic.dashboard' };
+    if (to.meta.clinicLayout) {
+        if (!auth.user?.active_tenant_id) return { name: 'clinics' };
+        const clinic = useClinicContextStore();
+        await clinic.load();
+        if (!clinic.data?.operational) return;
+        if (to.meta.clinicModule) {
+            if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access' };
+            if (to.meta.clinicModule !== 'dashboard') {
+                try { await api.get(`/v1/clinic/modules/${to.meta.clinicModule}`, { headers: clinic.headers(), params: to.meta.create ? { action: 'create' } : {} }); }
+                catch (error) { if (error.response?.status === 403) return { name: 'clinic.access' }; throw error; }
+            }
+        }
+    }
+    if (to.name === 'login' && auth.user) return { name: auth.user.is_platform_admin ? 'admin.dashboard' : auth.user.active_tenant_id ? 'clinic.dashboard' : 'clinics' };
 });
 
 export default router;

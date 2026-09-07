@@ -17,8 +17,11 @@ class ProvisioningController extends Controller
     {
         Gate::authorize('update', $tenant);
 
-        return MemberResource::collection(DB::table('tenant_memberships')->join('users', 'users.id', '=', 'tenant_memberships.user_id')
-            ->where('tenant_id', $tenant->id)->select('tenant_memberships.id', 'users.name', 'users.email', 'tenant_memberships.role', 'tenant_memberships.status')->orderBy('tenant_memberships.id')->get());
+        $assignments = DB::table('branch_memberships')->where('tenant_id', $tenant->id)->get()->groupBy('membership_id');
+        $members = DB::table('tenant_memberships')->join('users', 'users.id', '=', 'tenant_memberships.user_id')
+            ->where('tenant_id', $tenant->id)->select('tenant_memberships.id', 'users.name', 'users.email', 'tenant_memberships.role', 'tenant_memberships.status', 'tenant_memberships.all_branches', 'tenant_memberships.permissions')->orderBy('tenant_memberships.id')->get();
+        foreach ($members as $member) $member->branch_ids = ($assignments->get($member->id) ?? collect())->pluck('branch_id')->all();
+        return MemberResource::collection($members);
     }
 
     public function addMember(MemberRequest $request, Tenant $tenant, TenantProvisioningService $service)

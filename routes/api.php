@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('v1/public/settings', [SystemSettingsController::class, 'publicSettings']);
 
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
+    Route::get('clinic/context', [\App\Http\Controllers\ClinicDashboardController::class, 'context'])->middleware('platform.available');
     Route::get('session', [AuthController::class, 'session']);
     Route::post('session/clinic', [AuthController::class, 'select']);
     Route::prefix('platform')->middleware('platform')->group(function () {
@@ -54,6 +55,9 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
     Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('dashboard', [\App\Http\Controllers\ClinicDashboardController::class, 'dashboard']);
+        Route::post('branch', [\App\Http\Controllers\ClinicDashboardController::class, 'switchBranch']);
+        Route::get('modules/{module}', [\App\Http\Controllers\ClinicDashboardController::class, 'module'])->whereIn('module', array_keys(config('clinic.modules')));
         Route::get('branches', [ClinicController::class, 'branches']);
         Route::get('branches/{branch}', [ClinicController::class, 'branch'])->whereNumber('branch');
     });
