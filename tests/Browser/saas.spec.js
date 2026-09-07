@@ -11,9 +11,21 @@ test('clinic administration uses dedicated routes and preserves tenant access', 
     await expect(page.getByRole('heading',{name:/Welcome back/})).toBeVisible();
 
     await page.getByRole('link',{name:/Subscription Plans/}).click();
-    await page.getByLabel('Name',{exact:true}).fill('Starter');
-    await page.getByRole('button',{name:'Create plan'}).click();
-    await expect(page.getByRole('status')).toContainText('Plan created.');
+    await expect(page.getByRole('heading',{name:'Create Subscription Plan'})).toHaveCount(0);
+    await page.getByRole('link',{name:/Add New Plan/}).click();
+    await expect(page).toHaveURL(/admin\/plans\/create$/);
+    await page.getByLabel('Plan Name').fill('Starter');
+    await page.getByLabel('Plan Code / Slug').fill('starter');
+    await page.getByLabel('Patient Management').check();
+    await page.getByRole('button',{name:'Create Plan'}).click();
+    await expect(page).toHaveURL(/admin\/plans\/1\?created=1$/);
+    await expect(page.getByRole('status')).toContainText('Subscription plan created successfully.');
+    await page.getByRole('link',{name:'Features',exact:true}).click();
+    await expect(page.getByText('Enabled · Patient Management')).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/admin\/plans\/1\?created=1$/);
+    await page.reload();
+    await expect(page.getByRole('heading',{name:'Starter'})).toBeVisible();
 
     await page.getByRole('link',{name:/Clinics \/ Tenants/}).click();
     await expect(page).toHaveURL(/admin\/clinics$/);

@@ -232,4 +232,29 @@ class SaasFoundationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.action', 'tenant.created');
     }
+
+    public function test_platform_plan_management_works_without_tenant_context_and_preserves_subscription_snapshots(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->clinic($admin);
+        $this->actingAs($admin);
+        $payload = [
+            'name' => 'Professional', 'slug' => 'professional', 'description' => 'Complete clinic management.',
+            'status' => 'active', 'price' => 49, 'currency' => 'usd', 'billing_period' => 'monthly',
+            'trial_days' => 14, 'branch_limit' => 3, 'member_limit' => 15, 'doctor_limit' => 10,
+            'patient_limit' => 5000, 'storage_limit_gb' => 10, 'appointment_limit' => null,
+            'invoice_limit' => null, 'features' => ['patient_management' => true, 'api_access' => false],
+        ];
+        $id = $this->postJson('/api/v1/platform/plans', $payload)->assertCreated()->json('data.id');
+        $this->getJson('/api/v1/platform/plans')->assertOk()->assertJsonPath('data.1.name', 'Professional');
+        $this->getJson('/api/v1/platform/plans/'.$id)->assertOk()->assertJsonPath('data.features.patient_management', true);
+        $this->putJson('/api/v1/platform/plans/'.$id, array_merge($payload, ['branch_limit' => 9]))
+            ->assertOk()->assertJsonPath('data.branch_limit', 9);
+        $this->assertDatabaseHas('subscriptions', ['tenant_id' => $tenant->id, 'branch_limit' => 2]);
+        $this->getJson('/api/v1/platform/plans/'.$id.'/audits')->assertOk()->assertJsonPath('data.0.action', 'plan.updated');
+
+        $normal = User::factory()->create();
+        $this->actingAs($normal)->getJson('/api/v1/platform/plans')->assertForbidden();
+        $this->postJson('/api/v1/platform/plans', $payload)->assertForbidden();
+    }
 }

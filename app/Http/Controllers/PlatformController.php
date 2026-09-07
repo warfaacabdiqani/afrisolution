@@ -98,16 +98,54 @@ class PlatformController extends Controller
 
     public function plans()
     {
-        Gate::authorize('viewAny', Tenant::class);
+        Gate::authorize('viewAny', Plan::class);
 
-        return PlanResource::collection(Plan::orderBy('id')->get());
+        return PlanResource::collection($this->planSummaryQuery()->orderBy('id')->get());
     }
 
     public function storePlan(PlanRequest $request, PlatformService $service)
     {
-        Gate::authorize('create', Tenant::class);
+        Gate::authorize('create', Plan::class);
 
         return (new PlanResource($service->createPlan($request->validated(), $request->user()->id)))->response()->setStatusCode(201);
+    }
+
+    public function showPlan(Plan $plan)
+    {
+        Gate::authorize('view', $plan);
+
+        return new PlanResource($this->planSummaryQuery()->findOrFail($plan->id));
+    }
+
+    public function updatePlan(PlanRequest $request, Plan $plan, PlatformService $service)
+    {
+        Gate::authorize('update', $plan);
+
+        return new PlanResource($service->updatePlan($plan, $request->validated(), $request->user()->id));
+    }
+
+    public function planSubscriptions(Plan $plan)
+    {
+        Gate::authorize('view', $plan);
+
+        return DB::table('subscriptions')
+            ->join('tenants', 'tenants.id', '=', 'subscriptions.tenant_id')
+            ->where('subscriptions.plan_id', $plan->id)
+            ->select([
+                'subscriptions.id', 'subscriptions.status', 'subscriptions.created_at', 'subscriptions.trial_ends_at',
+                'tenants.id as tenant_id', 'tenants.name as tenant_name',
+                DB::raw("(select count(*) from tenant_memberships where tenant_memberships.tenant_id = tenants.id and tenant_memberships.status = 'active') as members_count"),
+            ])->latest('subscriptions.id')->paginate(20);
+    }
+
+    public function planAudits(Plan $plan)
+    {
+        Gate::authorize('view', $plan);
+
+        return AuditResource::collection(DB::table('platform_audit_logs')
+            ->leftJoin('users', 'users.id', '=', 'platform_audit_logs.actor_id')
+            ->where('subject_type', 'plan')->where('subject_id', $plan->id)
+            ->select('platform_audit_logs.*', 'users.name as actor_name')->latest('platform_audit_logs.id')->paginate(30));
     }
 
     public function subscription(Tenant $tenant)
@@ -165,6 +203,18 @@ class PlatformController extends Controller
                 ->whereColumn('tenant_memberships.tenant_id', 'tenants.id')->where('status', 'active'),
             'branches_count' => DB::table('branches')->selectRaw('count(*)')
                 ->whereColumn('branches.tenant_id', 'tenants.id'),
+        ]);
+    }
+
+    private function planSummaryQuery()
+    {
+        return Plan::query()->addSelect([
+            'subscriptions_count' => DB::table('subscriptions')->selectRaw('count(*)')
+                ->whereColumn('subscriptions.plan_id', 'plans.id'),
+            'active_subscriptions_count' => DB::table('subscriptions')->selectRaw('count(*)')
+                ->whereColumn('subscriptions.plan_id', 'plans.id')->where('status', 'active'),
+            'trial_subscriptions_count' => DB::table('subscriptions')->selectRaw('count(*)')
+                ->whereColumn('subscriptions.plan_id', 'plans.id')->where('status', 'trial'),
         ]);
     }
 }

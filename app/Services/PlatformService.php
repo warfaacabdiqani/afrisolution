@@ -11,9 +11,9 @@ use Illuminate\Validation\ValidationException;
 
 class PlatformService
 {
-    public function audit(int $actor, string $action, string $type, int $id): void
+    public function audit(int $actor, string $action, string $type, int $id, array $metadata = []): void
     {
-        DB::table('platform_audit_logs')->insert(['actor_id' => $actor, 'action' => $action, 'subject_type' => $type, 'subject_id' => $id, 'created_at' => now()]);
+        DB::table('platform_audit_logs')->insert(['actor_id' => $actor, 'action' => $action, 'subject_type' => $type, 'subject_id' => $id, 'metadata' => $metadata ? json_encode($metadata) : null, 'created_at' => now()]);
     }
 
     public function createTenant(array $data, int $actor): Tenant
@@ -50,6 +50,22 @@ class PlatformService
             $this->audit($actor, 'plan.created', 'plan', $plan->id);
 
             return $plan;
+        });
+    }
+
+    public function updatePlan(Plan $plan, array $data, int $actor): Plan
+    {
+        return DB::transaction(function () use ($plan, $data, $actor) {
+            $plan = Plan::lockForUpdate()->findOrFail($plan->id);
+            $before = $plan->only(array_keys($data));
+            $plan->update($data);
+            $changed = collect(array_keys($data))->filter(
+                fn (string $key) => json_encode($plan->getAttribute($key)) !== json_encode($before[$key])
+            )->values()->all();
+            $this->audit($actor, 'plan.updated', 'plan', $plan->id, ['changed' => $changed]);
+
+            // Subscription limits are snapshots. Existing clinic subscriptions are intentionally unchanged.
+            return $plan->refresh();
         });
     }
 

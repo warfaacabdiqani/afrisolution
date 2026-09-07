@@ -16,6 +16,15 @@ import MembersTab from '../pages/admin/clinics/tabs/MembersTab.vue';
 import UsageTab from '../pages/admin/clinics/tabs/UsageTab.vue';
 import ActivityTab from '../pages/admin/clinics/tabs/ActivityTab.vue';
 import SettingsTab from '../pages/admin/clinics/tabs/SettingsTab.vue';
+import PlansIndex from '../pages/admin/plans/PlansIndex.vue';
+import PlanCreate from '../pages/admin/plans/PlanCreate.vue';
+import PlanEdit from '../pages/admin/plans/PlanEdit.vue';
+import PlanShow from '../pages/admin/plans/PlanShow.vue';
+import PlanOverviewTab from '../pages/admin/plans/tabs/OverviewTab.vue';
+import PlanLimitsTab from '../pages/admin/plans/tabs/LimitsTab.vue';
+import PlanFeaturesTab from '../pages/admin/plans/tabs/FeaturesTab.vue';
+import PlanSubscriptionsTab from '../pages/admin/plans/tabs/SubscriptionsTab.vue';
+import PlanActivityTab from '../pages/admin/plans/tabs/ActivityTab.vue';
 import ClinicsView from '../views/ClinicsView.vue';
 
 const router = createRouter({
@@ -44,7 +53,16 @@ const router = createRouter({
                         { path: 'settings', name: 'admin.clinics.settings', component: SettingsTab },
                     ],
                 },
-                { path: 'plans', name: 'admin.plans', component: AdminSimplePage, meta: { title: 'Subscription Plans' } },
+                { path: 'plans', name: 'admin.plans', component: PlansIndex, meta: { title: 'Subscription Plans' } },
+                { path: 'plans/create', name: 'admin.plans.create', component: PlanCreate, meta: { title: 'Create Subscription Plan' } },
+                { path: 'plans/:id/edit', name: 'admin.plans.edit', component: PlanEdit, meta: { title: 'Edit Subscription Plan' } },
+                { path: 'plans/:id', component: PlanShow, children: [
+                    { path: '', name: 'admin.plans.show', component: PlanOverviewTab },
+                    { path: 'limits', name: 'admin.plans.limits', component: PlanLimitsTab },
+                    { path: 'features', name: 'admin.plans.features', component: PlanFeaturesTab },
+                    { path: 'subscriptions', name: 'admin.plans.subscriptions', component: PlanSubscriptionsTab },
+                    { path: 'activity', name: 'admin.plans.activity', component: PlanActivityTab },
+                ]},
                 { path: 'subscriptions', name: 'admin.subscriptions', component: AdminSimplePage, meta: { title: 'Subscriptions' } },
                 { path: 'users', name: 'admin.users', component: AdminSimplePage, meta: { title: 'Users' } },
                 { path: 'audit', name: 'admin.audit', component: AdminSimplePage, meta: { title: 'Audit Log' } },

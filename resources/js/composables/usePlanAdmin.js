@@ -1,0 +1,3 @@
+import { ref } from 'vue';
+import api from '../services/api';
+export function usePlanAdmin(){const plan=ref(null),subscriptions=ref([]),activity=ref([]),loading=ref(true),error=ref(null),notice=ref('');async function load(id){loading.value=true;error.value=null;try{const [p,s,a]=await Promise.all([api.get('/v1/platform/plans/'+id),api.get('/v1/platform/plans/'+id+'/subscriptions'),api.get('/v1/platform/plans/'+id+'/audits')]);plan.value=p.data.data;subscriptions.value=s.data.data.data;activity.value=a.data.data}catch(e){error.value=e}finally{loading.value=false}}return{plan,subscriptions,activity,loading,error,notice,load}}
