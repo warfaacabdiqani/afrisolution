@@ -57,7 +57,7 @@ async function logout() {
                 <div v-else-if="!clinic.data.operational" class="clinic-panel"><AppIcon name="roles" :size="36" /><h1 class="mt-4 text-2xl font-bold">Clinic access restricted</h1><p class="mt-3 text-slate-500">{{ clinic.data.restriction }}</p><p class="mt-3">Subscription: {{ clinic.data.subscription?.status || 'Unavailable' }}</p><RouterLink class="mt-5 inline-block btn" to="/app/clinics?switch=1">Switch clinic</RouterLink></div>
                 <template v-else>
                     <div v-if="clinic.data.subscription?.status === 'trial'" class="clinic-trial"><AppIcon name="trial" />Your trial ends in {{ trialDays }} {{ trialDays === 1 ? 'day' : 'days' }}.<span>{{ clinic.data.plan?.name }} plan</span></div>
-                    <RouterView :key="`${clinic.data.clinic.id}:${clinic.data.branch.id}:${route.fullPath}`" />
+                    <RouterView :key="`${clinic.data.clinic.id}:${clinic.data.branch.id}:${route.path}`" />
                 </template>
             </div>
         </div>

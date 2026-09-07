@@ -40,6 +40,7 @@ class PatientService
             }
             $tenant->increment('patient_sequence');
             $patient = new Patient(collect($data)->except(['allergy', 'condition', 'confirm_duplicate'])->all());
+            if (isset($data['reported_age'])) $patient->age_recorded_on = now()->toDateString();
             $patient->patient_number = strtoupper(substr(Str::slug($tenant->slug), 0, 12)).'-'.str_pad($tenant->patient_sequence, 6, '0', STR_PAD_LEFT);
             $patient->registration_branch_id = $context['branch']->id;
             $patient->created_by = $patient->updated_by = request()->user()->id;

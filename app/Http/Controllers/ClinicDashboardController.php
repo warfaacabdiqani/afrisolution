@@ -39,7 +39,7 @@ class ClinicDashboardController extends Controller
         $patientQuery = \App\Models\Patient::where('status', 'active');
         $patientCount = $patientsAllowed ? (clone $patientQuery)->count() : 0;
         $recentPatients = $patientsAllowed ? \App\Http\Resources\PatientResource::collection($patientQuery->latest('registered_at')->latest('id')->limit(5)->get())->resolve($request) : [];
-        // Clinical modules have no tables yet. Explicitly report unavailable data rather than fabricate records.
+        // Appointments, visits, and billing remain unavailable in this stage.
         return response()->json(['data' => [
             'stats' => ['total_patients' => $patientCount, 'today_appointments' => 0, 'active_doctors' => $doctors, 'monthly_revenue' => 0],
             'staff_count' => $members->count(), 'today_appointments' => [], 'recent_patients' => $recentPatients, 'visit_types' => [], 'calendar' => [],

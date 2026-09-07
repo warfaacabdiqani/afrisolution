@@ -17,7 +17,7 @@ class PatientController extends Controller
     {
         $context = $access->authorize($request, 'patients');
         $data = $request->validate([
-            'search' => ['nullable', 'string', 'max:150'], 'gender' => ['nullable', Rule::in(['male', 'female', 'other', 'unknown'])],
+            'search' => ['nullable', 'string', 'max:150'], 'gender' => ['nullable', Rule::in(['male', 'female'])],
             'status' => ['nullable', Rule::in(['active', 'inactive', 'archived', 'all'])], 'blood_group' => ['nullable', Rule::in(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])],
             'from' => ['nullable', 'date_format:Y-m-d'], 'to' => array_filter(['nullable', 'date_format:Y-m-d', $request->filled('from') ? 'after_or_equal:from' : null]),
             'sort' => ['nullable', Rule::in(['name', 'patient_number', 'registered_at', 'status'])], 'direction' => ['nullable', Rule::in(['asc', 'desc'])],
@@ -58,10 +58,12 @@ class PatientController extends Controller
         $model = Patient::with('registrationBranch')->findOrFail($patient);
         $data = (new PatientResource($model))->resolve($request) + $model->only(['date_of_birth', 'marital_status', 'email', 'address', 'city', 'country', 'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship', 'archived_at']);
         $data['date_of_birth'] = $model->date_of_birth?->toDateString();
+        $data['reported_age'] = $model->date_of_birth ? null : $model->age;
         $data['registration_branch'] = $model->registrationBranch?->name;
         if ($access->can($context['permissions'], 'patients.medical_history.view')) {
             $data['notes'] = $model->notes;
             $data['allergies'] = $model->allergies()->where('status', 'active')->get(['id', 'allergen', 'severity']);
+            $data['conditions'] = $model->conditions()->where('status', 'active')->get(['id', 'condition_name']);
         }
         return response()->json(['data' => $data]);
     }
@@ -72,6 +74,13 @@ class PatientController extends Controller
         $model = Patient::findOrFail($patient);
         abort_if($model->status === 'archived', 422, 'Restore this patient before editing.');
         $data = $request->safe()->except(['confirm_duplicate', 'allergy', 'condition']);
+        if (isset($data['reported_age'])) {
+            if (!$model->date_of_birth && (int) $data['reported_age'] === $model->age) $data['reported_age'] = $model->reported_age;
+            else $model->age_recorded_on = now()->toDateString();
+            $data['date_of_birth'] = null;
+        } elseif (!empty($data['date_of_birth']) || array_key_exists('reported_age', $data)) {
+            $data['reported_age'] = null; $model->age_recorded_on = null;
+        }
         if (!$access->can($context['permissions'], 'patients.medical_history.update')) unset($data['notes']);
         DB::transaction(function () use ($model, $data, $service, $request) {
             $model->fill($data); $model->updated_by = $request->user()->id; $model->save(); $service->audit($model, 'patient.updated');

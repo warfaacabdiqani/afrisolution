@@ -20,8 +20,10 @@ class PatientRequest extends FormRequest
     {
         $rules = [
             'first_name' => ['required', 'string', 'max:100'], 'middle_name' => ['nullable', 'string', 'max:100'], 'last_name' => ['required', 'string', 'max:100'],
-            'gender' => ['required', Rule::in(['male', 'female', 'other', 'unknown'])],
-            'date_of_birth' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'gender' => ['required', Rule::in(['male', 'female'])],
+            'date_of_birth' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today', 'prohibits:reported_age'],
+            'reported_age' => ['nullable', 'integer', 'min:0', 'max:130', 'prohibits:date_of_birth'],
+            'age_recorded_on' => ['prohibited'],
             'blood_group' => ['nullable', Rule::in(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])],
             'marital_status' => ['nullable', Rule::in(['single', 'married', 'divorced', 'widowed', 'other'])],
             'phone' => ['nullable', 'string', 'max:40', 'regex:/^[+0-9() .\-]{5,40}$/'],

@@ -98,7 +98,7 @@ const router = createRouter({
             { path: 'dashboard', name: 'clinic.dashboard', component: ClinicDashboard, meta: { clinicModule: 'dashboard' } },
             { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
             { path: 'support', component: ModuleAccess, meta: { title: 'Help & Support', support: true } },
-            { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients' } },
+            { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients', patientList: true } },
             { path: 'patients/create', component: PatientFormPage, meta: { clinicModule: 'patients', permission: 'patients.create' } },
             { path: 'patients/:id/edit', component: PatientFormPage, meta: { clinicModule: 'patients', permission: 'patients.update' } },
             { path: 'patients/:id', component: PatientShow, meta: { clinicModule: 'patients' }, children: [
@@ -121,7 +121,7 @@ const router = createRouter({
     scrollBehavior: () => ({ top: 0 }),
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
     const auth = useAuthStore();
     if (!auth.loaded) await auth.restore();
     if (to.meta.auth && !auth.user) return { name: 'login' };
@@ -134,7 +134,7 @@ router.beforeEach(async (to) => {
             return;
         }
         const clinic = useClinicContextStore();
-        await clinic.load();
+        if (!(to.meta.patientList && from.meta.patientList && clinic.data?.clinic.id === auth.user.active_tenant_id)) await clinic.load();
         if (!clinic.data?.operational) return;
         if (to.meta.clinicModule) {
             if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access' };

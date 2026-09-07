@@ -75,7 +75,7 @@ class ClinicDashboardTest extends TestCase
         [$tenant, $owner, $plan] = $this->clinic();
         $this->select($tenant, $owner);
         $this->getJson('/api/v1/clinic/modules/pharmacy')->assertForbidden();
-        $this->getJson('/api/v1/clinic/modules/patients?action=create')->assertOk()->assertJsonPath('data.available', false);
+        $this->getJson('/api/v1/clinic/modules/patients?action=create')->assertOk()->assertJsonPath('data.available', true);
         DB::table('tenant_memberships')->where('user_id', $owner->id)->update(['permissions' => json_encode(['dashboard.view', 'patients.view'])]);
         $this->getJson('/api/v1/clinic/modules/patients')->assertOk();
         $this->getJson('/api/v1/clinic/modules/patients?action=create')->assertForbidden();

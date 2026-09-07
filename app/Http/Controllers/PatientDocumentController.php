@@ -18,7 +18,7 @@ class PatientDocumentController extends Controller
     public function index(Request $request, ClinicAccessService $access, int $patient)
     {
         $access->authorize($request, 'patients', 'patients.documents.view');
-        return response()->json(['data' => Patient::findOrFail($patient)->documents()->whereNull('archived_at')->latest('id')->paginate(25)]);
+        return response()->json(['data' => Patient::findOrFail($patient)->documents()->with('recorder:id,name')->whereNull('archived_at')->latest('id')->paginate(25)]);
     }
     public function store(Request $request, ClinicAccessService $access, PatientService $service, int $patient)
     {

@@ -21,7 +21,9 @@ class PatientManagementTest extends TestCase
         $plan = Plan::create(['name' => 'Clinical', 'branch_limit' => 3, 'member_limit' => 10, 'trial_days' => 14, 'patient_limit' => 100, 'storage_limit_gb' => 1, 'features' => ['patient_management' => true, 'multi_branch' => true]]);
         $tenant = app(PlatformService::class)->createTenant(['name' => $slug, 'slug' => $slug, 'timezone' => 'Africa/Nairobi', 'plan_id' => $plan->id, 'owner_name' => 'Owner', 'owner_email' => $slug.'@example.test', 'owner_password' => 'SecurePass12345'], $actor->id);
         $owner = User::where('email', $slug.'@example.test')->firstOrFail();
-        $this->withHeader('Origin', 'http://localhost')->actingAs($owner)->postJson('/api/v1/session/clinic', ['clinic_id' => $tenant->id])->assertOk();
+        $this->flushSession();
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Origin', 'http://localhost')->actingAs($owner, 'web')->postJson('/api/v1/session/clinic', ['clinic_id' => $tenant->id])->assertOk();
         return [$tenant, $owner, $plan];
     }
     private function data(array $extra = []): array { return array_merge(['first_name' => 'Amina', 'middle_name' => 'Noor', 'last_name' => 'Hassan', 'gender' => 'female', 'date_of_birth' => '1992-04-15', 'phone' => '+252 612 345 678', 'email' => 'amina@example.test'], $extra); }
@@ -92,11 +94,13 @@ class PatientManagementTest extends TestCase
         $this->getJson(self::ROOT.'?search=Amina')->assertJsonCount(0, 'data');
         $foreignId = $this->create(); // Identical demographics must not warn across tenants.
         $this->getJson(self::ROOT.'/'.$foreignId)->assertJsonPath('data.patient_number', 'BETA-000001');
-        $this->actingAs($owner)->postJson('/api/v1/session/clinic', ['clinic_id' => $a->id])->assertOk();
+        $this->flushSession(); $this->app['auth']->forgetGuards();
+        $this->actingAs($owner, 'web')->postJson('/api/v1/session/clinic', ['clinic_id' => $a->id])->assertOk();
         $this->postJson(self::ROOT.'/'.$id.'/documents/'.$doc.'/archive')->assertNoContent();
         $this->getJson(self::ROOT.'/'.$id.'/documents/'.$doc.'/download')->assertNotFound();
         $this->assertDatabaseCount('patient_documents', 1);
         $this->postJson('/logout')->assertNoContent();
+        $this->app['auth']->forgetGuards();
         $this->getJson(self::ROOT.'/'.$id.'/documents/'.$doc.'/download')->assertUnauthorized();
     }
 
@@ -131,5 +135,17 @@ class PatientManagementTest extends TestCase
         $this->getJson(self::ROOT.'?per_page=25&sort=name&direction=asc')->assertOk()->assertJsonCount(25, 'data')->assertJsonPath('meta.total', 26)->assertJsonPath('data.0.first_name', 'Patient 00');
         $this->getJson(self::ROOT.'?per_page=25&page=2&sort=name&direction=asc')->assertJsonCount(1, 'data')->assertJsonPath('data.0.first_name', 'Patient 25');
         $this->getJson(self::ROOT.'?per_page=500')->assertUnprocessable();
+    }
+
+    public function test_gender_and_age_entry_are_validated_without_inventing_a_birthday(): void
+    {
+        $this->clinic();
+        foreach (['other', 'unknown'] as $gender) $this->postJson(self::ROOT, $this->data(['gender' => $gender]))->assertUnprocessable()->assertJsonValidationErrors('gender');
+        $this->postJson(self::ROOT, $this->data(['reported_age' => 32]))->assertUnprocessable();
+        $this->postJson(self::ROOT, $this->data(['date_of_birth' => null, 'reported_age' => -1]))->assertUnprocessable();
+        $id = $this->create(['date_of_birth' => null, 'reported_age' => 32]);
+        $this->getJson(self::ROOT.'/'.$id)->assertOk()->assertJsonPath('data.date_of_birth', null)->assertJsonPath('data.age', 32)->assertJsonPath('data.age_is_estimated', true);
+        $this->putJson(self::ROOT.'/'.$id, $this->data(['reported_age' => null]))->assertOk();
+        $this->getJson(self::ROOT.'/'.$id)->assertJsonPath('data.age_is_estimated', false)->assertJsonPath('data.date_of_birth', '1992-04-15');
     }
 }
