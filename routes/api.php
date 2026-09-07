@@ -55,6 +55,19 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
     Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('patients', [\App\Http\Controllers\PatientController::class, 'index']);
+        Route::post('patients', [\App\Http\Controllers\PatientController::class, 'store']);
+        Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class, 'show'])->whereNumber('patient');
+        Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class, 'update'])->whereNumber('patient');
+        Route::post('patients/{patient}/{action}', [\App\Http\Controllers\PatientController::class, 'status'])->whereNumber('patient')->whereIn('action', ['archive', 'restore']);
+        Route::get('patients/{patient}/activity', [\App\Http\Controllers\PatientController::class, 'activity'])->whereNumber('patient');
+        Route::get('patients/{patient}/{kind}', [\App\Http\Controllers\PatientHistoryController::class, 'index'])->whereNumber('patient')->whereIn('kind', ['allergies', 'conditions']);
+        Route::post('patients/{patient}/{kind}', [\App\Http\Controllers\PatientHistoryController::class, 'save'])->whereNumber('patient')->whereIn('kind', ['allergies', 'conditions']);
+        Route::put('patients/{patient}/{kind}/{entry}', [\App\Http\Controllers\PatientHistoryController::class, 'save'])->whereNumber(['patient', 'entry'])->whereIn('kind', ['allergies', 'conditions']);
+        Route::get('patients/{patient}/documents', [\App\Http\Controllers\PatientDocumentController::class, 'index'])->whereNumber('patient');
+        Route::post('patients/{patient}/documents', [\App\Http\Controllers\PatientDocumentController::class, 'store'])->whereNumber('patient');
+        Route::get('patients/{patient}/documents/{document}/download', [\App\Http\Controllers\PatientDocumentController::class, 'download'])->whereNumber(['patient', 'document']);
+        Route::post('patients/{patient}/documents/{document}/archive', [\App\Http\Controllers\PatientDocumentController::class, 'archive'])->whereNumber(['patient', 'document']);
         Route::get('dashboard', [\App\Http\Controllers\ClinicDashboardController::class, 'dashboard']);
         Route::post('branch', [\App\Http\Controllers\ClinicDashboardController::class, 'switchBranch']);
         Route::get('modules/{module}', [\App\Http\Controllers\ClinicDashboardController::class, 'module'])->whereIn('module', array_keys(config('clinic.modules')));

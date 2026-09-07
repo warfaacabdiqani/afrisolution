@@ -35,11 +35,15 @@ class ClinicDashboardController extends Controller
                 $q->where('all_branches', true)->orWhereIn('tenant_memberships.id', DB::table('branch_memberships')->where('tenant_id', $context['clinic']->id)->where('branch_id', $context['branch']->id)->select('membership_id'));
             });
         $doctors = (clone $members)->where('role', 'doctor')->count();
+        $patientsAllowed = $access->can($context['permissions'], 'patients.view') && ($context['features']['patient_management'] ?? false);
+        $patientQuery = \App\Models\Patient::where('status', 'active');
+        $patientCount = $patientsAllowed ? (clone $patientQuery)->count() : 0;
+        $recentPatients = $patientsAllowed ? \App\Http\Resources\PatientResource::collection($patientQuery->latest('registered_at')->latest('id')->limit(5)->get())->resolve($request) : [];
         // Clinical modules have no tables yet. Explicitly report unavailable data rather than fabricate records.
         return response()->json(['data' => [
-            'stats' => ['total_patients' => 0, 'today_appointments' => 0, 'active_doctors' => $doctors, 'monthly_revenue' => 0],
-            'staff_count' => $members->count(), 'today_appointments' => [], 'recent_patients' => [], 'visit_types' => [], 'calendar' => [],
-            'availability' => ['patients' => false, 'appointments' => false, 'revenue' => false],
+            'stats' => ['total_patients' => $patientCount, 'today_appointments' => 0, 'active_doctors' => $doctors, 'monthly_revenue' => 0],
+            'staff_count' => $members->count(), 'today_appointments' => [], 'recent_patients' => $recentPatients, 'visit_types' => [], 'calendar' => [],
+            'availability' => ['patients' => $patientsAllowed, 'appointments' => false, 'revenue' => false],
             'today' => $context['today'],
         ]]);
     }
@@ -50,6 +54,7 @@ class ClinicDashboardController extends Controller
         abort_unless(in_array($action, [null, 'create'], true), 422);
         $permission = $action === 'create' ? ($module === 'billing' ? 'billing.create' : $module.'.create') : null;
         $access->authorize($request, $module, $permission);
+        if ($module === 'patients') return response()->json(['data' => ['available' => true]]);
         return response()->json(['data' => ['available' => false, 'message' => 'This module is scheduled for a later implementation phase.']]);
     }
 }

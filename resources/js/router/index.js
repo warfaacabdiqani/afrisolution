@@ -32,6 +32,14 @@ import RolesIndex from '../pages/admin/users/RolesIndex.vue';
 import AuditIndex from '../pages/admin/audit/AuditIndex.vue';
 import SettingsIndex from '../pages/admin/settings/SettingsIndex.vue';
 import ClinicsView from '../views/ClinicsView.vue';
+import PatientsIndex from '../pages/patients/Index.vue';
+import PatientFormPage from '../pages/patients/FormPage.vue';
+import PatientShow from '../pages/patients/Show.vue';
+import PatientOverview from '../pages/patients/tabs/Overview.vue';
+import PatientHistory from '../pages/patients/tabs/MedicalHistory.vue';
+import PatientDocuments from '../pages/patients/tabs/Documents.vue';
+import PatientActivity from '../pages/patients/tabs/Activity.vue';
+import PatientFuture from '../pages/patients/tabs/Future.vue';
 import ClinicLayout from '../layouts/ClinicLayout.vue';
 import ClinicDashboard from '../pages/clinic/Dashboard.vue';
 import ModuleAccess from '../pages/clinic/ModuleAccess.vue';
@@ -90,8 +98,18 @@ const router = createRouter({
             { path: 'dashboard', name: 'clinic.dashboard', component: ClinicDashboard, meta: { clinicModule: 'dashboard' } },
             { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
             { path: 'support', component: ModuleAccess, meta: { title: 'Help & Support', support: true } },
+            { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients' } },
+            { path: 'patients/create', component: PatientFormPage, meta: { clinicModule: 'patients', permission: 'patients.create' } },
+            { path: 'patients/:id/edit', component: PatientFormPage, meta: { clinicModule: 'patients', permission: 'patients.update' } },
+            { path: 'patients/:id', component: PatientShow, meta: { clinicModule: 'patients' }, children: [
+                { path: '', redirect: to => `/app/patients/${to.params.id}/overview` },
+                { path: 'overview', component: PatientOverview },
+                { path: 'medical-history', component: PatientHistory, meta: { permission: 'patients.medical_history.view' } },
+                { path: 'documents', component: PatientDocuments, meta: { permission: 'patients.documents.view' } },
+                { path: 'activity', component: PatientActivity },
+                ...[['appointments','Appointments','appointments'],['consultations','Consultations','emr'],['vitals','Vital Signs','vital_signs'],['prescriptions','Prescriptions','prescriptions'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
+            ] },
             ...[
-                ['patients', 'Patients'], ['patients/create', 'Add Patient'], ['patients/:id', 'Patient'],
                 ['appointments', 'Appointments'], ['appointments/create', 'Book Appointment'], ['appointments/:id', 'Appointment'],
                 ['doctors', 'Doctors / Clinicians'], ['consultations', 'Consultations'], ['prescriptions', 'Prescriptions'],
                 ['prescriptions/create', 'Create Prescription'], ['pharmacy', 'Pharmacy'], ['billing', 'Billing'],
@@ -120,7 +138,9 @@ router.beforeEach(async (to) => {
         if (!clinic.data?.operational) return;
         if (to.meta.clinicModule) {
             if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access' };
-            if (to.meta.clinicModule !== 'dashboard') {
+            if (to.meta.permission && !clinic.can(to.meta.permission)) return { name: 'clinic.access' };
+            if (to.meta.feature && !clinic.data.features[to.meta.feature]) return { name: 'clinic.access' };
+            if (!['dashboard', 'patients'].includes(to.meta.clinicModule)) {
                 try { await api.get(`/v1/clinic/modules/${to.meta.clinicModule}`, { headers: clinic.headers(), params: to.meta.create ? { action: 'create' } : {} }); }
                 catch (error) { if (error.response?.status === 403) return { name: 'clinic.access' }; throw error; }
             }
