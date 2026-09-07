@@ -18,6 +18,13 @@ clinics:'M3 21h18M5 21V5h10v16M9 9h2M9 13h2M9 17h2M15 10h4v11M17 14h2M17 18h2',
 revenue:'M12 2v20m5-16.5C15.8 4.5 14.2 4 12 4c-3 0-5 1.3-5 3s2 3 5 3 5 1.3 5 3-2 3-5 3c-2.2 0-3.8-.5-5-1.5',
 activity:'M3 12h4l3-8 4 16 3-8h4',
 calendar:'M3 5h18v16H3V5Zm4-3v6m10-6v6M3 10h18',
+dashboard:'M3 3h7v7H3V3Zm11 0h7v7h-7V3ZM3 14h7v7H3v-7Zm11 0h7v7h-7v-7Z',
+roles:'M12 3 4 6v6c0 4.5 3.2 7.4 8 9 4.8-1.6 8-4.5 8-9V6l-8-3Zm-3 9 2 2 4-4',
+audit:'M9 3h6l1 2h3v16H5V5h3l1-2Zm0 7h6m-6 4h6m-6 4h4',
+settings:'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L15 3.5h-4L10.6 6a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 2.6h4l.4-2.6a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1Z',
+menu:'M4 6h16M4 12h16M4 18h16',
+chevronLeft:'m15 18-6-6 6-6',
+chevronRight:'m9 18 6-6-6-6',
 };
 </script>
 <template><svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="paths[name]||paths.check"/></svg></template>
