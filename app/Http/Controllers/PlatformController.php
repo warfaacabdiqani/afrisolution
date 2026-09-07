@@ -124,6 +124,14 @@ class PlatformController extends Controller
         return new PlanResource($service->updatePlan($plan, $request->validated(), $request->user()->id));
     }
 
+    public function destroyPlan(Plan $plan, PlatformService $service)
+    {
+        Gate::authorize('delete', $plan);
+        $service->deletePlan($plan, request()->user()->id);
+
+        return response()->noContent();
+    }
+
     public function planSubscriptions(Plan $plan)
     {
         Gate::authorize('view', $plan);

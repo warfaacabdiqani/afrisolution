@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('plans', [PlatformController::class, 'storePlan']);
         Route::get('plans/{plan}', [PlatformController::class, 'showPlan']);
         Route::put('plans/{plan}', [PlatformController::class, 'updatePlan']);
+        Route::delete('plans/{plan}', [PlatformController::class, 'destroyPlan']);
         Route::get('plans/{plan}/subscriptions', [PlatformController::class, 'planSubscriptions']);
         Route::get('plans/{plan}/audits', [PlatformController::class, 'planAudits']);
         Route::get('audits', [PlatformController::class, 'audits']);

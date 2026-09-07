@@ -69,6 +69,20 @@ class PlatformService
         });
     }
 
+    public function deletePlan(Plan $plan, int $actor): void
+    {
+        DB::transaction(function () use ($plan, $actor) {
+            $plan = Plan::lockForUpdate()->findOrFail($plan->id);
+            if (DB::table('subscriptions')->where('plan_id', $plan->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'plan' => 'This plan cannot be deleted because one or more clinics are subscribed to it. Deactivate or archive it instead.',
+                ]);
+            }
+            $this->audit($actor, 'plan.deleted', 'plan', $plan->id, ['name' => $plan->name]);
+            $plan->delete();
+        });
+    }
+
     public function updateSubscription(Tenant $tenant, array $data, int $actor): object
     {
         return DB::transaction(function () use ($tenant, $data, $actor) {

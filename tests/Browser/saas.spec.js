@@ -20,6 +20,9 @@ test('clinic administration uses dedicated routes and preserves tenant access', 
     await page.getByRole('button',{name:'Create Plan'}).click();
     await expect(page).toHaveURL(/admin\/plans\/1\?created=1$/);
     await expect(page.getByRole('status')).toContainText('Subscription plan created successfully.');
+    await expect(page.getByRole('button',{name:'Delete Plan'})).toHaveCount(0);
+    await page.getByRole('button',{name:/More/}).click();
+    await expect(page.getByRole('button',{name:'Delete Plan'})).toBeVisible();
     await page.getByRole('link',{name:'Features',exact:true}).click();
     await expect(page.getByText('Enabled · Patient Management')).toBeVisible();
     await page.goBack();

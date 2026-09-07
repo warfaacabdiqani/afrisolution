@@ -252,6 +252,12 @@ class SaasFoundationTest extends TestCase
             ->assertOk()->assertJsonPath('data.branch_limit', 9);
         $this->assertDatabaseHas('subscriptions', ['tenant_id' => $tenant->id, 'branch_limit' => 2]);
         $this->getJson('/api/v1/platform/plans/'.$id.'/audits')->assertOk()->assertJsonPath('data.0.action', 'plan.updated');
+        $subscribedPlan = DB::table('subscriptions')->where('tenant_id', $tenant->id)->value('plan_id');
+        $this->deleteJson('/api/v1/platform/plans/'.$subscribedPlan)->assertUnprocessable();
+        $this->assertDatabaseHas('plans', ['id' => $subscribedPlan]);
+        $this->deleteJson('/api/v1/platform/plans/'.$id)->assertNoContent();
+        $this->assertDatabaseMissing('plans', ['id' => $id]);
+        $this->assertDatabaseHas('platform_audit_logs', ['action' => 'plan.deleted', 'subject_id' => $id]);
 
         $normal = User::factory()->create();
         $this->actingAs($normal)->getJson('/api/v1/platform/plans')->assertForbidden();
