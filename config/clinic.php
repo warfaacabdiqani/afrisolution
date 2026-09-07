@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'doctor_permissions' => ['doctors.view','doctors.create','doctors.update','doctors.deactivate','doctors.schedule.view','doctors.schedule.update','doctors.leave.manage','doctors.specialties.manage'],
     'patient_permissions' => ['patients.view', 'patients.create', 'patients.update', 'patients.archive', 'patients.restore', 'patients.documents.view', 'patients.documents.upload', 'patients.documents.delete', 'patients.medical_history.view', 'patients.medical_history.update'],
     'modules' => [
         'dashboard' => ['Dashboard', 'dashboard.view', null, 'dashboard', ''],
@@ -18,11 +19,11 @@ return [
     'roles' => [
         'owner' => ['*'], 'admin' => ['*'],
         'staff' => ['dashboard.view'],
-        'receptionist' => ['dashboard.view', 'patients.view', 'patients.create', 'patients.update', 'appointments.view', 'appointments.create', 'appointments.update', 'appointments.cancel'],
-        'doctor' => ['dashboard.view', 'patients.view', 'patients.medical_history.view', 'patients.medical_history.update', 'patients.documents.view', 'patients.documents.upload', 'appointments.view', 'consultations.view', 'consultations.create', 'consultations.update', 'prescriptions.view', 'prescriptions.create'],
+        'receptionist' => ['doctors.view', 'doctors.schedule.view', 'dashboard.view', 'patients.view', 'patients.create', 'patients.update', 'appointments.view', 'appointments.create', 'appointments.update', 'appointments.cancel'],
+        'doctor' => ['doctors.view', 'doctors.schedule.view', 'dashboard.view', 'patients.view', 'patients.medical_history.view', 'patients.medical_history.update', 'patients.documents.view', 'patients.documents.upload', 'appointments.view', 'consultations.view', 'consultations.create', 'consultations.update', 'prescriptions.view', 'prescriptions.create'],
         'nurse' => ['dashboard.view', 'patients.view', 'patients.medical_history.view', 'patients.medical_history.update', 'appointments.view', 'consultations.view'],
         'pharmacist' => ['dashboard.view', 'pharmacy.view', 'pharmacy.manage', 'prescriptions.view'],
         'cashier' => ['dashboard.view', 'billing.view', 'billing.create', 'billing.payments'],
-        'management' => ['dashboard.view', 'reports.view', 'staff.view'],
+        'management' => ['doctors.view', 'doctors.schedule.view', 'dashboard.view', 'reports.view', 'staff.view'],
     ],
 ];

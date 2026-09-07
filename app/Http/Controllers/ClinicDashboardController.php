@@ -34,7 +34,8 @@ class ClinicDashboardController extends Controller
             ->where(function ($q) use ($context) {
                 $q->where('all_branches', true)->orWhereIn('tenant_memberships.id', DB::table('branch_memberships')->where('tenant_id', $context['clinic']->id)->where('branch_id', $context['branch']->id)->select('membership_id'));
             });
-        $doctors = (clone $members)->where('role', 'doctor')->count();
+        $profiles = \App\Models\Doctor::where('status', 'active')->whereHas('branches', fn ($q) => $q->where('branches.id', $context['branch']->id))->count();
+        $doctors = $profiles + (clone $members)->where('role', 'doctor')->whereNotIn('tenant_memberships.user_id', \App\Models\Doctor::whereNotNull('user_id')->select('user_id'))->count();
         $patientsAllowed = $access->can($context['permissions'], 'patients.view') && ($context['features']['patient_management'] ?? false);
         $patientQuery = \App\Models\Patient::where('status', 'active');
         $patientCount = $patientsAllowed ? (clone $patientQuery)->count() : 0;
@@ -54,7 +55,7 @@ class ClinicDashboardController extends Controller
         abort_unless(in_array($action, [null, 'create'], true), 422);
         $permission = $action === 'create' ? ($module === 'billing' ? 'billing.create' : $module.'.create') : null;
         $access->authorize($request, $module, $permission);
-        if ($module === 'patients') return response()->json(['data' => ['available' => true]]);
+        if (in_array($module, ['patients', 'doctors'], true)) return response()->json(['data' => ['available' => true]]);
         return response()->json(['data' => ['available' => false, 'message' => 'This module is scheduled for a later implementation phase.']]);
     }
 }

@@ -23,10 +23,11 @@ class TenantProvisioningService
             }
         }
     }
-    private function enforceDoctorLimit(Tenant $tenant, object $subscription): void
+    private function enforceDoctorLimit(Tenant $tenant, object $subscription, ?int $user = null): void
     {
         $limit = DB::table('plans')->where('id', $subscription->plan_id)->value('doctor_limit');
-        if ($limit !== null && DB::table('tenant_memberships')->where('tenant_id', $tenant->id)->where('status', 'active')->where('role', 'doctor')->count() >= $limit) {
+        if ($user && DB::table('doctors')->where('tenant_id', $tenant->id)->where('user_id', $user)->exists()) return;
+        if ($limit !== null && app(DoctorService::class)->usage($tenant->id) >= $limit) {
             throw ValidationException::withMessages(['role' => "Your current plan allows up to {$limit} doctors. Upgrade your subscription to add more doctors."]);
         }
     }
@@ -72,7 +73,7 @@ class TenantProvisioningService
             $sub = $this->subscription($tenant);
             $query = DB::table('tenant_memberships')->where('tenant_id', $tenant->id);
             $member = (clone $query)->where('id', $id)->firstOrFail();
-            if ($data['role'] === 'doctor' && $data['status'] === 'active' && ($member->role !== 'doctor' || $member->status !== 'active')) $this->enforceDoctorLimit($tenant, $sub);
+            if ($data['role'] === 'doctor' && $data['status'] === 'active' && ($member->role !== 'doctor' || $member->status !== 'active')) $this->enforceDoctorLimit($tenant, $sub, $member->user_id);
             if ($member->role === 'owner' && $member->status === 'active' && ($data['role'] !== 'owner' || $data['status'] !== 'active') &&
              (clone $query)->where('role', 'owner')->where('status', 'active')->count() <= 1) {
                 throw ValidationException::withMessages(['role' => 'Keep at least one active clinic owner.']);

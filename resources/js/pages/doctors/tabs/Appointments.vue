@@ -1,0 +1,1 @@
+<template><section class="clinic-panel"><h2 class="text-lg font-bold">Appointments</h2><p class="mt-4 text-slate-500">No appointment data is available. Appointment scheduling will be introduced in a later release.</p></section></template>

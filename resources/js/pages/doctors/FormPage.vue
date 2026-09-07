@@ -1,0 +1,6 @@
+<script setup>
+import { onMounted,ref } from 'vue';import { useRoute } from 'vue-router';import { useDoctorStore } from '../../stores/doctors';import DoctorForm from '../../components/doctors/DoctorForm.vue';import FormErrors from '../../components/ui/FormErrors.vue';
+const route=useRoute(),store=useDoctorStore(),ready=ref(false),error=ref(null);
+async function load(){ready.value=false;error.value=null;try{await store.loadOptions();if(route.params.id){await store.load(route.params.id);if(store.error)throw store.error;}ready.value=true;}catch(e){error.value=e;}}onMounted(load);
+</script>
+<template><div class="patient-page-header"><div><RouterLink class="back-link" to="/app/doctors">← Doctors / Clinicians</RouterLink><h1>{{route.params.id?'Edit Doctor / Clinician':'Add Doctor / Clinician'}}</h1><p>Create a clinical staff profile and configure their access.</p></div></div><FormErrors :error="error"/><div v-if="error" class="clinic-panel"><button class="btn" @click="load">Try again</button></div><div v-else-if="!ready" class="loading-state">Loading clinician form...</div><div v-else-if="route.params.id && !store.doctor.can_manage_branches" class="clinic-panel">Managing this profile requires access to all its assigned branches.</div><DoctorForm v-else :doctor="route.params.id?store.doctor:null"/></template>

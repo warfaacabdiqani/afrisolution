@@ -55,6 +55,20 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
     Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('doctors/options', [\App\Http\Controllers\DoctorController::class, 'options']);
+        Route::get('specialties', [\App\Http\Controllers\DoctorController::class, 'specialties']);
+        Route::post('specialties', [\App\Http\Controllers\DoctorController::class, 'specialty']);
+        Route::get('doctors', [\App\Http\Controllers\DoctorController::class, 'index']);
+        Route::post('doctors', [\App\Http\Controllers\DoctorController::class, 'store']);
+        Route::get('doctors/{doctor}', [\App\Http\Controllers\DoctorController::class, 'show'])->whereNumber('doctor');
+        Route::put('doctors/{doctor}', [\App\Http\Controllers\DoctorController::class, 'update'])->whereNumber('doctor');
+        Route::post('doctors/{doctor}/{action}', [\App\Http\Controllers\DoctorController::class, 'status'])->whereNumber('doctor')->whereIn('action',['activate','deactivate']);
+        Route::get('doctors/{doctor}/schedule', [\App\Http\Controllers\DoctorScheduleController::class, 'index'])->whereNumber('doctor');
+        Route::put('doctors/{doctor}/schedule', [\App\Http\Controllers\DoctorScheduleController::class, 'update'])->whereNumber('doctor');
+        Route::get('doctors/{doctor}/leaves', [\App\Http\Controllers\DoctorLeaveController::class, 'index'])->whereNumber('doctor');
+        Route::post('doctors/{doctor}/leaves', [\App\Http\Controllers\DoctorLeaveController::class, 'store'])->whereNumber('doctor');
+        Route::post('doctors/{doctor}/leaves/{leave}/cancel', [\App\Http\Controllers\DoctorLeaveController::class, 'cancel'])->whereNumber(['doctor','leave']);
+        Route::get('doctors/{doctor}/activity', [\App\Http\Controllers\DoctorController::class, 'activity'])->whereNumber('doctor');
         Route::get('patients', [\App\Http\Controllers\PatientController::class, 'index']);
         Route::post('patients', [\App\Http\Controllers\PatientController::class, 'store']);
         Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class, 'show'])->whereNumber('patient');

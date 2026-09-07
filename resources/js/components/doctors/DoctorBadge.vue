@@ -1,0 +1,2 @@
+<script setup>defineProps({ value: String }); const labels = {active:'Active',inactive:'Inactive',available:'Available',unavailable:'Unavailable',in_consultation:'In Consultation',on_leave:'On Leave',scheduled:'Scheduled',completed:'Completed',cancelled:'Cancelled'};</script>
+<template><span class="badge" :class="['active','available'].includes(value) ? 'badge-green' : value === 'on_leave' ? 'badge-rose' : ['in_consultation','scheduled'].includes(value) ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ labels[value] || value }}</span></template>
