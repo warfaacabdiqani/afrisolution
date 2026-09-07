@@ -9,6 +9,9 @@ test('clinic administration uses dedicated routes and preserves tenant access', 
     await page.getByLabel('Password',{exact:true}).fill('BrowserTestPass123');
     await page.getByRole('button',{name:'Sign in'}).click();
     await expect(page.getByRole('heading',{name:/Welcome back/})).toBeVisible();
+    await page.getByRole('link',{name:/Users/}).click();
+    await expect(page.getByRole('heading',{name:'System Users'})).toBeVisible();
+    await expect(page.locator('tbody').getByText('Browser Admin',{exact:true})).toBeVisible();
 
     await page.getByRole('link',{name:/Subscription Plans/}).click();
     await expect(page.getByRole('heading',{name:'Create Subscription Plan'})).toHaveCount(0);

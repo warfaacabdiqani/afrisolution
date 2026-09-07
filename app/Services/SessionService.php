@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 class SessionService {
  public function login(Request $request,array $credentials): void {
-  if (! Auth::guard('web')->attempt($credentials)) throw ValidationException::withMessages(['email'=>'The credentials provided are incorrect.']);
+  if (! Auth::guard('web')->attempt($credentials + ['status'=>'active'])) throw ValidationException::withMessages(['email'=>'The credentials provided are incorrect.']);
   $request->session()->regenerate(); $request->session()->forget('tenant_id');
   $ids=DB::table('tenant_memberships')->join('tenants','tenants.id','=','tenant_memberships.tenant_id')
    ->where('user_id',$request->user()->id)->where('tenant_memberships.status','active')->where('tenants.status','active')->pluck('tenants.id');

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Plan;
+use App\Models\PlatformPermission;
+use App\Models\PlatformRole;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -80,6 +82,37 @@ class PlatformService
             }
             $this->audit($actor, 'plan.deleted', 'plan', $plan->id, ['name' => $plan->name]);
             $plan->delete();
+        });
+    }
+
+    public function savePlatformUser(?User $user, array $data, int $actor): User
+    {
+        return DB::transaction(function () use ($user,$data,$actor) {
+            $user ??= new User();
+            if ($user->exists && $user->platformRoles()->where('slug','super-administrator')->exists()) {
+                $superRoleId=PlatformRole::where('slug','super-administrator')->value('id');
+                $removesSuper=!in_array($superRoleId,$data['role_ids']);
+                $activeSupers=DB::table('platform_role_user')->join('users','users.id','=','platform_role_user.user_id')->where('platform_role_id',$superRoleId)->where('users.status','active')->count();
+                if (($data['status']==='inactive'||$removesSuper) && $activeSupers<=1) throw ValidationException::withMessages(['role_ids'=>'The last active Super Administrator cannot be disabled or removed from that role.']);
+            }
+            $user->fill(collect($data)->only(['name','email','password'])->filter(fn($value)=>$value!==null)->all());
+            $user->is_platform_admin=true; $user->status=$data['status']; $user->save();
+            $user->platformRoles()->sync($data['role_ids']);
+            $this->audit($actor,$user->wasRecentlyCreated?'admin.created':'admin.updated','user',$user->id);
+            return $user->load('platformRoles:id,name');
+        });
+    }
+
+    public function savePlatformRole(?PlatformRole $role, array $data, int $actor): PlatformRole
+    {
+        return DB::transaction(function () use ($role,$data,$actor) {
+            $role ??= new PlatformRole();
+            if($role->is_system && $role->exists) throw ValidationException::withMessages(['role'=>'System roles cannot be modified.']);
+            $role->fill(collect($data)->only(['name','slug','description'])->all())->save();
+            $ids=PlatformPermission::whereIn('name',$data['permissions'])->pluck('id');
+            $role->permissions()->sync($ids);
+            $this->audit($actor,$role->wasRecentlyCreated?'role.created':'role.updated','platform_role',$role->id);
+            return $role->load('permissions:id,name,label')->loadCount('users');
         });
     }
 

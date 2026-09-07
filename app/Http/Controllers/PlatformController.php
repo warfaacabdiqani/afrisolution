@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\PlanRequest;
+use App\Http\Requests\PlatformSubscriptionIndexRequest;
 use App\Http\Requests\SubscriptionRequest;
 use App\Http\Requests\TenantRequest;
 use App\Http\Resources\AuditResource;
@@ -154,6 +155,45 @@ class PlatformController extends Controller
             ->leftJoin('users', 'users.id', '=', 'platform_audit_logs.actor_id')
             ->where('subject_type', 'plan')->where('subject_id', $plan->id)
             ->select('platform_audit_logs.*', 'users.name as actor_name')->latest('platform_audit_logs.id')->paginate(30));
+    }
+
+    public function subscriptions(PlatformSubscriptionIndexRequest $request)
+    {
+        Gate::authorize('viewAny', Plan::class);
+        $filters = $request->validated();
+        $query = DB::table('subscriptions')
+            ->join('tenants', 'tenants.id', '=', 'subscriptions.tenant_id')
+            ->join('plans', 'plans.id', '=', 'subscriptions.plan_id')
+            ->select([
+                'subscriptions.id', 'subscriptions.status', 'subscriptions.created_at', 'subscriptions.updated_at',
+                'subscriptions.trial_ends_at', 'subscriptions.branch_limit', 'subscriptions.member_limit',
+                'tenants.id as tenant_id', 'tenants.name as tenant_name', 'tenants.slug as tenant_code',
+                'plans.id as plan_id', 'plans.name as plan_name', 'plans.price', 'plans.currency', 'plans.billing_period',
+                DB::raw("(select count(*) from tenant_memberships where tenant_memberships.tenant_id = tenants.id and tenant_memberships.status = 'active') as members_count"),
+                DB::raw('(select count(*) from branches where branches.tenant_id = tenants.id) as branches_count'),
+            ]);
+
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(fn ($builder) => $builder->where('tenants.name', 'like', "%{$search}%")
+                ->orWhere('tenants.slug', 'like', "%{$search}%")->orWhere('plans.name', 'like', "%{$search}%"));
+        }
+        if (! empty($filters['status'])) $query->where('subscriptions.status', $filters['status']);
+        if (! empty($filters['plan_id'])) $query->where('subscriptions.plan_id', $filters['plan_id']);
+
+        $paginator = $query->latest('subscriptions.id')->paginate(20);
+        $stats = [
+            'total' => DB::table('subscriptions')->count(),
+            'active' => DB::table('subscriptions')->where('status', 'active')->count(),
+            'trial' => DB::table('subscriptions')->where('status', 'trial')->count(),
+            'cancelled' => DB::table('subscriptions')->where('status', 'cancelled')->count(),
+        ];
+
+        return response()->json([
+            'data' => $paginator->items(),
+            'meta' => ['current_page' => $paginator->currentPage(), 'last_page' => $paginator->lastPage(), 'per_page' => $paginator->perPage(), 'total' => $paginator->total()],
+            'stats' => $stats,
+        ]);
     }
 
     public function subscription(Tenant $tenant)

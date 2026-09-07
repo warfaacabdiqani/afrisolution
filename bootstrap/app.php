@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\PlatformAdmin;
+use App\Http\Middleware\PlatformPermission;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
         $middleware->alias([
             'platform' => PlatformAdmin::class,
+            'platform.permission' => PlatformPermission::class,
             'tenant' => ResolveTenant::class,
         ]);
     })

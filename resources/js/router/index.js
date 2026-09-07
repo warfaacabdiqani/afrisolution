@@ -25,6 +25,10 @@ import PlanLimitsTab from '../pages/admin/plans/tabs/LimitsTab.vue';
 import PlanFeaturesTab from '../pages/admin/plans/tabs/FeaturesTab.vue';
 import PlanSubscriptionsTab from '../pages/admin/plans/tabs/SubscriptionsTab.vue';
 import PlanActivityTab from '../pages/admin/plans/tabs/ActivityTab.vue';
+import SubscriptionsIndex from '../pages/admin/subscriptions/SubscriptionsIndex.vue';
+import UsersIndex from '../pages/admin/users/UsersIndex.vue';
+import UserFormPage from '../pages/admin/users/UserFormPage.vue';
+import RolesIndex from '../pages/admin/users/RolesIndex.vue';
 import ClinicsView from '../views/ClinicsView.vue';
 
 const router = createRouter({
@@ -63,8 +67,11 @@ const router = createRouter({
                     { path: 'subscriptions', name: 'admin.plans.subscriptions', component: PlanSubscriptionsTab },
                     { path: 'activity', name: 'admin.plans.activity', component: PlanActivityTab },
                 ]},
-                { path: 'subscriptions', name: 'admin.subscriptions', component: AdminSimplePage, meta: { title: 'Subscriptions' } },
-                { path: 'users', name: 'admin.users', component: AdminSimplePage, meta: { title: 'Users' } },
+                { path: 'subscriptions', name: 'admin.subscriptions', component: SubscriptionsIndex, meta: { title: 'Subscriptions' } },
+                { path: 'users', name: 'admin.users', component: UsersIndex, meta: { title: 'System Users' } },
+                { path: 'users/create', name: 'admin.users.create', component: UserFormPage, meta: { title: 'Add Administrator' } },
+                { path: 'users/:id/edit', name: 'admin.users.edit', component: UserFormPage, meta: { title: 'Edit Administrator' } },
+                { path: 'roles', name: 'admin.roles', component: RolesIndex, meta: { title: 'Roles & Permissions' } },
                 { path: 'audit', name: 'admin.audit', component: AdminSimplePage, meta: { title: 'Audit Log' } },
                 { path: 'settings', name: 'admin.settings', component: AdminSimplePage, meta: { title: 'System Settings' } },
             ],

@@ -13,6 +13,7 @@ const links = [
     ['admin.plans', 'Subscription Plans', 'P'],
     ['admin.subscriptions', 'Subscriptions', 'S'],
     ['admin.users', 'Users', 'U'],
+    ['admin.roles', 'Roles & Permissions', 'R'],
     ['admin.audit', 'Audit Log', 'A'],
     ['admin.settings', 'System Settings', 'G'],
 ];

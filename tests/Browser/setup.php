@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\PlatformRole;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 
@@ -21,3 +22,4 @@ Artisan::call('migrate:fresh', ['--force' => true]);
 $user = new User(['name' => 'Browser Admin', 'email' => 'browser-admin@example.test', 'password' => 'BrowserTestPass123']);
 $user->is_platform_admin = true;
 $user->save();
+$user->platformRoles()->sync([PlatformRole::where('slug', 'super-administrator')->value('id')]);

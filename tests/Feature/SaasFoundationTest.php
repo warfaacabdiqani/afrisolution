@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\Plan;
+use App\Models\PlatformRole;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\PlatformService;
@@ -29,6 +30,7 @@ class SaasFoundationTest extends TestCase
         $u = User::factory()->create();
         $u->is_platform_admin = true;
         $u->save();
+        $u->platformRoles()->sync([PlatformRole::where('slug', 'super-administrator')->value('id')]);
 
         return $u;
     }
@@ -262,5 +264,43 @@ class SaasFoundationTest extends TestCase
         $normal = User::factory()->create();
         $this->actingAs($normal)->getJson('/api/v1/platform/plans')->assertForbidden();
         $this->postJson('/api/v1/platform/plans', $payload)->assertForbidden();
+    }
+
+    public function test_platform_subscription_index_uses_real_data_filters_and_authorization(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->clinic($admin);
+        $plan = Plan::firstOrFail();
+        $this->actingAs($admin)->getJson('/api/v1/platform/subscriptions')
+            ->assertOk()
+            ->assertJsonPath('stats.total', 1)
+            ->assertJsonPath('stats.trial', 1)
+            ->assertJsonPath('data.0.tenant_name', 'alpha')
+            ->assertJsonPath('data.0.plan_name', 'Starter')
+            ->assertJsonPath('data.0.members_count', 1)
+            ->assertJsonPath('data.0.branches_count', 1);
+        $this->getJson('/api/v1/platform/subscriptions?status=active')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/platform/subscriptions?plan_id='.$plan->id.'&search=alpha')->assertOk()->assertJsonCount(1, 'data');
+
+        $normal = User::factory()->create();
+        $this->actingAs($normal)->getJson('/api/v1/platform/subscriptions')->assertForbidden();
+    }
+
+    public function test_platform_administrators_roles_and_permissions_are_managed_safely(): void
+    {
+        $admin=$this->admin(); $this->actingAs($admin);
+        $roleId=$this->postJson('/api/v1/platform/roles',['name'=>'Billing Manager','slug'=>'billing-manager','description'=>'Manages subscriptions.','permissions'=>['subscriptions.view','subscriptions.manage']])->assertCreated()->json('data.id');
+        $userId=$this->postJson('/api/v1/platform/users',['name'=>'Billing Admin','email'=>'billing@example.test','status'=>'active','role_ids'=>[$roleId],'password'=>'SecurePass12345','password_confirmation'=>'SecurePass12345'])->assertCreated()->json('data.id');
+        $this->getJson('/api/v1/platform/users')->assertOk()->assertJsonPath('data.data.0.email','billing@example.test');
+        $this->getJson('/api/v1/platform/roles')->assertOk();
+        $this->getJson('/api/v1/platform/permissions')->assertOk()->assertJsonFragment(['name'=>'users.manage']);
+        $this->putJson('/api/v1/platform/users/'.$admin->id,['name'=>$admin->name,'email'=>$admin->email,'status'=>'inactive','role_ids'=>[PlatformRole::where('slug','super-administrator')->value('id')]])->assertForbidden();
+        $billing=User::findOrFail($userId);
+        $this->flushSession();
+        $this->actingAs($billing)->getJson('/api/v1/platform/users')->assertForbidden();
+        $this->flushSession();
+        $this->actingAs($billing)->getJson('/api/v1/platform/subscriptions')->assertOk();
+        $this->flushSession();
+        $this->actingAs($billing)->getJson('/api/v1/platform/plans')->assertForbidden();
     }
 }

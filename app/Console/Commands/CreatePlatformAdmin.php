@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Models\PlatformRole;
 use App\Services\PlatformService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,7 @@ class CreatePlatformAdmin extends Command
             $user = new User($data);
             $user->is_platform_admin = true;
             $user->save();
+            $user->platformRoles()->sync([PlatformRole::where('slug','super-administrator')->value('id')]);
             app(PlatformService::class)->audit($user->id, 'admin.created', 'user', $user->id);
         });
         $this->info('Platform administrator created. Sign in at /app/login.');
