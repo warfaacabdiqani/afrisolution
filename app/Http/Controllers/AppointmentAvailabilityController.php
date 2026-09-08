@@ -16,7 +16,8 @@ class AppointmentAvailabilityController extends Controller
         $c = $access->authorize($r, 'appointments');
         $d = $r->validate(['branch_id' => ['required', 'integer'], 'date' => ['required', 'date_format:Y-m-d'], 'duration' => ['required', 'integer', 'between:5,480'], 'patient_id' => ['nullable', 'integer'], 'appointment_id' => ['nullable', 'integer'], 'walk_in' => ['nullable', 'boolean']]);
 
-        return response()->json(['data' => $service->slots($c, $d + ['doctor_id' => $doctor])]);
+        $result = $service->slots($c, $d + ['doctor_id' => $doctor]);
+        return response()->json(['data' => $result['slots'], 'meta' => collect($result)->except('slots')->all()]);
     }
 
     public function hours(Request $r, ClinicAccessService $access)

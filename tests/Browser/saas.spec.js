@@ -107,7 +107,7 @@ test('clinic administration uses dedicated routes and preserves tenant access', 
     await expect(page.getByText('No patients have been registered yet.')).toBeVisible();
     await page.screenshot({ path: 'test-results/clinic-dashboard-desktop.png', fullPage: true });
     await page.locator('.clinic-calendar a[aria-current="date"]').click();
-    await expect(page).toHaveURL(/app\/appointments\?date=\d{4}-\d{2}-\d{2}$/);
+    await expect(page).toHaveURL(/app\/appointments\?view=day&date=\d{4}-\d{2}-\d{2}$/);
     await page.goto('/app/pharmacy');
     await expect(page.getByRole('heading', { name: 'Access unavailable' })).toBeVisible();
     expect((await page.request.get('/api/v1/clinic/modules/pharmacy', { headers: { Accept: 'application/json', Origin: 'http://127.0.0.1:8011' } })).status()).toBe(403);

@@ -16,6 +16,24 @@ class AppointmentManagementTest extends TestCase
 
     private const ROOT = '/api/v1/clinic/appointments';
 
+    public function test_empty_slot_diagnostics_and_schedule_setup(): void
+    {
+        $c = $this->clinic();
+        $scheduleUrl = '/api/v1/clinic/doctors/'.$c['doctor'].'/schedule';
+        $days = array_map(fn ($day) => ['day_of_week' => $day, 'is_available' => false], range(1, 7));
+        $this->putJson($scheduleUrl, ['branch_id' => $c['branch'], 'days' => $days])->assertNoContent();
+        $url = '/api/v1/clinic/doctors/'.$c['doctor'].'/available-slots?'.http_build_query(['branch_id' => $c['branch'], 'date' => '2026-09-12', 'duration' => 30]);
+        $this->getJson($url)->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('meta.reason_code', 'schedule_missing');
+        $days[5] = ['day_of_week' => 6, 'is_available' => true, 'start_time' => '08:00', 'end_time' => '11:00'];
+        $this->putJson($scheduleUrl, ['branch_id' => $c['branch'], 'days' => $days])->assertNoContent();
+        $this->getJson($url)->assertOk()->assertJsonPath('data.0', '08:00')->assertJsonPath('meta.reason_code', null);
+        $this->getJson(str_replace('2026-09-12', '2026-09-13', $url))->assertJsonPath('meta.reason_code', 'non_working_day');
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-12 09:00:00', 'UTC'));
+        $this->getJson($url)->assertJsonPath('meta.reason_code', 'day_finished');
+        $this->postJson('/api/v1/clinic/doctors/'.$c['doctor'].'/leaves', ['branch_id' => $c['branch'], 'start_date' => '2026-09-12', 'end_date' => '2026-09-12'])->assertCreated();
+        $this->getJson($url)->assertJsonPath('meta.reason_code', 'on_leave');
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

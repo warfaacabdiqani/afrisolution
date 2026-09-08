@@ -19,7 +19,6 @@ test('appointments use Saturday to Friday and persist booking, reschedule and co
     const today=context.today,branch=context.branch.id;const futureDate=new Date(`${today}T12:00:00Z`);futureDate.setUTCDate(futureDate.getUTCDate()+1);const future=futureDate.toISOString().slice(0,10);
     const specialty=await request('/api/v1/clinic/specialties',{name:'General Practitioner'});
     const doctor=await request('/api/v1/clinic/doctors',{first_name:'Ahmed',last_name:'Hassan',primary_branch_id:branch,specialty_ids:[specialty.data.id],availability_status:'available'});
-    await request(`/api/v1/clinic/doctors/${doctor.data.id}/schedule`,{branch_id:branch,days:Array.from({length:7},(_,i)=>({day_of_week:i+1,is_available:true,start_time:'08:00',end_time:'17:00',break_start:'12:00',break_end:'13:00'}))},'put');
     const patient=await request('/api/v1/clinic/patients',{first_name:'Amina',last_name:'Yusuf',gender:'female',phone:'+252 612 111 222'});
     const type=await request('/api/v1/clinic/appointment-types',{name:'General Consultation',default_duration:30});
     await page.goto('/app/appointments');
@@ -30,6 +29,14 @@ test('appointments use Saturday to Friday and persist booking, reschedule and co
     await page.locator('.appointment-patient-results').getByRole('button').filter({hasText:'Amina Yusuf'}).click();
     await page.getByLabel('Doctor *',{exact:true}).selectOption(String(doctor.data.id));
     await page.getByLabel('Date *',{exact:true}).fill(future);
+    await expect(page.getByText(/No working hours have been set for Ahmed Hassan/)).toBeVisible();
+    const opened=page.waitForEvent('popup');await page.getByRole('link',{name:/Set working hours/}).click();const schedulePage=await opened;
+    await schedulePage.getByRole('button',{name:'Edit Schedule',exact:true}).click();
+    await expect(schedulePage.locator('.doctor-day')).toHaveText(['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday']);
+    for(const day of ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'])await schedulePage.getByRole('checkbox',{name:day,exact:true}).check();
+    await schedulePage.getByRole('button',{name:'Save Schedule',exact:true}).click();await expect(schedulePage.getByText('Working schedule saved.')).toBeVisible();await schedulePage.close();
+    await page.getByRole('button',{name:'Refresh available times',exact:true}).click();
+    await expect(page.getByText(/No working hours have been set/)).toHaveCount(0);
     await page.getByLabel('Appointment type',{exact:true}).selectOption(String(type.data.id));
     await expect(page.getByLabel('Start time *',{exact:true}).locator('option[value="09:00"]')).toBeAttached();
     await page.getByLabel('Start time *',{exact:true}).selectOption('09:00');
@@ -66,7 +73,7 @@ test('appointments use Saturday to Friday and persist booking, reschedule and co
     await page.getByRole('link',{name:'View Patient',exact:true}).click();await page.getByRole('navigation',{name:'Patient profile'}).getByRole('link',{name:'Appointments',exact:true}).click();
     await expect(page.locator('.appointment-list').getByText('Completed',{exact:true})).toBeVisible();
     await page.goto(`/app/doctors/${doctor.data.id}/appointments`);await expect(page.locator('.appointment-list').getByText('Omar Yusuf',{exact:true})).toBeVisible();
-    await page.goto('/app/dashboard');await expect(page.locator('.clinic-dashboard-middle').getByText('Omar Yusuf',{exact:true})).toBeVisible();
+    await page.goto('/app/dashboard');await expect(page.locator('.clinic-dashboard-middle > section').first().getByText('Omar Yusuf',{exact:true})).toBeVisible();
     await page.goto('/app/appointments');await expect(page.locator('.appointment-day-heading strong')).toHaveText(['Sat','Sun','Mon','Tue','Wed','Thu','Fri']);
     await expect(page.locator('.appointment-today-stats').getByText('Completed',{exact:true})).toBeVisible();
     await page.screenshot({path:'test-results/appointments-week.png',fullPage:true});

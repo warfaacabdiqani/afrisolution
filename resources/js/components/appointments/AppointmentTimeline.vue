@@ -4,7 +4,7 @@ const props=defineProps({date:String,view:String,today:String,nowTime:String,com
 const days=computed(()=>{const range=calendarRange(props.date,props.view);return Array.from({length:props.view==='day'?1:7},(_,i)=>addDays(range.start,i));});
 const start=computed(()=>Math.floor(Math.min(480,...store.hours.schedules.map(s=>minutes(s.start_time)),...store.rows.map(a=>minutes(a.starts_at.slice(11))))/60)*60);
 const end=computed(()=>Math.min(1440,Math.ceil(Math.max(1080,...store.hours.schedules.map(s=>minutes(s.end_time)),...store.rows.map(a=>minutes(a.ends_at.slice(11))))/60)*60));
-const scale=computed(()=>props.compact?1.3:2);
+const scale=computed(()=>props.compact?1:1.5);
 const slots=computed(()=>Array.from({length:(end.value-start.value)/30},(_,i)=>start.value+i*30));
 function working(day,time){return store.hours.schedules.some(s=>s.is_available && s.day_of_week===(dayDate(day).getUTCDay()||7) && time>=minutes(s.start_time)&&time+30<=minutes(s.end_time)&&!(s.break_start&&time<minutes(s.break_end)&&time+30>minutes(s.break_start))&&!store.hours.leaves.some(l=>l.doctor_id===s.doctor_id&&l.start_date<=day&&l.end_date>=day));}
 function positioned(day){

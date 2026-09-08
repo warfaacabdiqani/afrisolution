@@ -51,6 +51,8 @@ Calendar requests require a bounded date range (at most 42 days). Events are pag
 
 Booking requires an active patient from this tenant and an active clinician assigned to the authorized branch. It validates the full interval against working hours, breaks, clinician availability, dated leave, doctor conflicts and patient conflicts. Doctor/patient conflict checks span branches in the same tenant and do not expose the conflicting record's identity.
 
+The slots API preserves its time-array response and includes diagnostic metadata. Missing branch schedules, non-working weekdays, clinician unavailability, dated leave, past dates, exhausted working hours and occupied/too-short intervals have distinct messages. For missing schedules the booking form links to the correct clinician/branch Schedule tab in a new tab, preserving the draft appointment. After saving actual working days/hours, **Refresh available times** reloads the slots. Being marked Available does not implicitly create a working schedule; no clinic hours are invented or silently saved.
+
 The overlap condition is `existing.starts_at < proposed.ends_at AND existing.ends_at > proposed.starts_at`. Adjacent appointments are allowed; identical and partially overlapping bookings are rejected. Cancelled/no-show appointments release time, while completed records retain their historical interval. Rescheduling excludes only the current accessible appointment and reruns validation.
 
 Creation, rescheduling and status changes take the tenant row lock within a transaction. This serializes cooperating application writes on MySQL, protecting overlap checks, sequence allocation and quota checks. Existing schedule and leave changes use the same tenant lock. Slots are advisory; submitting an appointment always revalidates it.
@@ -111,13 +113,14 @@ Frontend added:
 - `resources/js/services/appointments.js`, `resources/js/stores/appointments.js`, `resources/js/utils/appointmentDates.js`
 - `resources/css/appointments.css`
 
-Existing files modified: `routes/api.php`, `config/clinic.php`, MemberRequest, ClinicDashboardController, Patient and Doctor models, Vue Router, CSS imports, PatientForm's reusable embedded mode, clinic Dashboard and mini-calendar, and clinician Schedule/Appointments tabs.
+Existing files modified: `routes/api.php`, `config/clinic.php`, MemberRequest, ClinicDashboardController, Patient and Doctor models, Vue Router, CSS imports, PatientForm's reusable embedded mode, patient profile booking link, clinic Dashboard and mini-calendar, and clinician Schedule/Appointments tabs.
 
-Tests: `tests/Feature/AppointmentManagementTest.php`, `tests/Browser/z_appointments.spec.js`.
+Tests: `tests/Feature/AppointmentManagementTest.php`, `tests/Browser/z_appointments.spec.js`; the existing `tests/Browser/saas.spec.js` mini-calendar check now expects the Day-view URL.
 
 ## Verification and scope
 
-- Backend suite: 48 tests / 761 assertions passed.
-- Production Vite build passes.
-- Browser validation covers calendar ordering, all four views, filters, registration, booking, rescheduling, cancellation, walk-in progression through completion, profile/dashboard integration, mobile layout, refresh and history navigation.
+- Backend suite: 49 tests / 782 assertions passed.
+- Production Vite build passes (178 modules). Live appointment routes return HTTP 200 and reference the updated assets.
+- Browser validation covers calendar ordering, schedule setup from the empty-slots prompt, all four views, filters, registration, booking, rescheduling, cancellation, walk-in progression through completion, profile/dashboard integration, mobile layout, refresh and history navigation.
+- All three Playwright workflows passed: clinic/patient administration, clinician management, and appointment management. No Vue page errors were recorded. Desktop/mobile appointment screenshots were visually checked and retained under `storage/framework/testing/appointments-{week,mobile}.png`.
 - Drag-and-drop, doctor-column mode, outbound reminders and full Consultation/EMR are intentionally outside this completed core stage. Rescheduling uses the validated dedicated form; starting a consultation changes appointment status only.
