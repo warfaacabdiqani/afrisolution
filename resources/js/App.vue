@@ -12,7 +12,7 @@ const route = useRoute();
 const error = ref(null);
 const busy = ref(false);
 let removeErrorHandler;
-onMounted(() => { platformSettings.load(); removeErrorHandler = router.onError(e => { error.value = e; }); });
+onMounted(() => { platformSettings.load().catch(e => { error.value = e; }); removeErrorHandler = router.onError(e => { error.value = e; }); });
 onUnmounted(() => removeErrorHandler?.());
 async function logout() {
     error.value = null; busy.value = true;

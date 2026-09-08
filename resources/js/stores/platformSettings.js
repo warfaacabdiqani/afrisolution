@@ -9,6 +9,6 @@ export const usePlatformSettingsStore = defineStore('platformSettings', () => {
     const footer = computed(() => values.value['branding.footer_text'] || 'Healthcare SaaS');
     const logo = computed(() => values.value['branding.logo'] || null);
     const smallLogo = computed(() => values.value['branding.small_logo'] || null);
-    async function load() { if (loaded.value) return; try { values.value = (await api.get('/v1/public/settings')).data.data; } finally { loaded.value = true; } }
+    async function load(force = false) { if (loaded.value && !force) return; values.value = (await api.get('/v1/public/settings')).data.data; loaded.value = true; }
     return { values, loaded, name, footer, logo, smallLogo, load };
 });

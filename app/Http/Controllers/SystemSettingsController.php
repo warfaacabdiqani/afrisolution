@@ -30,7 +30,14 @@ class SystemSettingsController extends Controller
         $sections=[]; foreach(self::DEFAULTS as $group=>$defaults)$sections[$group]=array_replace($defaults,$settings->section($group));
         return response()->json(['data'=>$sections,'plans'=>Plan::where('status','active')->orderBy('name')->get(['id','name'])]);
     }
-    public function publicSettings(SystemSettingsService $settings) { return response()->json(['data'=>$settings->public()]); }
+    public function publicSettings(SystemSettingsService $settings)
+    {
+        $values = $settings->public();
+        foreach (['platform_name', 'organization_name', 'support_email', 'support_phone'] as $key) {
+            $values['general.'.$key] = $settings->get('general.'.$key, self::DEFAULTS['general'][$key]);
+        }
+        return response()->json(['data' => $values]);
+    }
     public function update(SystemSettingsRequest $request, string $section, SystemSettingsService $settings, PlatformService $platform)
     {
         abort_unless(isset(self::DEFAULTS[$section]),404); $values=$request->validated();
