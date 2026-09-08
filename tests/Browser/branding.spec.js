@@ -1,0 +1,32 @@
+﻿import { test, expect } from '@playwright/test';
+test('branding uploads enable save and persist across reloads', async ({ page }) => {
+    await page.goto('/app/login');
+    await page.getByLabel('Email address', { exact: true }).fill('browser-admin@example.test');
+    await page.getByLabel('Password', { exact: true }).fill('BrowserTestPass123');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page).toHaveURL(/app\/admin$/);
+    await page.goto('/app/admin/settings');
+    await page.getByRole('button', { name: 'Branding', exact: true }).click();
+    const save = page.getByRole('button', { name: 'Save Changes', exact: true });
+    const upload = page.locator('input[type=file]').first();
+    await expect(save).toBeDisabled();
+    const image = { name: 'brand.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=', 'base64') };
+    await upload.setInputFiles(image);
+    await expect(save).toBeEnabled();
+    await page.getByRole('button', { name: 'Discard Changes' }).click();
+    await expect(save).toBeDisabled();
+    await upload.setInputFiles(image);
+    const response = page.waitForResponse(r => r.url().endsWith('/settings/branding') && r.request().method() === 'POST');
+    await save.click();
+    expect((await response).status()).toBe(200);
+    await expect(save).toBeDisabled();
+    await page.reload();
+    await page.getByRole('button', { name: 'Branding', exact: true }).click();
+    await expect(page.locator('.upload-field img').first()).toHaveAttribute('src', /\/storage\/branding\//);
+    // Saving text with an existing logo must not submit the logo URL as a file.
+    await page.getByLabel('Footer Text', { exact: true }).fill('Branding regression');
+    const second = page.waitForResponse(r => r.url().endsWith('/settings/branding') && r.request().method() === 'POST');
+    await save.click();
+    expect((await second).status()).toBe(200);
+    await expect(save).toBeDisabled();
+});
