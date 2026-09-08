@@ -33,6 +33,9 @@ import AuditIndex from '../pages/admin/audit/AuditIndex.vue';
 import SettingsIndex from '../pages/admin/settings/SettingsIndex.vue';
 import ClinicsView from '../views/ClinicsView.vue';
 import DoctorsIndex from '../pages/doctors/Index.vue';
+import AppointmentsIndex from '../pages/appointments/Index.vue';
+import AppointmentFormPage from '../pages/appointments/FormPage.vue';
+import PatientAppointments from '../pages/patients/tabs/Appointments.vue';
 import DoctorFormPage from '../pages/doctors/FormPage.vue';
 import DoctorShow from '../pages/doctors/Show.vue';
 import DoctorOverview from '../pages/doctors/tabs/Overview.vue';
@@ -106,6 +109,11 @@ const router = createRouter({
             { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
             { path: 'support', component: ModuleAccess, meta: { title: 'Help & Support', support: true } },
             { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients', patientList: true } },
+            { path: 'appointments', component: AppointmentsIndex, meta: { clinicModule: 'appointments', appointmentCalendar: true } },
+            { path: 'appointments/create', component: AppointmentFormPage, meta: { clinicModule: 'appointments', permission: 'appointments.create' } },
+            { path: 'appointments/:id/edit', component: AppointmentFormPage, meta: { clinicModule: 'appointments', permission: 'appointments.update' } },
+            { path: 'appointments/:id/reschedule', component: AppointmentFormPage, meta: { clinicModule: 'appointments', permission: 'appointments.reschedule', reschedule: true } },
+            { path: 'appointments/:id', component: AppointmentsIndex, meta: { clinicModule: 'appointments', appointmentCalendar: true } },
             { path: 'doctors', component: DoctorsIndex, meta: { clinicModule: 'doctors', doctorList: true } },
             { path: 'doctors/create', component: DoctorFormPage, meta: { clinicModule: 'doctors', permission: 'doctors.create' } },
             { path: 'doctors/:id/edit', component: DoctorFormPage, meta: { clinicModule: 'doctors', permission: 'doctors.update' } },
@@ -124,10 +132,10 @@ const router = createRouter({
                 { path: 'medical-history', component: PatientHistory, meta: { permission: 'patients.medical_history.view' } },
                 { path: 'documents', component: PatientDocuments, meta: { permission: 'patients.documents.view' } },
                 { path: 'activity', component: PatientActivity },
-                ...[['appointments','Appointments','appointments'],['consultations','Consultations','emr'],['vitals','Vital Signs','vital_signs'],['prescriptions','Prescriptions','prescriptions'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
+                { path: 'appointments', component: PatientAppointments, meta: { permission:'appointments.view',feature:'appointments' } },
+                ...[['consultations','Consultations','emr'],['vitals','Vital Signs','vital_signs'],['prescriptions','Prescriptions','prescriptions'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
             ...[
-                ['appointments', 'Appointments'], ['appointments/create', 'Book Appointment'], ['appointments/:id', 'Appointment'],
                 ['consultations', 'Consultations'], ['prescriptions', 'Prescriptions'],
                 ['prescriptions/create', 'Create Prescription'], ['pharmacy', 'Pharmacy'], ['billing', 'Billing'],
                 ['billing/invoices/create', 'New Invoice'], ['reports', 'Reports'], ['staff', 'Users / Staff'], ['settings', 'Clinic Settings'],
@@ -151,13 +159,13 @@ router.beforeEach(async (to, from) => {
             return;
         }
         const clinic = useClinicContextStore();
-        if (!(((to.meta.patientList && from.meta.patientList) || (to.meta.doctorList && from.meta.doctorList)) && clinic.data?.clinic.id === auth.user.active_tenant_id)) await clinic.load();
+        if (!(((to.meta.patientList && from.meta.patientList) || (to.meta.doctorList && from.meta.doctorList) || (to.meta.appointmentCalendar && from.meta.appointmentCalendar)) && clinic.data?.clinic.id === auth.user.active_tenant_id)) await clinic.load();
         if (!clinic.data?.operational) return;
         if (to.meta.clinicModule) {
             if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access' };
             if (to.meta.permission && !clinic.can(to.meta.permission)) return { name: 'clinic.access' };
             if (to.meta.feature && !clinic.data.features[to.meta.feature]) return { name: 'clinic.access' };
-            if (!['dashboard', 'patients', 'doctors'].includes(to.meta.clinicModule)) {
+            if (!['dashboard', 'patients', 'doctors', 'appointments'].includes(to.meta.clinicModule)) {
                 try { await api.get(`/v1/clinic/modules/${to.meta.clinicModule}`, { headers: clinic.headers(), params: to.meta.create ? { action: 'create' } : {} }); }
                 catch (error) { if (error.response?.status === 403) return { name: 'clinic.access' }; throw error; }
             }

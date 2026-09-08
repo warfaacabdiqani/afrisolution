@@ -2,6 +2,7 @@
 @import './clinic.css';
 @import './patients.css';
 @import './doctors.css';
+@import './appointments.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';

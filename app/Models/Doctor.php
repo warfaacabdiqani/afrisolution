@@ -10,6 +10,7 @@ class Doctor extends Model {
     public function specialties() { return $this->belongsToMany(Specialty::class, 'doctor_specialty')->withPivot('tenant_id'); }
     public function schedules() { return $this->hasMany(DoctorSchedule::class); }
     public function leaves() { return $this->hasMany(DoctorLeave::class); }
+    public function appointments() { return $this->hasMany(Appointment::class); }
     public function user() { return $this->belongsTo(User::class); }
     public function getFullNameAttribute(): string { return implode(' ', array_filter([$this->first_name, $this->middle_name, $this->last_name])); }
 }

@@ -1,1 +1,2 @@
-<template><section class="clinic-panel"><h2 class="text-lg font-bold">Appointments</h2><p class="mt-4 text-slate-500">No appointment data is available. Appointment scheduling will be introduced in a later release.</p></section></template>
+<script setup>import {useDoctorStore} from '../../../stores/doctors';import ProfileAppointments from '../../../components/appointments/ProfileAppointments.vue';const store=useDoctorStore();</script>
+<template><ProfileAppointments :doctor-id="store.doctor.id"/></template>

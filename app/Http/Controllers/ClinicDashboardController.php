@@ -40,11 +40,20 @@ class ClinicDashboardController extends Controller
         $patientQuery = \App\Models\Patient::where('status', 'active');
         $patientCount = $patientsAllowed ? (clone $patientQuery)->count() : 0;
         $recentPatients = $patientsAllowed ? \App\Http\Resources\PatientResource::collection($patientQuery->latest('registered_at')->latest('id')->limit(5)->get())->resolve($request) : [];
-        // Appointments, visits, and billing remain unavailable in this stage.
+        $appointmentsAllowed = $access->can($context['permissions'], 'appointments.view') && ($context['features']['appointments'] ?? false);
+        $todayAppointments=[];$appointmentCount=0;$dates=[];
+        if($appointmentsAllowed){
+            $appointments=app(\App\Services\AppointmentService::class)->visible($context)->where('branch_id',$context['branch']->id);
+            $today=(clone $appointments)->where('starts_at','>=',$context['today'].' 00:00:00')->where('starts_at','<',\Illuminate\Support\Carbon::parse($context['today'])->addDay()->toDateString().' 00:00:00');
+            $appointmentCount=(clone $today)->count();
+            $todayAppointments=\App\Http\Resources\AppointmentResource::collection($today->with(['patient','doctor','branch','type'])->orderBy('starts_at')->limit(5)->get())->resolve($request);
+            $month=\Illuminate\Support\Carbon::parse($context['today'])->startOfMonth();
+            $dates=(clone $appointments)->where('starts_at','>=',$month->format('Y-m-d H:i:s'))->where('starts_at','<',$month->copy()->addMonth()->format('Y-m-d H:i:s'))->selectRaw('DATE(starts_at) as date')->distinct()->pluck('date');
+        }
         return response()->json(['data' => [
-            'stats' => ['total_patients' => $patientCount, 'today_appointments' => 0, 'active_doctors' => $doctors, 'monthly_revenue' => 0],
-            'staff_count' => $members->count(), 'today_appointments' => [], 'recent_patients' => $recentPatients, 'visit_types' => [], 'calendar' => [],
-            'availability' => ['patients' => $patientsAllowed, 'appointments' => false, 'revenue' => false],
+            'stats' => ['total_patients' => $patientCount, 'today_appointments' => $appointmentCount, 'active_doctors' => $doctors, 'monthly_revenue' => 0],
+            'staff_count' => $members->count(), 'today_appointments' => $todayAppointments, 'recent_patients' => $recentPatients, 'visit_types' => [], 'calendar' => $dates,
+            'availability' => ['patients' => $patientsAllowed, 'appointments' => $appointmentsAllowed, 'revenue' => false],
             'today' => $context['today'],
         ]]);
     }
@@ -55,7 +64,7 @@ class ClinicDashboardController extends Controller
         abort_unless(in_array($action, [null, 'create'], true), 422);
         $permission = $action === 'create' ? ($module === 'billing' ? 'billing.create' : $module.'.create') : null;
         $access->authorize($request, $module, $permission);
-        if (in_array($module, ['patients', 'doctors'], true)) return response()->json(['data' => ['available' => true]]);
+        if (in_array($module, ['patients', 'doctors', 'appointments'], true)) return response()->json(['data' => ['available' => true]]);
         return response()->json(['data' => ['available' => false, 'message' => 'This module is scheduled for a later implementation phase.']]);
     }
 }

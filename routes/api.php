@@ -55,6 +55,21 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
     Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('appointments/options', [\App\Http\Controllers\AppointmentController::class, 'options']);
+        Route::get('appointments/patients', [\App\Http\Controllers\AppointmentController::class, 'patients']);
+        Route::get('appointments/calendar', [\App\Http\Controllers\AppointmentCalendarController::class, 'calendar']);
+        Route::get('appointments/today', [\App\Http\Controllers\AppointmentCalendarController::class, 'today']);
+        Route::get('appointments/hours', [\App\Http\Controllers\AppointmentAvailabilityController::class, 'hours']);
+        Route::get('appointment-types', [\App\Http\Controllers\AppointmentController::class, 'types']);
+        Route::post('appointment-types', [\App\Http\Controllers\AppointmentController::class, 'storeType']);
+        Route::get('appointments', [\App\Http\Controllers\AppointmentCalendarController::class, 'index']);
+        Route::post('appointments', [\App\Http\Controllers\AppointmentController::class, 'store']);
+        Route::get('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class, 'show'])->whereNumber('appointment');
+        Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class, 'update'])->whereNumber('appointment');
+        Route::post('appointments/{appointment}/reschedule', [\App\Http\Controllers\AppointmentController::class, 'reschedule'])->whereNumber('appointment')->name('appointments.reschedule');
+        Route::get('appointments/{appointment}/activity', [\App\Http\Controllers\AppointmentController::class, 'activity'])->whereNumber('appointment');
+        Route::post('appointments/{appointment}/{action}', [\App\Http\Controllers\AppointmentController::class, 'status'])->whereNumber('appointment')->whereIn('action',array_keys(config('appointments.actions')));
+        Route::get('doctors/{doctor}/available-slots', [\App\Http\Controllers\AppointmentAvailabilityController::class, 'slots'])->whereNumber('doctor');
         Route::get('doctors/options', [\App\Http\Controllers\DoctorController::class, 'options']);
         Route::get('specialties', [\App\Http\Controllers\DoctorController::class, 'specialties']);
         Route::post('specialties', [\App\Http\Controllers\DoctorController::class, 'specialty']);

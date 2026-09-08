@@ -14,6 +14,7 @@ class Patient extends Model
     public function allergies() { return $this->hasMany(PatientAllergy::class); }
     public function conditions() { return $this->hasMany(PatientCondition::class); }
     public function documents() { return $this->hasMany(PatientDocument::class); }
+    public function appointments() { return $this->hasMany(Appointment::class); }
     public function registrationBranch() { return $this->belongsTo(Branch::class, 'registration_branch_id'); }
     public function getFullNameAttribute(): string { return implode(' ', array_filter([$this->first_name, $this->middle_name, $this->last_name])); }
 }

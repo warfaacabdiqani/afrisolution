@@ -1,0 +1,86 @@
+import {test,expect as baseExpect} from '@playwright/test';
+const expect=baseExpect.configure({timeout:15000});
+
+test('appointments use Saturday to Friday and persist booking, reschedule and completion',async({page})=>{
+    test.setTimeout(180000);
+    page.setDefaultTimeout(20000);
+    const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.setViewportSize({width:1536,height:1024});
+    async function login(email,password){await page.goto('/app/login');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in'}).click();await expect(page).not.toHaveURL(/\/login$/);}
+    async function request(path,data,method='post'){
+        const cookies=await page.context().cookies();const headers={Accept:'application/json',Origin:'http://127.0.0.1:8011','X-XSRF-TOKEN':decodeURIComponent(cookies.find(c=>c.name==='XSRF-TOKEN').value)};
+        const response=await page.request[method](path,{headers,data});expect(response.ok(),await response.text()).toBeTruthy();return response.status()===204?null:response.json();
+    }
+    await login('browser-admin@example.test','BrowserTestPass123');
+    const plan=await request('/api/v1/platform/plans',{name:'Appointment browser plan',slug:'appointment-browser',status:'active',price:0,currency:'USD',billing_period:'monthly',trial_days:14,branch_limit:3,member_limit:10,doctor_limit:5,appointment_limit:100,features:{appointments:true,patient_management:true,clinicians:true,multi_branch:true}});
+    await request('/api/v1/platform/tenants',{name:'Appointment Test Clinic',slug:'appointment-test',timezone:'Africa/Nairobi',plan_id:plan.data.id,owner_name:'Appointment Owner',owner_email:'appointment-owner@example.test',owner_password:'AppointmentPass123',owner_password_confirmation:'AppointmentPass123'});
+    await request('/logout',{});await login('appointment-owner@example.test','AppointmentPass123');await expect(page).toHaveURL(/app\/dashboard/);
+    const context=(await request('/api/v1/clinic/context',undefined,'get')).data;
+    const today=context.today,branch=context.branch.id;const futureDate=new Date(`${today}T12:00:00Z`);futureDate.setUTCDate(futureDate.getUTCDate()+1);const future=futureDate.toISOString().slice(0,10);
+    const specialty=await request('/api/v1/clinic/specialties',{name:'General Practitioner'});
+    const doctor=await request('/api/v1/clinic/doctors',{first_name:'Ahmed',last_name:'Hassan',primary_branch_id:branch,specialty_ids:[specialty.data.id],availability_status:'available'});
+    await request(`/api/v1/clinic/doctors/${doctor.data.id}/schedule`,{branch_id:branch,days:Array.from({length:7},(_,i)=>({day_of_week:i+1,is_available:true,start_time:'08:00',end_time:'17:00',break_start:'12:00',break_end:'13:00'}))},'put');
+    const patient=await request('/api/v1/clinic/patients',{first_name:'Amina',last_name:'Yusuf',gender:'female',phone:'+252 612 111 222'});
+    const type=await request('/api/v1/clinic/appointment-types',{name:'General Consultation',default_duration:30});
+    await page.goto('/app/appointments');
+    await expect(page.locator('.appointment-day-heading strong')).toHaveText(['Sat','Sun','Mon','Tue','Wed','Thu','Fri']);
+    await expect(page.getByText('No appointments scheduled for this period.',{exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'New Appointment',exact:false}).click();
+    await page.getByLabel('Search Existing Patient *').fill('Amina');
+    await page.locator('.appointment-patient-results').getByRole('button').filter({hasText:'Amina Yusuf'}).click();
+    await page.getByLabel('Doctor *',{exact:true}).selectOption(String(doctor.data.id));
+    await page.getByLabel('Date *',{exact:true}).fill(future);
+    await page.getByLabel('Appointment type',{exact:true}).selectOption(String(type.data.id));
+    await expect(page.getByLabel('Start time *',{exact:true}).locator('option[value="09:00"]')).toBeAttached();
+    await page.getByLabel('Start time *',{exact:true}).selectOption('09:00');
+    await page.getByLabel('Reason',{exact:true}).fill('Routine visit');
+    await page.getByRole('button',{name:'Book Appointment',exact:true}).click();
+    await expect(page.getByRole('dialog').getByText('APT-000001',{exact:true})).toBeVisible();
+    const appointmentUrl=page.url();
+    await page.getByRole('link',{name:'Reschedule',exact:true}).click();
+    await expect(page.getByLabel('Start time *',{exact:true}).locator('option[value="10:00"]')).toBeAttached();
+    await page.getByLabel('Start time *',{exact:true}).selectOption('10:00');
+    await page.getByRole('button',{name:'Save Reschedule',exact:true}).click();
+    await expect(page.getByRole('dialog').getByText('10:00 – 10:30',{exact:false})).toBeVisible();
+    await page.getByRole('button',{name:'Cancel Appointment',exact:true}).click();
+    await page.getByLabel('Cancellation reason *').fill('Patient requested another day');
+    await page.getByRole('button',{name:'Confirm Cancel Appointment',exact:true}).click();
+    await expect(page.getByRole('dialog').locator('.appointment-badge')).toHaveText('Cancelled');
+    await page.getByRole('button',{name:'Close appointment',exact:true}).click();
+    await page.getByRole('button',{name:'New Appointment',exact:false}).click();
+    await page.getByRole('button',{name:'Register New Patient',exact:false}).click();
+    await page.getByLabel('First name *',{exact:true}).fill('Omar');await page.getByLabel('Last name *',{exact:true}).fill('Yusuf');await page.getByLabel('Gender *',{exact:true}).selectOption('male');
+    await page.getByRole('button',{name:'Register Patient',exact:true}).click();
+    await expect(page.locator('.appointment-selected-patient').getByText('Omar Yusuf',{exact:true})).toBeVisible();
+    await page.getByLabel('Doctor *',{exact:true}).selectOption(String(doctor.data.id));
+    await page.getByLabel('Appointment source',{exact:true}).selectOption('walk_in');
+    await page.getByLabel('Date *',{exact:true}).fill(today);
+    await expect(page.getByLabel('Start time *',{exact:true}).locator('option[value="08:00"]')).toBeAttached();await page.getByLabel('Start time *',{exact:true}).selectOption('08:00');
+    await page.getByRole('button',{name:'Book Appointment',exact:true}).click();
+    await expect(page.getByRole('dialog').locator('.appointment-badge')).toHaveText('Waiting');
+    for(const [label,status] of [['Check In','Checked In'],['Start Consultation','In Consultation'],['Complete Appointment','Completed']]){
+        await page.getByRole('button',{name:label,exact:true}).click();await page.getByRole('button',{name:`Confirm ${label}`,exact:true}).click();await expect(page.getByRole('dialog').locator('.appointment-badge')).toHaveText(status);
+    }
+    const completedUrl=page.url();await page.reload();await expect(page.getByRole('dialog').locator('.appointment-badge')).toHaveText('Completed');
+    await expect(page.getByRole('dialog').getByText('Completed at',{exact:true})).toBeVisible();
+    await page.getByRole('link',{name:'View Patient',exact:true}).click();await page.getByRole('navigation',{name:'Patient profile'}).getByRole('link',{name:'Appointments',exact:true}).click();
+    await expect(page.locator('.appointment-list').getByText('Completed',{exact:true})).toBeVisible();
+    await page.goto(`/app/doctors/${doctor.data.id}/appointments`);await expect(page.locator('.appointment-list').getByText('Omar Yusuf',{exact:true})).toBeVisible();
+    await page.goto('/app/dashboard');await expect(page.locator('.clinic-dashboard-middle').getByText('Omar Yusuf',{exact:true})).toBeVisible();
+    await page.goto('/app/appointments');await expect(page.locator('.appointment-day-heading strong')).toHaveText(['Sat','Sun','Mon','Tue','Wed','Thu','Fri']);
+    await expect(page.locator('.appointment-today-stats').getByText('Completed',{exact:true})).toBeVisible();
+    await page.screenshot({path:'test-results/appointments-week.png',fullPage:true});
+    await page.getByRole('button',{name:'Month',exact:true}).click();await expect(page.locator('.appointment-month-heading')).toHaveText(['Sat','Sun','Mon','Tue','Wed','Thu','Fri']);
+    await page.locator('.appointment-month').getByRole('button',{name:today,exact:true}).click();await expect(page.getByRole('button',{name:'Day',exact:true})).toHaveAttribute('aria-pressed','true');
+    await page.getByRole('button',{name:'Next period',exact:true}).click();await page.getByRole('button',{name:'Previous period',exact:true}).click();
+    await page.getByRole('button',{name:'Schedule',exact:true}).click();await page.getByLabel('From',{exact:true}).fill(today);await page.getByLabel('To',{exact:true}).fill(future);await expect(page.locator('.appointment-list').getByText('Omar Yusuf',{exact:true})).toBeVisible();
+    await page.getByLabel('Search appointments').fill('APT-000001');await expect(page.locator('.appointment-list tbody tr')).toHaveCount(1);await expect(page.locator('.appointment-list').getByText('Amina Yusuf',{exact:true})).toBeVisible();
+    await page.getByLabel('Search appointments').fill('');await page.getByLabel('Doctor filter').selectOption(String(doctor.data.id));await expect(page.locator('.appointment-list tbody tr')).toHaveCount(2);
+    await page.setViewportSize({width:390,height:844});await page.goto('/app/appointments');await expect(page.getByRole('button',{name:'Day',exact:true})).toHaveAttribute('aria-pressed','true');
+    await expect.poll(async()=>page.locator('.clinic-sidebar').evaluate(el=>el.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
+    await expect(page.locator('.appointment-calendar-card').filter({hasText:'Omar Yusuf'})).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();await page.screenshot({path:'test-results/appointments-mobile.png',fullPage:true});
+    await page.goto(completedUrl);await expect(page.getByRole('dialog').locator('.appointment-badge')).toHaveText('Completed');await page.getByRole('button',{name:'Close appointment'}).click();await page.goBack();await expect(page.getByRole('dialog')).toBeVisible();
+    await page.goto(appointmentUrl);await expect(page.getByRole('dialog').locator('.appointment-badge')).toHaveText('Cancelled');
+    expect(errors).toEqual([]);
+});
