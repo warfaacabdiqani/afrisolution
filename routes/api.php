@@ -123,6 +123,15 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('patients/{patient}/documents', [\App\Http\Controllers\PatientDocumentController::class, 'store'])->whereNumber('patient');
         Route::get('patients/{patient}/documents/{document}/download', [\App\Http\Controllers\PatientDocumentController::class, 'download'])->whereNumber(['patient', 'document']);
         Route::post('patients/{patient}/documents/{document}/archive', [\App\Http\Controllers\PatientDocumentController::class, 'archive'])->whereNumber(['patient', 'document']);
+        Route::get('staff/options', [\App\Http\Controllers\ClinicStaffController::class, 'options']);
+        Route::get('staff/stats', [\App\Http\Controllers\ClinicStaffController::class, 'stats']);
+        Route::get('staff', [\App\Http\Controllers\ClinicStaffController::class, 'index']);
+        Route::post('staff', [\App\Http\Controllers\ClinicStaffController::class, 'store']);
+        Route::get('staff/{staff}', [\App\Http\Controllers\ClinicStaffController::class, 'show'])->whereNumber('staff');
+        Route::put('staff/{staff}', [\App\Http\Controllers\ClinicStaffController::class, 'update'])->whereNumber('staff');
+        Route::post('staff/{staff}/activate', [\App\Http\Controllers\ClinicStaffController::class, 'activate'])->whereNumber('staff');
+        Route::post('staff/{staff}/deactivate', [\App\Http\Controllers\ClinicStaffController::class, 'deactivate'])->whereNumber('staff');
+        Route::post('staff/{staff}/reset-password', [\App\Http\Controllers\ClinicStaffController::class, 'resetPassword'])->whereNumber('staff');
         Route::get('dashboard', [\App\Http\Controllers\ClinicDashboardController::class, 'dashboard']);
         Route::get('reports/overview', [\App\Http\Controllers\ReportsController::class, 'overview']);
         Route::get('reports/patients', [\App\Http\Controllers\ReportsController::class, 'patients']);

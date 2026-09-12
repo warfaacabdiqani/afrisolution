@@ -64,7 +64,7 @@ class ClinicDashboardController extends Controller
         abort_unless(in_array($action, [null, 'create'], true), 422);
         $permission = $action === 'create' ? ($module === 'billing' ? 'billing.create' : $module.'.create') : null;
         $access->authorize($request, $module, $permission);
-        if (in_array($module, ['patients', 'doctors', 'appointments', 'consultations', 'billing'], true)) return response()->json(['data' => ['available' => true]]);
+        if (in_array($module, ['patients', 'doctors', 'appointments', 'consultations', 'billing', 'staff'], true)) return response()->json(['data' => ['available' => true]]);
         return response()->json(['data' => ['available' => false, 'message' => 'This module is scheduled for a later implementation phase.']]);
     }
 }

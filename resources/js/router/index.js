@@ -158,6 +158,7 @@ const router = createRouter({
                 ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null]].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
             { path: 'billing', component: BillingIndex, meta: { clinicModule: 'billing', permission: 'billing.view' } },
+            { path: 'staff', component: () => import('../pages/staff/Index.vue'), meta: { clinicModule: 'staff', permission: 'staff.view' } },
             { path: 'reports', component: ReportsIndex, meta: { clinicModule: 'reports' } },
             { path: 'reports/generate/:type', component: ReportsGenerate, meta: { clinicModule: 'reports' } },
             { path: 'reports/:section', component: ReportsCategory, meta: { clinicModule: 'reports' } },
@@ -171,7 +172,7 @@ const router = createRouter({
             ...[
                 ['consultations', 'Consultations'],
                 ['pharmacy', 'Pharmacy'],
-                ['billing/invoices/create', 'New Invoice'], ['staff', 'Users / Staff'],
+                ['billing/invoices/create', 'New Invoice'],
             ].map(([path, title]) => ({ path, component: ModuleAccess, meta: { title, clinicModule: path.split('/')[0], create: path.endsWith('/create') } })),
         ] },
         { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
