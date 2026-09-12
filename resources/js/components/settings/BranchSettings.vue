@@ -1,0 +1,20 @@
+<script setup>
+import { ref, reactive, onMounted, computed, watch } from 'vue';
+import { clinicSettingsService as service } from '../../services/clinicSettings';
+import { useClinicContextStore } from '../../stores/clinicContext';
+import SettingsDialog from './SettingsDialog.vue';
+import FormErrors from '../ui/FormErrors.vue';
+const props = defineProps({ summary: Object, canUpdate: Boolean, timezones: Array });
+const emit = defineEmits(['saved','dirty']);
+const context = useClinicContextStore(), rows = ref([]), main = ref(null), open = ref(false), busy = ref(false), error = ref(null), id = ref(null), form = reactive({});
+const baseline = ref('');
+const changed = computed(() => JSON.stringify(form) !== baseline.value);
+watch(changed, value => emit('dirty', open.value && value));
+async function load() { try { const r = await service.branches(); rows.value = r.data.data; main.value = r.data.main_id; } catch(e) { error.value = e; } }
+function edit(branch) { id.value = branch?.id || null; for (const key of Object.keys(form)) delete form[key]; Object.assign(form, { name: '', code: '', phone: '', email: '', address: '', city: '', timezone: context.data.clinic.timezone, status: 'active' }); if(branch) for(const key of Object.keys(form)) form[key] = branch[key] || form[key]; error.value = null; baseline.value = JSON.stringify(form); open.value = true; emit('dirty', false); }
+function close() { open.value = false; emit('dirty', false); }
+async function save() { busy.value = true; error.value = null; try { await service.saveBranch(id.value, { ...form }); close(); await load(); emit('saved'); } catch(e) { error.value = e; } finally { busy.value = false; } }
+onMounted(load);
+</script>
+<template><div class="cs-section-heading"><p class="cs-hint">The original main branch is retained for clinic and plan continuity.</p><button v-if="canUpdate && summary.features.multi_branch" class="btn" :disabled="summary.usage.branches >= summary.limits.branch_limit" @click="edit()">＋ Add Branch</button></div><p v-if="summary.usage.branches >= summary.limits.branch_limit || !summary.features.multi_branch" class="cs-notice">Your current plan allows {{ summary.features.multi_branch ? summary.limits.branch_limit : 1 }} branches. Review the Subscription tab for upgrade guidance.</p><FormErrors v-if="!open" :error="error" /><div class="table-scroll"><table class="cs-table"><thead><tr><th>Branch</th><th>Code</th><th>Contact</th><th>Address</th><th>Timezone</th><th>Status</th><th>Actions</th></tr></thead><tbody><tr v-for="b in rows" :key="b.id"><td><strong>{{ b.name }}</strong><small v-if="b.id === main">Main branch</small></td><td>{{ b.code || '—' }}</td><td>{{ b.phone || '—' }}<small>{{ b.email }}</small></td><td>{{ b.address || '—' }}<small>{{ b.city }}</small></td><td>{{ b.timezone || context.data.clinic.timezone }}</td><td>{{ b.status }}</td><td><button v-if="canUpdate" class="btn-secondary" @click="edit(b)">Edit</button></td></tr></tbody></table></div>
+<SettingsDialog v-if="open" title-id="branch-title" @cancel="!busy && close()"><h2 id="branch-title">{{ id ? 'Edit Branch' : 'Add Branch' }}</h2><FormErrors :error="error" /><form @submit.prevent="save"><div class="cs-fields"><label v-for="[key, label] in [['name','Branch Name'],['code','Branch Code'],['phone','Phone'],['email','Email'],['address','Address'],['city','City']]" :key="key" class="field">{{ label }}<input v-model="form[key]" :type="key === 'email' ? 'email' : 'text'" :required="key === 'name'" :disabled="busy"></label><label class="field">Timezone<select v-model="form.timezone" aria-label="Branch Timezone"><option v-for="tz in timezones" :key="tz">{{ tz }}</option></select></label><label class="field">Status<select v-model="form.status" aria-label="Branch Status" :disabled="id === main"><option value="active">Active</option><option value="inactive">Inactive</option></select></label></div><div class="cs-save"><button type="button" class="btn-secondary" :disabled="busy" @click="close">Discard Changes</button><button class="btn" :disabled="busy || !changed">{{ busy ? 'Saving…' : 'Save Changes' }}</button></div></form></SettingsDialog></template>

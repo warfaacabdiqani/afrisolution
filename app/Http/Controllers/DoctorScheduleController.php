@@ -11,7 +11,7 @@ class DoctorScheduleController extends Controller {
     public function index(Request $request,ClinicAccessService $access,DoctorService $service,int $doctor) {
         $context=$access->authorize($request,'doctors','doctors.schedule.view');$model=$service->find($context,$doctor);
         $data=$request->validate(['branch_id'=>['required','integer']]);$service->branch($context,$model,$data['branch_id']);
-        return response()->json(['data'=>$model->schedules()->where('branch_id',$data['branch_id'])->orderBy('day_of_week')->get()]);
+        return response()->json(['data'=>$model->schedules()->where('branch_id',$data['branch_id'])->orderBy('day_of_week')->get(), 'defaults'=>app(\App\Services\ClinicSettingsService::class)->section($context['clinic']->id,'appointments')]);
     }
     public function update(Request $request,ClinicAccessService $access,DoctorService $service,int $doctor) {
         $context=$access->authorize($request,'doctors','doctors.schedule.update');

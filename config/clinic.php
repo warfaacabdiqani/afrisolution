@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'settings_permissions' => ['clinic_settings.view','clinic_settings.update', ...array_map(fn($section)=>'clinic_settings.'.$section.'.'.($section==='branches'?'manage':'update'), ['general','branding','branches','patients','appointments','clinical','pharmacy','billing','notifications','documents','security']), 'clinic_settings.subscription.view'],
     'prescription_permissions' => ['prescriptions.view','prescriptions.create','prescriptions.update','prescriptions.cancel','prescriptions.print','prescriptions.dispense','prescriptions.view_all_doctors','prescriptions.medications.manage'],
     'appointment_permissions' => ['appointments.view','appointments.view_all','appointments.create','appointments.update','appointments.reschedule','appointments.cancel','appointments.check_in','appointments.start_consultation','appointments.complete','appointments.override_schedule','appointments.types.manage'],
     'doctor_permissions' => ['doctors.view','doctors.create','doctors.update','doctors.deactivate','doctors.schedule.view','doctors.schedule.update','doctors.leave.manage','doctors.specialties.manage'],

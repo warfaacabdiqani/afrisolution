@@ -37,6 +37,9 @@ class PatientRequest extends FormRequest
             'confirm_duplicate' => ['sometimes', 'boolean'],
         ];
         foreach (['id', 'tenant_id', 'branch_id', 'registration_branch_id', 'patient_number', 'registered_at', 'created_by', 'updated_by', 'archived_at'] as $field) $rules[$field] = ['prohibited'];
+        $settings=app(\App\Services\ClinicSettingsService::class)->section((int)$this->session()->get('tenant_id'),'patients');
+        foreach(['phone','date_of_birth','address'] as $field) if($settings['require_'.$field]) $rules[$field][0]='required';
+        if($settings['require_emergency_contact']) foreach(['emergency_contact_name','emergency_contact_phone'] as $field) $rules[$field][0]='required';
         return $rules;
     }
 }

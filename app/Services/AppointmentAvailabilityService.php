@@ -96,7 +96,8 @@ class AppointmentAvailabilityService
         }
         $bookings = Appointment::whereNotIn('status', config('appointments.non_blocking'))->when(! empty($data['appointment_id']), fn ($q) => $q->where('id', '!=', $data['appointment_id']))->where('starts_at', '<', $date->copy()->addDay()->format('Y-m-d H:i:s'))->where('ends_at', '>', $date->format('Y-m-d H:i:s'))->where(fn ($q) => $q->where('doctor_id', $doctor->id)->when(! empty($data['patient_id']), fn ($q) => $q->orWhere('patient_id', $data['patient_id'])))->get(['doctor_id', 'patient_id', 'starts_at', 'ends_at']);
         $slots = [];
-        for ($start = $date->copy()->setTimeFromTimeString($schedule->start_time); $start->copy()->addMinutes((int) $data['duration'])->format('H:i') <= substr($schedule->end_time, 0, 5) && $start->toDateString() === $data['date']; $start->addMinutes(15)) {
+        $interval=(int)app(ClinicSettingsService::class)->get($context['clinic']->id,'appointments.slot_interval',15);
+        for ($start = $date->copy()->setTimeFromTimeString($schedule->start_time); $start->copy()->addMinutes((int) $data['duration'])->format('H:i') <= substr($schedule->end_time, 0, 5) && $start->toDateString() === $data['date']; $start->addMinutes($interval)) {
             if ($start->lt(now($context['clinic']->timezone)) && ! (! empty($data['walk_in']) && $date->isSameDay(now($context['clinic']->timezone)))) {
                 continue;
             }

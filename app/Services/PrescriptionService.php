@@ -29,7 +29,7 @@ class PrescriptionService {
             $items=$data['items']; unset($data['items']);
             if($id && $p->status===\App\Support\PrescriptionStatus::PENDING) $data['status']=\App\Support\PrescriptionStatus::PENDING;
             $p->fill($data); $p->updated_by=request()->user()->id;
-            if(!$id) { $tenant->increment('prescription_sequence'); $p->prescription_number='RX-'.str_pad($tenant->prescription_sequence,6,'0',STR_PAD_LEFT); $p->created_by=request()->user()->id; }
+            if(!$id) { $p->expires_on=\Illuminate\Support\Carbon::parse($data['prescription_date'])->addDays((int)app(ClinicSettingsService::class)->get($tenant->id,'clinical.prescription_validity_days',30))->toDateString(); $tenant->increment('prescription_sequence'); $p->prescription_number='RX-'.str_pad($tenant->prescription_sequence,6,'0',STR_PAD_LEFT); $p->created_by=request()->user()->id; }
             $p->save(); $p->items()->delete();
             foreach($items as $item) {
                 if(!empty($item['medication_id'])) { $med=Medication::findOrFail($item['medication_id']); $item['medication_name']=$med->name; }

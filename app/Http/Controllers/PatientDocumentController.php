@@ -37,7 +37,7 @@ class PatientDocumentController extends Controller
                 Tenant::lockForUpdate()->findOrFail($context['clinic']->id);
                 $limit = DB::table('subscriptions')->join('plans', 'plans.id', '=', 'subscriptions.plan_id')->where('tenant_id', $model->tenant_id)->value('storage_limit_gb');
                 $file = $request->file('file');
-                if ($limit !== null && PatientDocument::sum('size') + $file->getSize() > $limit * 1073741824) throw ValidationException::withMessages(['file' => 'Your clinic storage limit has been reached. Upgrade your subscription to upload more documents.']);
+                if ($limit !== null && PatientDocument::sum('size') + collect(app(\App\Services\ClinicSettingsService::class)->section($model->tenant_id,'branding'))->sum('size') + $file->getSize() > $limit * 1073741824) throw ValidationException::withMessages(['file' => 'Your clinic storage limit has been reached. Upgrade your subscription to upload more documents.']);
                 $path = $file->store('patients/'.$model->tenant_id.'/'.$model->id, 'patient_private');
                 $item = $model->documents()->create(collect($data)->except('file')->all() + ['path' => $path, 'mime' => $file->getMimeType(), 'extension' => $file->extension(), 'size' => $file->getSize(), 'recorded_by' => $request->user()->id]);
                 $service->audit($model, 'patient.document.uploaded'); return $item;

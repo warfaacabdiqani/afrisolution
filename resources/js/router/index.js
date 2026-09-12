@@ -108,6 +108,8 @@ const router = createRouter({
             { path: 'dashboard', name: 'clinic.dashboard', component: ClinicDashboard, meta: { clinicModule: 'dashboard' } },
             { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
             { path: 'support', component: ModuleAccess, meta: { title: 'Help & Support', support: true } },
+            { path: 'settings', redirect: '/app/settings/general', meta: { clinicModule: 'settings' } },
+            { path: 'settings/:section', component: () => import('../pages/settings/Index.vue'), meta: { clinicModule: 'settings', clinicSettings: true } },
             { path: 'prescriptions', component: () => import('../pages/prescriptions/Index.vue'), meta: { clinicModule: 'prescriptions' } },
             { path: 'prescriptions/create', component: () => import('../pages/prescriptions/FormPage.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.create' } },
             { path: 'prescriptions/:id/edit', component: () => import('../pages/prescriptions/FormPage.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.update' } },
@@ -145,7 +147,7 @@ const router = createRouter({
             ...[
                 ['consultations', 'Consultations'],
                 ['pharmacy', 'Pharmacy'], ['billing', 'Billing'],
-                ['billing/invoices/create', 'New Invoice'], ['reports', 'Reports'], ['staff', 'Users / Staff'], ['settings', 'Clinic Settings'],
+                ['billing/invoices/create', 'New Invoice'], ['reports', 'Reports'], ['staff', 'Users / Staff'],
             ].map(([path, title]) => ({ path, component: ModuleAccess, meta: { title, clinicModule: path.split('/')[0], create: path.endsWith('/create') } })),
         ] },
         { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
@@ -166,13 +168,13 @@ router.beforeEach(async (to, from) => {
             return;
         }
         const clinic = useClinicContextStore();
-        if (!(((to.meta.patientList && from.meta.patientList) || (to.meta.doctorList && from.meta.doctorList) || (to.meta.appointmentCalendar && from.meta.appointmentCalendar)) && clinic.data?.clinic.id === auth.user.active_tenant_id)) await clinic.load();
+        if (!(((to.meta.clinicSettings && from.meta.clinicSettings) || (to.meta.patientList && from.meta.patientList) || (to.meta.doctorList && from.meta.doctorList) || (to.meta.appointmentCalendar && from.meta.appointmentCalendar)) && clinic.data?.clinic.id === auth.user.active_tenant_id)) await clinic.load();
         if (!clinic.data?.operational) return;
         if (to.meta.clinicModule) {
             if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access' };
             if (to.meta.permission && !clinic.can(to.meta.permission)) return { name: 'clinic.access' };
             if (to.meta.feature && !clinic.data.features[to.meta.feature]) return { name: 'clinic.access' };
-            if (!['dashboard', 'patients', 'doctors', 'appointments', 'prescriptions'].includes(to.meta.clinicModule)) {
+            if (!['dashboard', 'patients', 'doctors', 'appointments', 'prescriptions', 'settings'].includes(to.meta.clinicModule)) {
                 try { await api.get(`/v1/clinic/modules/${to.meta.clinicModule}`, { headers: clinic.headers(), params: to.meta.create ? { action: 'create' } : {} }); }
                 catch (error) { if (error.response?.status === 403) return { name: 'clinic.access' }; throw error; }
             }

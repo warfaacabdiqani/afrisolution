@@ -29,6 +29,8 @@ class AppointmentManagementTest extends TestCase
         $this->getJson($url)->assertOk()->assertJsonPath('data.0', '08:00')->assertJsonPath('meta.reason_code', null);
         $this->getJson(str_replace('2026-09-12', '2026-09-13', $url))->assertJsonPath('meta.reason_code', 'non_working_day');
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-12 09:00:00', 'UTC'));
+        // A clock jump beyond the clinic timeout requires a fresh authenticated session.
+        $this->select($c['owner'], $c['tenant']->id);
         $this->getJson($url)->assertJsonPath('meta.reason_code', 'day_finished');
         $this->postJson('/api/v1/clinic/doctors/'.$c['doctor'].'/leaves', ['branch_id' => $c['branch'], 'start_date' => '2026-09-12', 'end_date' => '2026-09-12'])->assertCreated();
         $this->getJson($url)->assertJsonPath('meta.reason_code', 'on_leave');
@@ -157,6 +159,8 @@ class AppointmentManagementTest extends TestCase
         $missing = $this->book($c, ['start_time' => '11:00']);
         $this->postJson(self::ROOT.'/'.$missing.'/no-show')->assertUnprocessable();
         $this->travelTo(Carbon::parse('2026-09-12 08:15:00', 'UTC'));
+        // A clock jump beyond the clinic timeout requires a fresh authenticated session.
+        $this->select($c['owner'], $c['tenant']->id);
         $this->postJson(self::ROOT.'/'.$missing.'/no-show')->assertOk()->assertJsonPath('data.status', 'no_show');
         $walk = $this->book($c, ['start_time' => '11:00', 'source' => 'walk_in']);
         $this->getJson(self::ROOT.'/'.$walk)->assertJsonPath('data.status', 'waiting')->assertJsonPath('data.is_walk_in', true);

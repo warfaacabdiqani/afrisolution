@@ -34,14 +34,19 @@ class PatientService
             $limit = $plan?->patient_limit;
             // Retained records, including archived patients, consume quota.
             if ($limit !== null && Patient::count() >= $limit) throw ValidationException::withMessages(['plan' => "Your current plan allows up to {$limit} patients. Upgrade your subscription to register additional patients."]);
-            if (!($data['confirm_duplicate'] ?? false)) {
+            if (app(ClinicSettingsService::class)->get($tenant->id,'patients.duplicate_warning',true) && !($data['confirm_duplicate'] ?? false)) {
                 $matches = $this->duplicates($data);
                 if ($matches->isNotEmpty()) throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json(['message' => 'Possible matching patient found.', 'duplicates' => $matches->map(fn ($p) => ['id' => $p->id, 'full_name' => $p->full_name, 'patient_number' => $p->patient_number, 'phone' => $p->phone, 'date_of_birth' => $p->date_of_birth?->toDateString()])], 409));
             }
             $tenant->increment('patient_sequence');
             $patient = new Patient(collect($data)->except(['allergy', 'condition', 'confirm_duplicate'])->all());
             if (isset($data['reported_age'])) $patient->age_recorded_on = now()->toDateString();
-            $patient->patient_number = strtoupper(substr(Str::slug($tenant->slug), 0, 12)).'-'.str_pad($tenant->patient_sequence, 6, '0', STR_PAD_LEFT);
+            $settings=app(ClinicSettingsService::class)->section($tenant->id,'patients');
+            do {
+                $patient->patient_number = $settings['number_prefix'].str_pad($tenant->patient_sequence, (int)$settings['number_length'], '0', STR_PAD_LEFT);
+                $taken=Patient::where('patient_number',$patient->patient_number)->exists();
+                if($taken) $tenant->increment('patient_sequence');
+            } while($taken);
             $patient->registration_branch_id = $context['branch']->id;
             $patient->created_by = $patient->updated_by = request()->user()->id;
             $patient->registered_at = now(); $patient->save();

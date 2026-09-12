@@ -17,7 +17,7 @@ class ClinicAccessService
         $subscription = DB::table('subscriptions')->where('tenant_id', $id)->first();
         $plan = $subscription ? Plan::find($subscription->plan_id) : null;
         $features = $plan?->features ?? [];
-        $branches = DB::table('branches')->where('tenant_id', $id);
+        $branches = DB::table('branches')->where('tenant_id', $id)->where('status','active');
         if (!$member->all_branches) {
             $branches->whereIn('id', DB::table('branch_memberships')->where('tenant_id', $id)->where('membership_id', $member->id)->select('branch_id'));
         }
@@ -30,7 +30,18 @@ class ClinicAccessService
         $branch = $branches->firstWhere('id', $selected) ?? $branches->first();
         $request->session()->put('branch_id', $branch?->id);
         $permissions = $member->permissions === null ? config('clinic.roles.'.$member->role, []) : json_decode($member->permissions, true);
-        $active = $clinic->status === 'active' && $subscription && ($subscription->status === 'active' || ($subscription->status === 'trial' && $subscription->trial_ends_at && now()->lt($subscription->trial_ends_at)));
+        $policy=app(ClinicSettingsService::class)->section((int)$id,'security');
+        $manager=$this->can($permissions,'clinic_settings.update') || $this->can($permissions,'clinic_settings.security.update');
+        $staffAllowed=$policy['allow_staff_login'] || $manager;
+        $timeout=min((int)$policy['session_timeout'],(int)app(SystemSettingsService::class)->get('security.session_lifetime',120));
+        $activityKey='clinic_activity.'.$id;
+        $last=$request->session()->get($activityKey);
+        if($last && now()->timestamp-$last>$timeout*60) {
+            app(SessionService::class)->logout($request);
+            abort(401,'Your clinic session expired due to inactivity. Please sign in again.');
+        }
+        $request->session()->put($activityKey,now()->timestamp);
+        $active = $staffAllowed && $clinic->status === 'active' && $subscription && ($subscription->status === 'active' || ($subscription->status === 'trial' && $subscription->trial_ends_at && now()->lt($subscription->trial_ends_at)));
         $modules = collect(config('clinic.modules'))->map(function ($module, $key) use ($permissions, $features) {
             [$label, $permission, $feature, $icon, $group] = $module;
             return compact('key', 'label', 'permission', 'feature', 'icon', 'group') + ['allowed' => $this->can($permissions, $permission) && (!$feature || ($features[$feature] ?? false))];
@@ -41,8 +52,8 @@ class ClinicAccessService
             'subscription' => $subscription, 'plan' => $plan?->only(['name', 'currency']),
             'limits' => array_merge($plan?->only(['doctor_limit', 'patient_limit', 'storage_limit_gb', 'appointment_limit', 'invoice_limit']) ?? [], ['branch_limit' => $subscription?->branch_limit, 'member_limit' => $subscription?->member_limit]),
             'operational' => (bool) $active && $branch !== null,
-            'restriction' => !$active ? 'Your clinic or subscription is inactive. Contact your clinic administrator for assistance.' : (!$branch ? 'No authorized branch is available. Contact your clinic administrator.' : null),
-            'modules' => $modules,
+            'restriction' => !$staffAllowed ? 'Staff access to this clinic is disabled. Contact your clinic administrator.' : (!$active ? 'Your clinic or subscription is inactive. Contact your clinic administrator for assistance.' : (!$branch ? 'No authorized branch is available. Contact your clinic administrator.' : null)),
+            'modules' => $modules, 'idle_timeout_minutes' => $timeout,
             'today' => now($clinic->timezone)->toDateString(),
         ];
     }

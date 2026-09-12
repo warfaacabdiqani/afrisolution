@@ -58,6 +58,9 @@ class AppointmentService
                 throw ValidationException::withMessages(['appointment_type_id' => 'Select an active appointment type in this clinic.']);
             }
             $walkIn = $data['source'] === 'walk_in';
+            $preferences=app(ClinicSettingsService::class)->section($tenant->id,'appointments');
+            if($walkIn && !$preferences['allow_walk_in']) throw ValidationException::withMessages(['source'=>'Walk-in appointments are disabled by clinic policy.']);
+            if($changed && !$preferences['allow_same_day'] && $start->isSameDay(now($context['clinic']->timezone))) throw ValidationException::withMessages(['date'=>'Same-day booking is disabled by clinic policy.']);
             if ($changed && $start->lt(now($context['clinic']->timezone)) && ! ($walkIn && $start->isSameDay(now($context['clinic']->timezone)))) {
                 throw ValidationException::withMessages(['start_time' => 'Select a future time, or register a walk-in for today.']);
             }

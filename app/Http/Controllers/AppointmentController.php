@@ -26,7 +26,7 @@ class AppointmentController extends Controller
             $doctors->where('user_id', $request->user()->id);
         }
 
-        return response()->json(['data' => ['doctors' => $doctors->orderBy('first_name')->get()->map(fn ($d) => ['id' => $d->id, 'full_name' => $d->full_name]), 'types' => AppointmentType::where('status', 'active')->orderBy('name')->get(), 'statuses' => config('appointments.statuses'), 'actions' => config('appointments.actions'), 'today' => $context['today'], 'timezone' => $context['clinic']->timezone]]);
+        return response()->json(['data' => ['doctors' => $doctors->orderBy('first_name')->get()->map(fn ($d) => ['id' => $d->id, 'full_name' => $d->full_name]), 'types' => AppointmentType::where('status', 'active')->orderBy('name')->get(), 'statuses' => config('appointments.statuses'), 'actions' => config('appointments.actions'), 'today' => $context['today'], 'timezone' => $context['clinic']->timezone, 'defaults' => app(\App\Services\ClinicSettingsService::class)->section($context['clinic']->id,'appointments')]]);
     }
 
     public function patients(Request $request, ClinicAccessService $access)

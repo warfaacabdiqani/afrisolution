@@ -56,6 +56,16 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     });
     Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
 
+
+        Route::get('settings', [\App\Http\Controllers\ClinicSettingsController::class,'index']);
+        Route::get('settings/preview/{kind}', [\App\Http\Controllers\ClinicSettingsController::class,'preview'])->whereIn('kind',['prescription','invoice','receipt']);
+        Route::get('settings/subscription', [\App\Http\Controllers\ClinicSettingsController::class,'subscription']);
+        Route::get('settings/branches', [\App\Http\Controllers\ClinicSettingsBranchController::class,'index']);
+        Route::post('settings/branches', [\App\Http\Controllers\ClinicSettingsBranchController::class,'store']);
+        Route::put('settings/branches/{branch}', [\App\Http\Controllers\ClinicSettingsBranchController::class,'update'])->whereNumber('branch');
+        Route::post('settings/branding', [\App\Http\Controllers\ClinicBrandingController::class,'store']);
+        Route::get('settings/branding/{asset}', [\App\Http\Controllers\ClinicBrandingController::class,'show'])->whereIn('asset',['logo','small_logo','receipt_logo','prescription_logo','invoice_logo','stamp']);
+        Route::put('settings/{section}', [\App\Http\Controllers\ClinicSettingsController::class,'update'])->whereIn('section',array_keys(config('clinic_settings')));
         Route::get('prescriptions', [\App\Http\Controllers\PrescriptionQueryController::class, 'index']);
         Route::get('prescriptions/stats', [\App\Http\Controllers\PrescriptionQueryController::class, 'stats']);
         Route::get('prescriptions/options', [\App\Http\Controllers\PrescriptionQueryController::class, 'options']);

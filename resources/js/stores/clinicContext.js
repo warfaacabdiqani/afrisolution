@@ -11,6 +11,7 @@ export const useClinicContextStore = defineStore('clinicContext', {
         can(permission) { return this.data?.permissions.some(p => p === '*' || p === permission) || false; },
         allowed(key) { return this.modules.some(module => module.key === key); },
         headers() { return { 'X-Clinic-Context': String(useAuthStore().user?.active_tenant_id || ''), 'X-Branch-Context': String(this.data?.branch?.id || '') }; },
+        async heartbeat() { await api.get('/v1/clinic/context'); },
         async load() {
             this.data = null; this.error = null; this.busy = true;
             try { this.data = (await api.get('/v1/clinic/context')).data.data; }

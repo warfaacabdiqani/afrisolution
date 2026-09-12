@@ -1,7 +1,8 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useClinicContextStore } from '../stores/clinicContext';
+import { useClinicSettingsStore } from '../stores/clinicSettings';
 import { useAuthStore } from '../stores/auth';
 import AppIcon from '../components/ui/AppIcon.vue';
 import FormErrors from '../components/ui/FormErrors.vue';
@@ -10,14 +11,37 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const drawer = ref(false);
+let idleTimer, heartbeatTimer, lastInteraction = Date.now(), lastHeartbeat = Date.now();
+const idleDuration = () => (clinic.data?.idle_timeout_minutes || 120) * 60000;
+async function expireSession() {
+    try { await auth.logout(); } catch { auth.reset(); } finally { clinic.$reset(); await router.replace('/app/login'); }
+}
+function interaction() {
+    lastInteraction = Date.now(); clearTimeout(idleTimer);
+    if (clinic.data?.operational) idleTimer = setTimeout(expireSession, idleDuration());
+}
+watch(() => clinic.data?.idle_timeout_minutes, interaction);
+onMounted(() => {
+    for (const event of ['pointerdown','keydown','touchstart']) window.addEventListener(event, interaction, { passive: true });
+    interaction();
+    heartbeatTimer = setInterval(async () => {
+        if (clinic.data?.operational && lastInteraction > lastHeartbeat && Date.now() - lastInteraction < idleDuration()) {
+            lastHeartbeat = Date.now();
+            try { await clinic.heartbeat(); } catch (e) { if (e.response?.status !== 401) error.value = e; }
+        }
+    }, 60000);
+});
+onUnmounted(() => { clearTimeout(idleTimer); clearInterval(heartbeatTimer); for(const event of ['pointerdown','keydown','touchstart']) window.removeEventListener(event, interaction); });
 watch(() => route.fullPath, () => { drawer.value = false; });
 const error = ref(null);
 const trialDays = computed(() => Math.max(0, Math.ceil((new Date(clinic.data?.subscription?.trial_ends_at) - new Date()) / 86400000)));
 async function switchBranch(event) {
+    if (!(await (useClinicSettingsStore().beforeExit?.() ?? true))) { event.target.value = clinic.data.branch.id; return; }
     try { await clinic.switchBranch(Number(event.target.value)); await router.replace('/app/dashboard'); }
     catch (e) { error.value = e; }
 }
 async function logout() {
+    if (!(await (useClinicSettingsStore().beforeExit?.() ?? true))) return;
     try { await auth.logout(); clinic.$reset(); await router.replace('/app/login'); }
     catch (e) { error.value = e; }
 }

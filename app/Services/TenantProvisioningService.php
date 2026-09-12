@@ -45,8 +45,8 @@ class TenantProvisioningService
             if (DB::table('branches')->where('tenant_id', $tenant->id)->count() >= $sub->branch_limit) {
                 throw ValidationException::withMessages(['name' => 'The branch limit has been reached.']);
             }
-            $id = DB::table('branches')->insertGetId(['tenant_id' => $tenant->id, 'name' => $data['name'], 'created_at' => now(), 'updated_at' => now()]);
-            app(PlatformService::class)->audit($actor, 'branch.created', 'tenant', $tenant->id);
+            $id = DB::table('branches')->insertGetId(['tenant_id' => $tenant->id, ...collect($data)->only(['name','code','phone','email','address','city','timezone','status'])->all(), 'created_at' => now(), 'updated_at' => now()]);
+            app(PlatformService::class)->audit($actor, 'branch.created', 'tenant', $tenant->id, ['branch_id'=>$id, 'changed_fields'=>array_keys(collect($data)->only(['name','code','phone','email','address','city','timezone','status'])->all())]);
 
             return DB::table('branches')->where('tenant_id', $tenant->id)->where('id', $id)->first();
         });
