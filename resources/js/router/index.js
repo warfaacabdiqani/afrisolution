@@ -51,6 +51,7 @@ import PatientDocuments from '../pages/patients/tabs/Documents.vue';
 import PatientActivity from '../pages/patients/tabs/Activity.vue';
 import PatientFuture from '../pages/patients/tabs/Future.vue';
 import ConsultationsIndex from '../pages/consultations/Index.vue';
+import BillingIndex from '../pages/billing/Index.vue';
 import ClinicLayout from '../layouts/ClinicLayout.vue';
 import ClinicDashboard from '../pages/clinic/Dashboard.vue';
 import ModuleAccess from '../pages/clinic/ModuleAccess.vue';
@@ -145,11 +146,13 @@ const router = createRouter({
                 { path: 'appointments', component: PatientAppointments, meta: { permission:'appointments.view',feature:'appointments' } },
                 { path: 'consultations', component: ConsultationsIndex, props: { patientId: route => Number(route.params.id) }, meta: { permission: 'consultations.view', feature: 'emr' } },
                 { path: 'prescriptions', component: () => import('../pages/patients/tabs/Prescriptions.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.view', feature: 'prescriptions' } },
-                ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
+                { path: 'billing', component: BillingIndex, props: { patientId: route => Number(route.params.id) }, meta: { permission: 'billing.view', feature: 'billing' } },
+                ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null]].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
+            { path: 'billing', component: BillingIndex, meta: { clinicModule: 'billing', permission: 'billing.view' } },
             ...[
                 ['consultations', 'Consultations'],
-                ['pharmacy', 'Pharmacy'], ['billing', 'Billing'],
+                ['pharmacy', 'Pharmacy'],
                 ['billing/invoices/create', 'New Invoice'], ['reports', 'Reports'], ['staff', 'Users / Staff'],
             ].map(([path, title]) => ({ path, component: ModuleAccess, meta: { title, clinicModule: path.split('/')[0], create: path.endsWith('/create') } })),
         ] },
