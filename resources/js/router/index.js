@@ -50,6 +50,7 @@ import PatientHistory from '../pages/patients/tabs/MedicalHistory.vue';
 import PatientDocuments from '../pages/patients/tabs/Documents.vue';
 import PatientActivity from '../pages/patients/tabs/Activity.vue';
 import PatientFuture from '../pages/patients/tabs/Future.vue';
+import ConsultationsIndex from '../pages/consultations/Index.vue';
 import ClinicLayout from '../layouts/ClinicLayout.vue';
 import ClinicDashboard from '../pages/clinic/Dashboard.vue';
 import ModuleAccess from '../pages/clinic/ModuleAccess.vue';
@@ -121,6 +122,7 @@ const router = createRouter({
             { path: 'appointments/:id/edit', component: AppointmentFormPage, meta: { clinicModule: 'appointments', permission: 'appointments.update' } },
             { path: 'appointments/:id/reschedule', component: AppointmentFormPage, meta: { clinicModule: 'appointments', permission: 'appointments.reschedule', reschedule: true } },
             { path: 'appointments/:id', component: AppointmentsIndex, meta: { clinicModule: 'appointments', appointmentCalendar: true } },
+            { path: 'consultations', component: ConsultationsIndex, meta: { clinicModule: 'consultations', permission: 'consultations.view' } },
             { path: 'doctors', component: DoctorsIndex, meta: { clinicModule: 'doctors', doctorList: true } },
             { path: 'doctors/create', component: DoctorFormPage, meta: { clinicModule: 'doctors', permission: 'doctors.create' } },
             { path: 'doctors/:id/edit', component: DoctorFormPage, meta: { clinicModule: 'doctors', permission: 'doctors.update' } },
@@ -141,8 +143,9 @@ const router = createRouter({
                 { path: 'documents', component: PatientDocuments, meta: { permission: 'patients.documents.view' } },
                 { path: 'activity', component: PatientActivity },
                 { path: 'appointments', component: PatientAppointments, meta: { permission:'appointments.view',feature:'appointments' } },
+                { path: 'consultations', component: ConsultationsIndex, props: { patientId: route => Number(route.params.id) }, meta: { permission: 'consultations.view', feature: 'emr' } },
                 { path: 'prescriptions', component: () => import('../pages/patients/tabs/Prescriptions.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.view', feature: 'prescriptions' } },
-                ...[['consultations','Consultations','emr'],['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
+                ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
             ...[
                 ['consultations', 'Consultations'],
