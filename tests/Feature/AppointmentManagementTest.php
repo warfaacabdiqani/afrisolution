@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\ClinicSettingsService;
 use App\Services\PlatformService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -120,6 +121,24 @@ class AppointmentManagementTest extends TestCase
         $id = $this->book($c, ['start_time' => '14:00']);
         $this->postJson(self::ROOT.'/'.$id.'/reschedule', $this->data($c, ['start_time' => '09:15']))->assertUnprocessable();
         $this->assertDatabaseHas('appointments', ['id' => $id, 'starts_at' => '2026-09-12 14:00:00']);
+    }
+
+    public function test_appointment_resources_expose_resolved_consultation_fee_and_fallbacks(): void
+    {
+        $c = $this->clinic();
+        $doctor = DB::table('doctors')->where('id', $c['doctor'])->update(['consultation_fee' => 145.50]);
+        $id = $this->book($c);
+
+        $this->getJson(self::ROOT.'/'.$id)->assertOk()
+            ->assertJsonPath('data.consultation_fee', 145.5)
+            ->assertJsonPath('data.consultation_fee_source', 'doctor');
+
+        DB::table('doctors')->where('id', $c['doctor'])->update(['consultation_fee' => null]);
+        app(ClinicSettingsService::class)->set($c['tenant']->id, 'billing', ['consultation_fee' => 220.00], $c['owner']->id);
+
+        $this->getJson(self::ROOT.'/'.$id)->assertOk()
+            ->assertJsonPath('data.consultation_fee', 220)
+            ->assertJsonPath('data.consultation_fee_source', 'clinic');
     }
 
     public function test_working_hours_leave_inactive_doctors_and_override(): void

@@ -246,6 +246,7 @@ onUnmounted(() => {
                             <th>Consultation</th>
                             <th>Doctor / Clinician</th>
                             <th>Appointment</th>
+                            <th>Fee</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -274,6 +275,10 @@ onUnmounted(() => {
                             <td>
                                 {{ formatDate(appointment.starts_at.slice(0, 10)) }}
                                 <small>{{ appointment.starts_at.slice(11, 16) }} – {{ appointment.ends_at.slice(11, 16) }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ appointment.currency || context.data.plan?.currency || 'USD' }} {{ Number(appointment.consultation_fee || 0).toFixed(2) }}</strong>
+                                <small>{{ appointment.consultation_fee_source === 'doctor' ? 'Doctor fee' : 'Clinic default' }}</small>
                             </td>
                             <td>
                                 <AppointmentStatusBadge :status="appointment.status" />
