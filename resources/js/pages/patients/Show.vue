@@ -7,7 +7,7 @@ import PatientActions from '../../components/patients/PatientActions.vue';
 import PatientStatus from '../../components/patients/PatientStatus.vue';
 import FormErrors from '../../components/ui/FormErrors.vue';
 const store = usePatientStore(), context = useClinicContextStore(), route = useRoute();
-const tabs = computed(() => [['overview','Overview'],['medical-history','Medical History','patients.medical_history.view'],['appointments','Appointments',null,'appointments'],['consultations','Consultations',null,'emr'],['vitals','Vital Signs',null,'vital_signs'],['prescriptions','Prescriptions',null,'prescriptions'],['laboratory','Laboratory'],['documents','Documents','patients.documents.view'],['billing','Billing',null,'billing'],['activity','Activity']].filter(([, , permission, feature]) => (!permission || context.can(permission)) && (!feature || context.data.features[feature])));
+const tabs = computed(() => [['overview','Overview'],['medical-history','Medical History','patients.medical_history.view'],['appointments','Appointments',null,'appointments'],['consultations','Consultations',null,'emr'],['vitals','Vital Signs',null,'vital_signs'],['prescriptions','Prescriptions','prescriptions.view','prescriptions'],['laboratory','Laboratory'],['documents','Documents','patients.documents.view'],['billing','Billing',null,'billing'],['activity','Activity']].filter(([, , permission, feature]) => (!permission || context.can(permission)) && (!feature || context.data.features[feature])));
 function load() { store.load(route.params.id); }
 onMounted(load);
 </script>

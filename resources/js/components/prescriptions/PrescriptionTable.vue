@@ -1,0 +1,13 @@
+<script setup>
+import { ref } from 'vue';
+import PrescriptionStatusBadge from './PrescriptionStatusBadge.vue';
+import PrescriptionActions from './PrescriptionActions.vue';
+defineProps({ rows: Array, labels: Object });
+defineEmits(['changed']);
+const selected = ref([]);
+const date = value => new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+</script>
+<template>
+    <div class="rx-desktop table-scroll"><table class="rx-table"><thead><tr><th><input type="checkbox" aria-label="Select all prescriptions on this page" :checked="rows.length > 0 && rows.every(p => selected.includes(p.id))" @change="selected = $event.target.checked ? rows.map(p => p.id) : []"></th><th>Prescription ID</th><th>Patient</th><th>Medications</th><th>Prescribed By</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody><tr v-for="p in rows" :key="p.id"><td><input v-model="selected" type="checkbox" :value="p.id" :aria-label="`Select ${p.prescription_number}`"></td><td><RouterLink :to="`/app/prescriptions/${p.id}`">{{ p.prescription_number }}</RouterLink></td><td><div class="rx-patient"><span class="rx-avatar">{{ p.patient.full_name.split(' ').map(n => n[0]).slice(0,2).join('') }}</span><div><strong>{{ p.patient.full_name }}</strong><small>{{ p.patient.patient_number }}</small></div></div></td><td>{{ p.items[0]?.medication_name }} {{ p.items[0]?.strength }}<RouterLink v-if="p.items.length > 1" class="rx-more" :to="`/app/prescriptions/${p.id}`">{{ p.items.length - 1 }} more</RouterLink></td><td>{{ p.doctor.full_name }}<small>{{ p.doctor.specialty }}</small></td><td class="rx-nowrap">{{ date(p.prescription_date) }}</td><td><PrescriptionStatusBadge :status="p.status" :labels="labels" /></td><td><div class="rx-row-actions"><RouterLink class="btn-secondary" :to="`/app/prescriptions/${p.id}`">View</RouterLink><PrescriptionActions :prescription="p" @changed="$emit('changed', $event)" /></div></td></tr></tbody></table></div>
+    <div class="rx-mobile"><article v-for="p in rows" :key="p.id" class="rx-mobile-card"><div class="rx-row-actions"><strong>{{ p.prescription_number }}</strong><PrescriptionStatusBadge :status="p.status" :labels="labels" /></div><h3>{{ p.patient.full_name }}</h3><p>{{ p.items[0]?.medication_name }} {{ p.items[0]?.strength }} <span v-if="p.items.length > 1">+{{ p.items.length - 1 }}</span></p><p>{{ p.doctor.full_name }} · {{ date(p.prescription_date) }}</p><div class="rx-row-actions"><RouterLink class="btn-secondary" :to="`/app/prescriptions/${p.id}`">View</RouterLink><PrescriptionActions :prescription="p" @changed="$emit('changed', $event)" /></div></article></div>
+</template>

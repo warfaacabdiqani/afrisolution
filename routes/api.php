@@ -55,6 +55,22 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
     Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
+
+        Route::get('prescriptions', [\App\Http\Controllers\PrescriptionQueryController::class, 'index']);
+        Route::get('prescriptions/stats', [\App\Http\Controllers\PrescriptionQueryController::class, 'stats']);
+        Route::get('prescriptions/options', [\App\Http\Controllers\PrescriptionQueryController::class, 'options']);
+        Route::get('prescriptions/patients', [\App\Http\Controllers\PrescriptionQueryController::class, 'patients']);
+        Route::get('prescriptions/appointments', [\App\Http\Controllers\PrescriptionQueryController::class, 'appointments']);
+        Route::get('medications/search', [\App\Http\Controllers\PrescriptionQueryController::class, 'medications']);
+        Route::post('medications', [\App\Http\Controllers\PrescriptionQueryController::class, 'storeMedication']);
+        Route::post('prescriptions', [\App\Http\Controllers\PrescriptionController::class, 'store']);
+        Route::get('prescriptions/{prescription}', [\App\Http\Controllers\PrescriptionController::class, 'show'])->whereNumber('prescription');
+        Route::put('prescriptions/{prescription}', [\App\Http\Controllers\PrescriptionController::class, 'update'])->whereNumber('prescription');
+        Route::post('prescriptions/{prescription}/cancel', [\App\Http\Controllers\PrescriptionController::class, 'cancel'])->whereNumber('prescription');
+        Route::post('prescriptions/{prescription}/send-to-pharmacy', [\App\Http\Controllers\PrescriptionController::class, 'send'])->whereNumber('prescription');
+        Route::post('prescriptions/{prescription}/dispense', [\App\Http\Controllers\PrescriptionController::class, 'dispense'])->whereNumber('prescription');
+        Route::get('prescriptions/{prescription}/activity', [\App\Http\Controllers\PrescriptionController::class, 'activity'])->whereNumber('prescription');
+        Route::get('prescriptions/{prescription}/print', \App\Http\Controllers\PrescriptionPrintController::class)->whereNumber('prescription');
         Route::get('appointments/options', [\App\Http\Controllers\AppointmentController::class, 'options']);
         Route::get('appointments/patients', [\App\Http\Controllers\AppointmentController::class, 'patients']);
         Route::get('appointments/calendar', [\App\Http\Controllers\AppointmentCalendarController::class, 'calendar']);

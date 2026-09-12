@@ -40,4 +40,5 @@ class Appointment extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function prescriptions() { return $this->hasMany(Prescription::class); }
 }

@@ -108,6 +108,11 @@ const router = createRouter({
             { path: 'dashboard', name: 'clinic.dashboard', component: ClinicDashboard, meta: { clinicModule: 'dashboard' } },
             { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
             { path: 'support', component: ModuleAccess, meta: { title: 'Help & Support', support: true } },
+            { path: 'prescriptions', component: () => import('../pages/prescriptions/Index.vue'), meta: { clinicModule: 'prescriptions' } },
+            { path: 'prescriptions/create', component: () => import('../pages/prescriptions/FormPage.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.create' } },
+            { path: 'prescriptions/:id/edit', component: () => import('../pages/prescriptions/FormPage.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.update' } },
+            { path: 'prescriptions/:id/print', component: () => import('../pages/prescriptions/Print.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.print' } },
+            { path: 'prescriptions/:id', component: () => import('../pages/prescriptions/Show.vue'), meta: { clinicModule: 'prescriptions' } },
             { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients', patientList: true } },
             { path: 'appointments', component: AppointmentsIndex, meta: { clinicModule: 'appointments', appointmentCalendar: true } },
             { path: 'appointments/create', component: AppointmentFormPage, meta: { clinicModule: 'appointments', permission: 'appointments.create' } },
@@ -123,6 +128,7 @@ const router = createRouter({
                 { path: 'schedule', component: DoctorSchedule, meta: { permission: 'doctors.schedule.view' } },
                 { path: 'appointments', component: DoctorAppointments },
                 { path: 'activity', component: DoctorActivity },
+                { path: 'prescriptions', component: () => import('../pages/patients/tabs/Prescriptions.vue'), props: { doctor: true }, meta: { clinicModule: 'prescriptions', permission: 'prescriptions.view', feature: 'prescriptions' } },
             ] },
             { path: 'patients/create', component: PatientFormPage, meta: { clinicModule: 'patients', permission: 'patients.create' } },
             { path: 'patients/:id/edit', component: PatientFormPage, meta: { clinicModule: 'patients', permission: 'patients.update' } },
@@ -133,11 +139,12 @@ const router = createRouter({
                 { path: 'documents', component: PatientDocuments, meta: { permission: 'patients.documents.view' } },
                 { path: 'activity', component: PatientActivity },
                 { path: 'appointments', component: PatientAppointments, meta: { permission:'appointments.view',feature:'appointments' } },
-                ...[['consultations','Consultations','emr'],['vitals','Vital Signs','vital_signs'],['prescriptions','Prescriptions','prescriptions'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
+                { path: 'prescriptions', component: () => import('../pages/patients/tabs/Prescriptions.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.view', feature: 'prescriptions' } },
+                ...[['consultations','Consultations','emr'],['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null],['billing','Billing','billing']].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
             ...[
-                ['consultations', 'Consultations'], ['prescriptions', 'Prescriptions'],
-                ['prescriptions/create', 'Create Prescription'], ['pharmacy', 'Pharmacy'], ['billing', 'Billing'],
+                ['consultations', 'Consultations'],
+                ['pharmacy', 'Pharmacy'], ['billing', 'Billing'],
                 ['billing/invoices/create', 'New Invoice'], ['reports', 'Reports'], ['staff', 'Users / Staff'], ['settings', 'Clinic Settings'],
             ].map(([path, title]) => ({ path, component: ModuleAccess, meta: { title, clinicModule: path.split('/')[0], create: path.endsWith('/create') } })),
         ] },
@@ -165,7 +172,7 @@ router.beforeEach(async (to, from) => {
             if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access' };
             if (to.meta.permission && !clinic.can(to.meta.permission)) return { name: 'clinic.access' };
             if (to.meta.feature && !clinic.data.features[to.meta.feature]) return { name: 'clinic.access' };
-            if (!['dashboard', 'patients', 'doctors', 'appointments'].includes(to.meta.clinicModule)) {
+            if (!['dashboard', 'patients', 'doctors', 'appointments', 'prescriptions'].includes(to.meta.clinicModule)) {
                 try { await api.get(`/v1/clinic/modules/${to.meta.clinicModule}`, { headers: clinic.headers(), params: to.meta.create ? { action: 'create' } : {} }); }
                 catch (error) { if (error.response?.status === 403) return { name: 'clinic.access' }; throw error; }
             }
