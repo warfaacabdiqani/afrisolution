@@ -52,6 +52,14 @@ import PatientActivity from '../pages/patients/tabs/Activity.vue';
 import PatientFuture from '../pages/patients/tabs/Future.vue';
 import ConsultationsIndex from '../pages/consultations/Index.vue';
 import BillingIndex from '../pages/billing/Index.vue';
+import ReportsIndex from '../pages/reports/Index.vue';
+import ReportsGenerate from '../pages/reports/Generate.vue';
+import ReportsCategory from '../pages/reports/Category.vue';
+import PatientsReportsIndex from '../pages/reports/patients/Index.vue';
+import PatientRegistrationsReport from '../pages/reports/patients/Registrations.vue';
+import PatientDemographicsReport from '../pages/reports/patients/Demographics.vue';
+import AppointmentsReportsIndex from '../pages/reports/appointments/Index.vue';
+import AppointmentsStatusesReport from '../pages/reports/appointments/Statuses.vue';
 import ClinicLayout from '../layouts/ClinicLayout.vue';
 import ClinicDashboard from '../pages/clinic/Dashboard.vue';
 import ModuleAccess from '../pages/clinic/ModuleAccess.vue';
@@ -150,10 +158,20 @@ const router = createRouter({
                 ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null]].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
             { path: 'billing', component: BillingIndex, meta: { clinicModule: 'billing', permission: 'billing.view' } },
+            { path: 'reports', component: ReportsIndex, meta: { clinicModule: 'reports' } },
+            { path: 'reports/generate/:type', component: ReportsGenerate, meta: { clinicModule: 'reports' } },
+            { path: 'reports/:section', component: ReportsCategory, meta: { clinicModule: 'reports' } },
+            { path: 'reports/:section/:subsection', component: ReportsCategory, meta: { clinicModule: 'reports' } },
+            { path: 'reports/patients', component: PatientsReportsIndex, meta: { clinicModule: 'reports' } },
+            { path: 'reports/patients/registrations', component: PatientRegistrationsReport, meta: { clinicModule: 'reports' } },
+            { path: 'reports/patients/demographics', component: PatientDemographicsReport, meta: { clinicModule: 'reports' } },
+            { path: 'reports/appointments', component: AppointmentsReportsIndex, meta: { clinicModule: 'reports' } },
+            { path: 'reports/appointments/statuses', component: AppointmentsStatusesReport, meta: { clinicModule: 'reports' } },
+            { path: 'reports/appointments/no-shows', component: AppointmentsStatusesReport, meta: { clinicModule: 'reports' } },
             ...[
                 ['consultations', 'Consultations'],
                 ['pharmacy', 'Pharmacy'],
-                ['billing/invoices/create', 'New Invoice'], ['reports', 'Reports'], ['staff', 'Users / Staff'],
+                ['billing/invoices/create', 'New Invoice'], ['staff', 'Users / Staff'],
             ].map(([path, title]) => ({ path, component: ModuleAccess, meta: { title, clinicModule: path.split('/')[0], create: path.endsWith('/create') } })),
         ] },
         { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },

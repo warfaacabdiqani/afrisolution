@@ -124,6 +124,14 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('patients/{patient}/documents/{document}/download', [\App\Http\Controllers\PatientDocumentController::class, 'download'])->whereNumber(['patient', 'document']);
         Route::post('patients/{patient}/documents/{document}/archive', [\App\Http\Controllers\PatientDocumentController::class, 'archive'])->whereNumber(['patient', 'document']);
         Route::get('dashboard', [\App\Http\Controllers\ClinicDashboardController::class, 'dashboard']);
+        Route::get('reports/overview', [\App\Http\Controllers\ReportsController::class, 'overview']);
+        Route::get('reports/patients', [\App\Http\Controllers\ReportsController::class, 'patients']);
+        Route::get('reports/appointments', [\App\Http\Controllers\ReportsController::class, 'appointments']);
+        Route::get('reports/clinical', [\App\Http\Controllers\ReportsController::class, 'clinical']);
+        Route::get('reports/doctors', [\App\Http\Controllers\ReportsController::class, 'doctors']);
+        Route::get('reports/prescriptions', [\App\Http\Controllers\ReportsController::class, 'prescriptions']);
+        Route::get('reports/financial', [\App\Http\Controllers\ReportsController::class, 'financial']);
+        Route::get('reports/branches', [\App\Http\Controllers\ReportsController::class, 'branches']);
         Route::post('branch', [\App\Http\Controllers\ClinicDashboardController::class, 'switchBranch']);
         Route::get('modules/{module}', [\App\Http\Controllers\ClinicDashboardController::class, 'module'])->whereIn('module', array_keys(config('clinic.modules')));
         Route::get('branches', [ClinicController::class, 'branches']);

@@ -1,4 +1,4 @@
-.clinic-shell{min-height:100vh;background:#f6f9fc;color:#101b39;font-family:Arial,sans-serif;font-size:14px}
+﻿.clinic-shell{min-height:100vh;background:#f6f9fc;color:#101b39;font-family:Arial,sans-serif;font-size:14px}
 .clinic-sidebar{position:fixed;inset:0 auto 0 0;width:248px;z-index:40;display:flex;flex-direction:column;background:linear-gradient(160deg,#003e40,#005958);color:#eefbfa;overflow-y:auto}
 .clinic-brand{display:flex;gap:12px;align-items:center;padding:22px 24px;border-bottom:1px solid #ffffff12;font-size:24px;font-weight:700}
 .clinic-logo{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:white;color:#008569;flex-shrink:0}
