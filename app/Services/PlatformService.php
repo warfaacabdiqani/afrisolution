@@ -35,7 +35,9 @@ class PlatformService
     {
         return DB::transaction(function () use ($data, $actor) {
             $plan = Plan::findOrFail($data['plan_id']);
-            $tenant = Tenant::create(collect($data)->only(['name', 'slug', 'timezone'])->all());
+            $businessTypeId = $data['business_type_id'] ?? \App\Models\BusinessType::where('slug', 'clinic')->value('id');
+            abort_unless($businessTypeId, 422, 'A valid business type is required.');
+            $tenant = Tenant::create(collect($data)->only(['name', 'slug', 'timezone'])->all() + ['business_type_id' => $businessTypeId]);
             $owner = User::create(['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password']]);
             // Explicit platform provisioning boundary: all ownership is assigned from the newly created tenant.
             DB::table('tenant_memberships')->insert(['tenant_id' => $tenant->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
@@ -43,7 +45,7 @@ class PlatformService
             DB::table('subscriptions')->insert(['tenant_id' => $tenant->id, 'plan_id' => $plan->id, 'status' => 'trial', 'trial_ends_at' => now()->addDays($plan->trial_days), 'branch_limit' => $plan->branch_limit, 'member_limit' => $plan->member_limit, 'created_at' => now(), 'updated_at' => now()]);
             $this->audit($actor, 'tenant.created', 'tenant', $tenant->id);
 
-            return $tenant;
+            return $tenant->load('businessType');
         });
     }
 
@@ -54,7 +56,7 @@ class PlatformService
             $tenant->update($data);
             $this->audit($actor, 'tenant.updated', 'tenant', $tenant->id);
 
-            return $tenant;
+            return $tenant->load('businessType');
         });
     }
 

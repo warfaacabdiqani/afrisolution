@@ -14,6 +14,7 @@ const collapsed = ref(localStorage.getItem('admin-sidebar-collapsed') === 'true'
 const links = [
     ['admin.dashboard', 'Dashboard', 'dashboard'],
     ['admin.clinics', 'Clinics / Tenants', 'clinics'],
+    ['admin.business-types', 'Business Types', 'clinics'],
     ['admin.plans', 'Subscription Plans', 'plans'],
     ['admin.subscriptions', 'Subscriptions', 'subscriptions'],
     ['admin.users', 'Users', 'members'],

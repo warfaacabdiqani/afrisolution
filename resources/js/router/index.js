@@ -20,6 +20,7 @@ import PlansIndex from '../pages/admin/plans/PlansIndex.vue';
 import PlanCreate from '../pages/admin/plans/PlanCreate.vue';
 import PlanEdit from '../pages/admin/plans/PlanEdit.vue';
 import PlanShow from '../pages/admin/plans/PlanShow.vue';
+import BusinessTypesIndex from '../pages/admin/business-types/BusinessTypesIndex.vue';
 import PlanOverviewTab from '../pages/admin/plans/tabs/OverviewTab.vue';
 import PlanLimitsTab from '../pages/admin/plans/tabs/LimitsTab.vue';
 import PlanFeaturesTab from '../pages/admin/plans/tabs/FeaturesTab.vue';
@@ -82,6 +83,7 @@ const router = createRouter({
                 { path: '', name: 'admin.dashboard', component: DashboardPage, meta: { title: 'Dashboard' } },
                 { path: 'clinics', name: 'admin.clinics', component: ClinicsIndex, meta: { title: 'Clinics / Tenants' } },
                 { path: 'clinics/create', name: 'admin.clinics.create', component: ClinicCreate, meta: { title: 'Add New Clinic' } },
+                { path: 'business-types', name: 'admin.business-types', component: BusinessTypesIndex, meta: { title: 'Business Types' } },
                 {
                     path: 'clinics/:id',
                     component: ClinicShow,

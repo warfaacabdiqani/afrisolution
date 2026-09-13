@@ -15,7 +15,7 @@ class TenantRequest extends FormRequest
 
     public function rules(): array
     {
-        $rules = ['name' => ['required', 'string', 'max:150'], 'timezone' => ['required', 'timezone'], 'tenant_id' => ['prohibited'], 'is_platform_admin' => ['prohibited']];
+        $rules = ['name' => ['required', 'string', 'max:150'], 'timezone' => ['required', 'timezone'], 'tenant_id' => ['prohibited'], 'is_platform_admin' => ['prohibited'], 'business_type_id' => ['nullable', 'integer', 'exists:business_types,id']];
         if ($this->isMethod('POST')) {
             return $rules + [
                 'slug' => ['required', 'alpha_dash:ascii', 'max:80', 'unique:tenants,slug'],

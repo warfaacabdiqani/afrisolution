@@ -27,6 +27,12 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::put('roles/{role}', [PlatformRoleController::class, 'update']);
         Route::get('permissions', [PlatformRoleController::class, 'permissions']);
         Route::get('tenants', [PlatformController::class, 'tenants'])->middleware('platform.permission:tenants.view');
+        Route::get('business-types', [PlatformController::class, 'businessTypes'])->middleware('platform.permission:tenants.view');
+        Route::post('business-types', [PlatformController::class, 'storeBusinessType'])->middleware('platform.permission:tenants.manage');
+        Route::get('business-types/{businessType}', [PlatformController::class, 'showBusinessType'])->middleware('platform.permission:tenants.view');
+        Route::put('business-types/{businessType}', [PlatformController::class, 'updateBusinessType'])->middleware('platform.permission:tenants.manage');
+        Route::post('business-types/{businessType}/activate', [PlatformController::class, 'activateBusinessType'])->middleware('platform.permission:tenants.manage');
+        Route::post('business-types/{businessType}/deactivate', [PlatformController::class, 'deactivateBusinessType'])->middleware('platform.permission:tenants.manage');
         Route::post('tenants', [PlatformController::class, 'store'])->middleware('platform.permission:tenants.manage');
         Route::get('tenants/{tenant}', [PlatformController::class, 'show'])->middleware('platform.permission:tenants.view');
         Route::patch('tenants/{tenant}', [PlatformController::class, 'update'])->middleware('platform.permission:tenants.manage');

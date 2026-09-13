@@ -11,6 +11,11 @@ class TenantResource extends JsonResource
         return [
             'id' => $this->id, 'name' => $this->name, 'slug' => $this->slug,
             'status' => $this->status, 'timezone' => $this->timezone, 'created_at' => $this->created_at,
+            'business_type' => $this->whenLoaded('businessType', fn () => [
+                'id' => $this->businessType->id,
+                'slug' => $this->businessType->slug,
+                'name' => $this->businessType->name,
+            ]),
             'owner' => $this->when(array_key_exists('owner_name', $this->getAttributes()), [
                 'name' => $this->owner_name, 'email' => $this->owner_email,
             ]),

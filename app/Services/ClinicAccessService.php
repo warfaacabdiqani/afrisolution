@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BusinessType;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ class ClinicAccessService
         $member = DB::table('tenant_memberships')->where('tenant_id', $id)->where('user_id', $request->user()->id)->where('status', 'active')->first();
         abort_unless($member && $request->user()->status === 'active', 403, 'Select a clinic you belong to.');
         $clinic = DB::table('tenants')->where('id', $id)->firstOrFail();
+        $businessType = BusinessType::find($clinic->business_type_id) ?? BusinessType::where('slug', 'clinic')->firstOrFail();
+        $businessProfile = app(BusinessProfileService::class)->resolveBusinessType($businessType);
         $subscription = DB::table('subscriptions')->where('tenant_id', $id)->first();
         $plan = $subscription ? Plan::find($subscription->plan_id) : null;
         $features = $plan?->features ?? [];
@@ -51,6 +54,14 @@ class ClinicAccessService
             'role' => $member->role, 'permissions' => $permissions, 'features' => $features,
             'subscription' => $subscription, 'plan' => $plan?->only(['name', 'currency']),
             'limits' => array_merge($plan?->only(['doctor_limit', 'patient_limit', 'storage_limit_gb', 'appointment_limit', 'invoice_limit']) ?? [], ['branch_limit' => $subscription?->branch_limit, 'member_limit' => $subscription?->member_limit]),
+            'business_type' => [
+                'id' => $businessProfile['id'],
+                'slug' => $businessProfile['slug'],
+                'name' => $businessProfile['name'],
+                'category' => $businessProfile['category'],
+            ],
+            'labels' => $businessProfile['labels'] ?? [],
+            'business_modules' => $businessProfile['modules'] ?? [],
             'operational' => (bool) $active && $branch !== null,
             'restriction' => !$staffAllowed ? 'Staff access to this clinic is disabled. Contact your clinic administrator.' : (!$active ? 'Your clinic or subscription is inactive. Contact your clinic administrator for assistance.' : (!$branch ? 'No authorized branch is available. Contact your clinic administrator.' : null)),
             'modules' => $modules, 'idle_timeout_minutes' => $timeout,

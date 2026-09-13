@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BusinessTypeRequest;
 use App\Http\Requests\PlanRequest;
 use App\Http\Requests\PlatformSubscriptionIndexRequest;
 use App\Http\Requests\AuditIndexRequest;
 use App\Http\Requests\SubscriptionRequest;
 use App\Http\Requests\TenantRequest;
 use App\Http\Resources\AuditResource;
+use App\Http\Resources\BusinessTypeResource;
 use App\Http\Resources\PlanResource;
 use App\Http\Resources\PlatformDashboardResource;
 use App\Http\Resources\SubscriptionResource;
 use App\Http\Resources\TenantResource;
+use App\Models\BusinessType;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Services\PlatformService;
@@ -101,6 +104,63 @@ class PlatformController extends Controller
         Gate::authorize('update', $tenant);
 
         return new TenantResource($service->updateTenant($tenant, $request->safe()->only(['name', 'timezone', 'status']), $request->user()->id));
+    }
+
+    public function businessTypes()
+    {
+        Gate::authorize('viewAny', Tenant::class);
+
+        return BusinessTypeResource::collection(
+            BusinessType::query()->withCount('tenants')->orderBy('sort_order')->orderBy('id')->get()
+        );
+    }
+
+    public function showBusinessType(BusinessType $businessType)
+    {
+        Gate::authorize('viewAny', Tenant::class);
+
+        return new BusinessTypeResource($businessType->loadCount('tenants'));
+    }
+
+    public function storeBusinessType(BusinessTypeRequest $request, PlatformService $service)
+    {
+        Gate::authorize('create', Tenant::class);
+
+        $businessType = BusinessType::create($request->validated());
+        $service->audit($request->user()->id, 'business_type.created', 'business_type', $businessType->id);
+
+        return (new BusinessTypeResource($businessType->loadCount('tenants')))->response()->setStatusCode(201);
+    }
+
+    public function updateBusinessType(BusinessTypeRequest $request, BusinessType $businessType, PlatformService $service)
+    {
+        Gate::authorize('create', Tenant::class);
+
+        $businessType->fill($request->validated());
+        $businessType->save();
+        $service->audit($request->user()->id, 'business_type.updated', 'business_type', $businessType->id);
+
+        return new BusinessTypeResource($businessType->loadCount('tenants'));
+    }
+
+    public function activateBusinessType(BusinessType $businessType, PlatformService $service)
+    {
+        Gate::authorize('create', Tenant::class);
+
+        $businessType->update(['status' => 'active']);
+        $service->audit(request()->user()->id, 'business_type.activated', 'business_type', $businessType->id);
+
+        return new BusinessTypeResource($businessType->loadCount('tenants'));
+    }
+
+    public function deactivateBusinessType(BusinessType $businessType, PlatformService $service)
+    {
+        Gate::authorize('create', Tenant::class);
+
+        $businessType->update(['status' => 'inactive']);
+        $service->audit(request()->user()->id, 'business_type.deactivated', 'business_type', $businessType->id);
+
+        return new BusinessTypeResource($businessType->loadCount('tenants'));
     }
 
     public function plans()
@@ -247,7 +307,7 @@ class PlatformController extends Controller
 
     private function tenantSummaryQuery()
     {
-        return Tenant::query()->addSelect([
+        return Tenant::query()->with('businessType')->addSelect([
             'owner_name' => DB::table('tenant_memberships')
                 ->join('users', 'users.id', '=', 'tenant_memberships.user_id')
                 ->select('users.name')->whereColumn('tenant_memberships.tenant_id', 'tenants.id')

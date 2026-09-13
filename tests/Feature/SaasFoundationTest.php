@@ -87,6 +87,24 @@ class SaasFoundationTest extends TestCase
         $this->assertDatabaseCount('tenants', 1);
     }
 
+    public function test_new_tenants_default_to_clinic_business_type_in_api_and_context(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin);
+
+        $plan = Plan::create(['name' => 'Starter', 'branch_limit' => 1, 'member_limit' => 1, 'trial_days' => 14]);
+        $data = ['name' => 'Clinic', 'slug' => 'clinic-default', 'timezone' => 'Africa/Nairobi', 'plan_id' => $plan->id, 'owner_name' => 'Owner', 'owner_email' => 'owner@example.test', 'owner_password' => 'SecurePass12345', 'owner_password_confirmation' => 'SecurePass12345'];
+
+        $response = $this->postJson('/api/v1/platform/tenants', $data);
+        $tenantId = $response->json('data.id');
+
+        $response->assertCreated()
+            ->assertJsonPath('data.business_type.slug', 'clinic');
+
+        $this->assertDatabaseHas('tenants', ['id' => $tenantId, 'business_type_id' => DB::table('business_types')->where('slug', 'clinic')->value('id')]);
+        $this->assertSame('clinic', Tenant::findOrFail($tenantId)->businessType->slug);
+    }
+
     public function test_cross_tenant_access_selection_and_missing_context_are_denied(): void
     {
         $admin = $this->admin();

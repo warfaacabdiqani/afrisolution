@@ -6,6 +6,9 @@ export const useClinicContextStore = defineStore('clinicContext', {
     state: () => ({ data: null, error: null, busy: false }),
     getters: {
         modules: state => state.data?.modules.filter(module => module.allowed) || [],
+        businessType: state => state.data?.business_type || null,
+        labels: state => state.data?.labels || {},
+        businessModules: state => state.data?.business_modules || {},
     },
     actions: {
         can(permission) { return this.data?.permissions.some(p => p === '*' || p === permission) || false; },
