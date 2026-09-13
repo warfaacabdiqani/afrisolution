@@ -80,7 +80,7 @@ class SaasFoundationTest extends TestCase
         $this->postJson('/api/v1/platform/tenants', $data + ['tenant_id' => 999])->assertUnprocessable();
         $this->assertDatabaseCount('tenants', 0);
         $id = $this->postJson('/api/v1/platform/tenants', $data)->assertCreated()->json('data.id');
-        $this->assertDatabaseHas('branches', ['tenant_id' => $id, 'name' => 'Main branch']);
+        $this->assertDatabaseHas('branches', ['tenant_id' => $id, 'name' => 'Main Branch']);
         $this->assertDatabaseHas('subscriptions', ['tenant_id' => $id, 'status' => 'trial']);
         $this->assertDatabaseHas('platform_audit_logs', ['action' => 'tenant.created', 'subject_id' => $id]);
         $this->postJson('/api/v1/platform/tenants', array_merge($data, ['slug' => 'another']))->assertUnprocessable();

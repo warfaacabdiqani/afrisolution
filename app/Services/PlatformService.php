@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BusinessType;
 use App\Models\Plan;
 use App\Models\PlatformPermission;
 use App\Models\PlatformRole;
@@ -35,13 +36,20 @@ class PlatformService
     {
         return DB::transaction(function () use ($data, $actor) {
             $plan = Plan::findOrFail($data['plan_id']);
-            $businessTypeId = $data['business_type_id'] ?? \App\Models\BusinessType::where('slug', 'clinic')->value('id');
+            $businessTypeId = $data['business_type_id'] ?? BusinessType::where('slug', 'clinic')->value('id');
             abort_unless($businessTypeId, 422, 'A valid business type is required.');
+
+            $businessType = BusinessType::findOrFail($businessTypeId);
+            $locationName = trim((string) ($data['location_name'] ?? '')) ?: match ($businessType->slug) {
+                'beauty-salon', 'stadium' => 'Main Location',
+                default => 'Main Branch',
+            };
+
             $tenant = Tenant::create(collect($data)->only(['name', 'slug', 'timezone'])->all() + ['business_type_id' => $businessTypeId]);
             $owner = User::create(['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password']]);
             // Explicit platform provisioning boundary: all ownership is assigned from the newly created tenant.
             DB::table('tenant_memberships')->insert(['tenant_id' => $tenant->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
-            DB::table('branches')->insert(['tenant_id' => $tenant->id, 'name' => 'Main branch', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('branches')->insert(['tenant_id' => $tenant->id, 'name' => $locationName, 'created_at' => now(), 'updated_at' => now()]);
             DB::table('subscriptions')->insert(['tenant_id' => $tenant->id, 'plan_id' => $plan->id, 'status' => 'trial', 'trial_ends_at' => now()->addDays($plan->trial_days), 'branch_limit' => $plan->branch_limit, 'member_limit' => $plan->member_limit, 'created_at' => now(), 'updated_at' => now()]);
             $this->audit($actor, 'tenant.created', 'tenant', $tenant->id);
 

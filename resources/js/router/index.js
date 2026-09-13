@@ -81,8 +81,8 @@ const router = createRouter({
             meta: { auth: true, platform: true, adminLayout: true },
             children: [
                 { path: '', name: 'admin.dashboard', component: DashboardPage, meta: { title: 'Dashboard' } },
-                { path: 'clinics', name: 'admin.clinics', component: ClinicsIndex, meta: { title: 'Clinics / Tenants' } },
-                { path: 'clinics/create', name: 'admin.clinics.create', component: ClinicCreate, meta: { title: 'Add New Clinic' } },
+                { path: 'clinics', name: 'admin.clinics', component: ClinicsIndex, meta: { title: 'Businesses / Tenants' } },
+                { path: 'clinics/create', name: 'admin.clinics.create', component: ClinicCreate, meta: { title: 'Add New Business' } },
                 { path: 'business-types', name: 'admin.business-types', component: BusinessTypesIndex, meta: { title: 'Business Types' } },
                 {
                     path: 'clinics/:id',
