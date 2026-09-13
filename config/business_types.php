@@ -4,6 +4,8 @@ return [
     'clinic' => [
         'name' => 'Healthcare / Clinic',
         'category' => 'healthcare',
+        'subtitle' => 'Healthcare',
+        'settings_label' => 'Clinic Settings',
         'dashboard_profile_key' => 'clinic',
         'navigation_profile_key' => 'clinic',
         'labels' => [
@@ -16,6 +18,7 @@ return [
             'services' => 'Consultations',
         ],
         'modules' => [
+            'patients' => true,
             'customers' => true,
             'bookings' => true,
             'staff' => true,
@@ -29,10 +32,26 @@ return [
             'facilities' => false,
             'events' => false,
         ],
+        'navigation_profile' => [
+            ['label' => 'Dashboard', 'items' => ['dashboard']],
+            ['label' => 'Patient Care', 'items' => ['patients', 'appointments']],
+            ['label' => 'Clinical', 'items' => ['doctors', 'consultations', 'prescriptions']],
+            ['label' => 'Operations', 'items' => ['pharmacy', 'billing']],
+            ['label' => 'Analytics', 'items' => ['reports']],
+            ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
+        ],
+        'dashboard_profile' => [
+            ['key' => 'total_patients', 'label' => 'Total Patients'],
+            ['key' => 'today_appointments', 'label' => "Today's Appointments"],
+            ['key' => 'active_doctors', 'label' => 'Active Doctors'],
+            ['key' => 'monthly_revenue', 'label' => 'Monthly Revenue'],
+        ],
     ],
     'dental' => [
         'name' => 'Dental Clinic',
         'category' => 'healthcare',
+        'subtitle' => 'Dental Healthcare',
+        'settings_label' => 'Clinic Settings',
         'dashboard_profile_key' => 'clinic',
         'navigation_profile_key' => 'clinic',
         'labels' => [
@@ -45,6 +64,7 @@ return [
             'services' => 'Dental Consultations',
         ],
         'modules' => [
+            'patients' => true,
             'customers' => true,
             'bookings' => true,
             'staff' => true,
@@ -58,10 +78,26 @@ return [
             'facilities' => false,
             'events' => false,
         ],
+        'navigation_profile' => [
+            ['label' => 'Dashboard', 'items' => ['dashboard']],
+            ['label' => 'Patient Care', 'items' => ['patients', 'appointments']],
+            ['label' => 'Clinical', 'items' => ['doctors', 'consultations', 'prescriptions']],
+            ['label' => 'Operations', 'items' => ['pharmacy', 'billing']],
+            ['label' => 'Analytics', 'items' => ['reports']],
+            ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
+        ],
+        'dashboard_profile' => [
+            ['key' => 'total_patients', 'label' => 'Total Patients'],
+            ['key' => 'today_appointments', 'label' => "Today's Appointments"],
+            ['key' => 'active_doctors', 'label' => 'Active Doctors'],
+            ['key' => 'monthly_revenue', 'label' => 'Monthly Revenue'],
+        ],
     ],
     'beauty-salon' => [
         'name' => 'Beauty Salon',
         'category' => 'beauty',
+        'subtitle' => 'Beauty & Wellness',
+        'settings_label' => 'Salon Settings',
         'dashboard_profile_key' => 'beauty-salon',
         'navigation_profile_key' => 'beauty-salon',
         'labels' => [
@@ -75,6 +111,7 @@ return [
             'services' => 'Services',
         ],
         'modules' => [
+            'patients' => false,
             'customers' => true,
             'bookings' => true,
             'staff' => true,
@@ -88,10 +125,25 @@ return [
             'facilities' => false,
             'events' => false,
         ],
+        'navigation_profile' => [
+            ['label' => 'Dashboard', 'items' => ['dashboard']],
+            ['label' => 'Customers', 'items' => ['appointments']],
+            ['label' => 'Operations', 'items' => ['billing']],
+            ['label' => 'Reports', 'items' => ['reports']],
+            ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
+        ],
+        'dashboard_profile' => [
+            ['key' => 'staff_count', 'label' => 'Staff'],
+            ['key' => 'branch_count', 'label' => 'Locations'],
+            ['key' => 'subscription', 'label' => 'Subscription'],
+            ['key' => 'business_name', 'label' => 'Business Name'],
+        ],
     ],
     'stadium' => [
         'name' => 'Stadium / Sports Facility',
         'category' => 'sports',
+        'subtitle' => 'Sports & Facilities',
+        'settings_label' => 'Stadium Settings',
         'dashboard_profile_key' => 'stadium',
         'navigation_profile_key' => 'stadium',
         'labels' => [
@@ -104,6 +156,7 @@ return [
             'services' => 'Facilities',
         ],
         'modules' => [
+            'patients' => false,
             'customers' => true,
             'bookings' => true,
             'staff' => true,
@@ -116,6 +169,18 @@ return [
             'pharmacy' => false,
             'facilities' => false,
             'events' => false,
+        ],
+        'navigation_profile' => [
+            ['label' => 'Dashboard', 'items' => ['dashboard']],
+            ['label' => 'Operations', 'items' => ['billing']],
+            ['label' => 'Reports', 'items' => ['reports']],
+            ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
+        ],
+        'dashboard_profile' => [
+            ['key' => 'staff_count', 'label' => 'Staff'],
+            ['key' => 'branch_count', 'label' => 'Locations'],
+            ['key' => 'subscription', 'label' => 'Subscription'],
+            ['key' => 'business_name', 'label' => 'Business Name'],
         ],
     ],
 ];

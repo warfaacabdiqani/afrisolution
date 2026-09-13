@@ -7,8 +7,34 @@ export const useClinicContextStore = defineStore('clinicContext', {
     getters: {
         modules: state => state.data?.modules.filter(module => module.allowed) || [],
         businessType: state => state.data?.business_type || null,
+        businessTypeSlug: state => state.data?.business_type?.slug || null,
+        navigationProfileKey: state => state.data?.navigation_profile_key || null,
+        dashboardProfileKey: state => state.data?.dashboard_profile_key || null,
         labels: state => state.data?.labels || {},
         businessModules: state => state.data?.business_modules || {},
+        businessProfile: state => state.data?.business_profile || null,
+        label: state => (key, fallback = '') => state.labels[key] || fallback,
+        hasBusinessModule: state => (key) => {
+            const aliases = {
+                patients: 'patients',
+                appointments: 'bookings',
+                doctors: 'staff',
+                consultations: 'clinical',
+                prescriptions: 'prescriptions',
+                pharmacy: 'pharmacy',
+                billing: 'billing',
+                reports: 'reports',
+                staff: 'staff',
+                support: 'support',
+                settings: 'settings',
+                dashboard: 'dashboard',
+            };
+            const normalized = aliases[key] || key;
+            if (!(state.data?.business_modules && Object.prototype.hasOwnProperty.call(state.data.business_modules, normalized))) {
+                return true;
+            }
+            return !!state.data.business_modules[normalized];
+        },
     },
     actions: {
         can(permission) { return this.data?.permissions.some(p => p === '*' || p === permission) || false; },

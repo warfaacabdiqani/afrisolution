@@ -45,9 +45,11 @@ class ClinicAccessService
         }
         $request->session()->put($activityKey,now()->timestamp);
         $active = $staffAllowed && $clinic->status === 'active' && $subscription && ($subscription->status === 'active' || ($subscription->status === 'trial' && $subscription->trial_ends_at && now()->lt($subscription->trial_ends_at)));
-        $modules = collect(config('clinic.modules'))->map(function ($module, $key) use ($permissions, $features) {
+        $modules = collect(config('clinic.modules'))->map(function ($module, $key) use ($permissions, $features, $businessProfile) {
             [$label, $permission, $feature, $icon, $group] = $module;
-            return compact('key', 'label', 'permission', 'feature', 'icon', 'group') + ['allowed' => $this->can($permissions, $permission) && (!$feature || ($features[$feature] ?? false))];
+            $businessModule = $this->businessModuleKey($key);
+            $businessEnabled = ! $businessModule || (($businessProfile['modules'][$businessModule] ?? false));
+            return compact('key', 'label', 'permission', 'feature', 'icon', 'group') + ['allowed' => $this->can($permissions, $permission) && (!$feature || ($features[$feature] ?? false)) && $businessEnabled];
         })->values();
         return [
             'clinic' => $clinic, 'branch' => $branch, 'branches' => $branches,
@@ -59,9 +61,22 @@ class ClinicAccessService
                 'slug' => $businessProfile['slug'],
                 'name' => $businessProfile['name'],
                 'category' => $businessProfile['category'],
+                'navigation_profile_key' => $businessProfile['navigation_profile_key'] ?? null,
+                'dashboard_profile_key' => $businessProfile['dashboard_profile_key'] ?? null,
             ],
             'labels' => $businessProfile['labels'] ?? [],
             'business_modules' => $businessProfile['modules'] ?? [],
+            'navigation_profile_key' => $businessProfile['navigation_profile_key'] ?? null,
+            'dashboard_profile_key' => $businessProfile['dashboard_profile_key'] ?? null,
+            'business_profile' => [
+                'name' => $businessProfile['name'],
+                'subtitle' => $businessProfile['subtitle'] ?? null,
+                'settings_label' => $businessProfile['settings_label'] ?? 'Clinic Settings',
+                'navigation_profile' => $businessProfile['navigation_profile'] ?? [],
+                'dashboard_profile' => $businessProfile['dashboard_profile'] ?? [],
+                'labels' => $businessProfile['labels'] ?? [],
+                'modules' => $businessProfile['modules'] ?? [],
+            ],
             'operational' => (bool) $active && $branch !== null,
             'restriction' => !$staffAllowed ? 'Staff access to this clinic is disabled. Contact your clinic administrator.' : (!$active ? 'Your clinic or subscription is inactive. Contact your clinic administrator for assistance.' : (!$branch ? 'No authorized branch is available. Contact your clinic administrator.' : null)),
             'modules' => $modules, 'idle_timeout_minutes' => $timeout,
@@ -78,10 +93,41 @@ class ClinicAccessService
     {
         $context = $this->context($request);
         abort_unless($context['operational'], 403, $context['restriction']);
+
         $entry = $context['modules']->firstWhere('key', $module);
-        abort_unless($entry && $entry['allowed'], 403, 'Your permissions or plan do not allow access to this module.');
-        if ($permission) abort_unless($this->can($context['permissions'], $permission), 403, 'You do not have permission for this action.');
+        abort_unless($entry, 403, 'This module is not available.');
+
+        $businessModule = $this->businessModuleKey($module);
+        if ($businessModule && ! (($context['business_modules'][$businessModule] ?? false))) {
+            abort(403, 'This module is not available for your business type.');
+        }
+
+        $hasFeature = ! $entry['feature'] || (($context['features'][$entry['feature']] ?? false));
+        abort_unless($hasFeature, 403, 'Your current plan does not include this feature.');
+
+        abort_unless($this->can($context['permissions'], $entry['permission']), 403, 'You do not have permission to access this module.');
+
+        if ($permission) {
+            abort_unless($this->can($context['permissions'], $permission), 403, 'You do not have permission for this action.');
+        }
+
         if ($request->hasHeader('X-Branch-Context')) abort_unless((string) $context['branch']->id === $request->header('X-Branch-Context'), 409, 'The active branch changed. Refresh this page.');
         return $context;
+    }
+
+    public function businessModuleKey(string $module): ?string
+    {
+        return match ($module) {
+            'patients' => 'patients',
+            'appointments' => 'bookings',
+            'doctors' => 'staff',
+            'consultations' => 'clinical',
+            'prescriptions' => 'prescriptions',
+            'pharmacy' => 'pharmacy',
+            'billing' => 'billing',
+            'reports' => 'reports',
+            'staff' => 'staff',
+            default => null,
+        };
     }
 }

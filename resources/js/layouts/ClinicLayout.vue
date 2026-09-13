@@ -13,6 +13,30 @@ const route = useRoute();
 const drawer = ref(false);
 let idleTimer, heartbeatTimer, lastInteraction = Date.now(), lastHeartbeat = Date.now();
 const idleDuration = () => (clinic.data?.idle_timeout_minutes || 120) * 60000;
+const navigationSections = computed(() => {
+    const lookup = new Map((clinic.data?.modules || []).filter(module => module.allowed).map(module => [module.key, module]));
+    const profile = clinic.businessProfile?.navigation_profile;
+    if (Array.isArray(profile) && profile.length) {
+        return profile.map((section) => ({
+            label: section.label,
+            items: (section.items || []).map((key) => lookup.get(key)).filter(Boolean).map((module) => ({
+                key: module.key,
+                label: module.label,
+                to: `/app/${module.key}`,
+                icon: module.icon,
+            })),
+        })).filter(section => section.items.length);
+    }
+    return [{
+        label: '',
+        items: (clinic.data?.modules || []).filter(module => module.allowed).map((module) => ({
+            key: module.key,
+            label: module.label,
+            to: `/app/${module.key}`,
+            icon: module.icon,
+        })),
+    }];
+});
 async function expireSession() {
     try { await auth.logout(); } catch { auth.reset(); } finally { clinic.$reset(); await router.replace('/app/login'); }
 }
@@ -50,11 +74,11 @@ async function logout() {
     <div class="clinic-shell" @keydown.esc="drawer = false">
         <button v-if="drawer" class="clinic-overlay" aria-label="Close navigation" @click="drawer = false"></button>
         <aside class="clinic-sidebar" :class="{ 'is-open': drawer }">
-            <RouterLink class="clinic-brand" to="/app/dashboard"><span class="clinic-logo"><AppIcon name="activity" :size="28" /></span><span>Afri Clinic<small>Healthcare SaaS</small></span></RouterLink>
+            <RouterLink class="clinic-brand" to="/app/dashboard"><span class="clinic-logo"><AppIcon name="activity" :size="28" /></span><span>{{ clinic.data?.clinic.name || 'Clinic workspace' }}<small>{{ clinic.businessProfile?.subtitle || 'Business workspace' }}</small></span></RouterLink>
             <nav class="clinic-navigation" aria-label="Clinic navigation">
-                <template v-for="(item, index) in clinic.modules" :key="item.key">
-                    <p v-if="item.group && clinic.modules[index - 1]?.group !== item.group" class="clinic-nav-label">{{ item.group }}</p>
-                    <RouterLink :to="`/app/${item.key}`" :class="{ selected: route.path.split('/')[2] === item.key }" @click="drawer = false"><AppIcon :name="item.icon" />{{ item.label }}</RouterLink>
+                <template v-for="(section, sectionIndex) in navigationSections" :key="section.label || sectionIndex">
+                    <p v-if="section.label" class="clinic-nav-label">{{ section.label }}</p>
+                    <RouterLink v-for="item in section.items" :key="item.key" :to="item.to" :class="{ selected: route.path.split('/')[2] === item.key }" @click="drawer = false"><AppIcon :name="item.icon" />{{ item.label }}</RouterLink>
                 </template>
             </nav>
             <div class="clinic-sidebar-bottom">

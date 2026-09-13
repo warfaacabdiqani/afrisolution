@@ -23,8 +23,12 @@ class BusinessProfileService
             'slug' => $businessType->slug,
             'name' => $businessType->name,
             'category' => $businessType->category,
+            'subtitle' => $profile['subtitle'] ?? $profile['name'] ?? null,
+            'settings_label' => $profile['settings_label'] ?? 'Clinic Settings',
             'dashboard_profile_key' => $profile['dashboard_profile_key'] ?? null,
             'navigation_profile_key' => $profile['navigation_profile_key'] ?? null,
+            'dashboard_profile' => $profile['dashboard_profile'] ?? [],
+            'navigation_profile' => $profile['navigation_profile'] ?? [],
             'labels' => $profile['labels'] ?? [],
             'modules' => $profile['modules'] ?? [],
         ];

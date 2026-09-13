@@ -205,12 +205,17 @@ router.beforeEach(async (to, from) => {
         if (!(((to.meta.clinicSettings && from.meta.clinicSettings) || (to.meta.patientList && from.meta.patientList) || (to.meta.doctorList && from.meta.doctorList) || (to.meta.appointmentCalendar && from.meta.appointmentCalendar)) && clinic.data?.clinic.id === auth.user.active_tenant_id)) await clinic.load();
         if (!clinic.data?.operational) return;
         if (to.meta.clinicModule) {
-            if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access' };
-            if (to.meta.permission && !clinic.can(to.meta.permission)) return { name: 'clinic.access' };
-            if (to.meta.feature && !clinic.data.features[to.meta.feature]) return { name: 'clinic.access' };
+            if (!clinic.allowed(to.meta.clinicModule)) return { name: 'clinic.access', query: { reason: 'business' } };
+            if (to.meta.permission && !clinic.can(to.meta.permission)) return { name: 'clinic.access', query: { reason: 'permission' } };
+            if (to.meta.feature && !clinic.data.features[to.meta.feature]) return { name: 'clinic.access', query: { reason: 'feature' } };
             if (!['dashboard', 'patients', 'doctors', 'appointments', 'prescriptions', 'settings'].includes(to.meta.clinicModule)) {
                 try { await api.get(`/v1/clinic/modules/${to.meta.clinicModule}`, { headers: clinic.headers(), params: to.meta.create ? { action: 'create' } : {} }); }
-                catch (error) { if (error.response?.status === 403) return { name: 'clinic.access' }; throw error; }
+                catch (error) {
+                    if (error.response?.status === 403) {
+                        return { name: 'clinic.access', query: { reason: /plan|feature/i.test(error.response?.data?.message || '') ? 'feature' : 'business' } };
+                    }
+                    throw error;
+                }
             }
         }
     }
