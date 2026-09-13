@@ -63,6 +63,9 @@ import AppointmentsStatusesReport from '../pages/reports/appointments/Statuses.v
 import ClinicLayout from '../layouts/ClinicLayout.vue';
 import ClinicDashboard from '../pages/clinic/Dashboard.vue';
 import ModuleAccess from '../pages/clinic/ModuleAccess.vue';
+import SupportIndex from '../pages/support/Index.vue';
+import SupportTicketCreate from '../pages/support/TicketCreate.vue';
+import SupportTicketShow from '../pages/support/TicketShow.vue';
 import { useClinicContextStore } from '../stores/clinicContext';
 import api from '../services/api';
 
@@ -117,7 +120,11 @@ const router = createRouter({
             { path: '', redirect: '/app/dashboard' },
             { path: 'dashboard', name: 'clinic.dashboard', component: ClinicDashboard, meta: { clinicModule: 'dashboard' } },
             { path: 'access', name: 'clinic.access', component: ModuleAccess, meta: { denied: true } },
-            { path: 'support', component: ModuleAccess, meta: { title: 'Help & Support', support: true } },
+            { path: 'support', component: SupportIndex, meta: { title: 'Help & Support', clinicModule: 'support', support: true } },
+            { path: 'support/articles/:slug', component: SupportIndex, meta: { title: 'Help & Support', clinicModule: 'support', support: true } },
+            { path: 'support/tickets', component: SupportIndex, meta: { title: 'Support Tickets', clinicModule: 'support', support: true } },
+            { path: 'support/tickets/create', component: SupportTicketCreate, meta: { title: 'New Support Ticket', clinicModule: 'support', permission: 'support.tickets.create' } },
+            { path: 'support/tickets/:id', component: SupportTicketShow, meta: { title: 'Support Ticket', clinicModule: 'support' } },
             { path: 'settings', redirect: '/app/settings/general', meta: { clinicModule: 'settings' } },
             { path: 'settings/:section', component: () => import('../pages/settings/Index.vue'), meta: { clinicModule: 'settings', clinicSettings: true } },
             { path: 'prescriptions', component: () => import('../pages/prescriptions/Index.vue'), meta: { clinicModule: 'prescriptions' } },

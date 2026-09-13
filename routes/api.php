@@ -132,6 +132,17 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('staff/{staff}/activate', [\App\Http\Controllers\ClinicStaffController::class, 'activate'])->whereNumber('staff');
         Route::post('staff/{staff}/deactivate', [\App\Http\Controllers\ClinicStaffController::class, 'deactivate'])->whereNumber('staff');
         Route::post('staff/{staff}/reset-password', [\App\Http\Controllers\ClinicStaffController::class, 'resetPassword'])->whereNumber('staff');
+        Route::get('support/articles', [\App\Http\Controllers\SupportController::class, 'articles']);
+        Route::get('support/articles/{slug}', [\App\Http\Controllers\SupportController::class, 'article']);
+        Route::get('support/search', [\App\Http\Controllers\SupportController::class, 'search']);
+        Route::get('support/faqs', [\App\Http\Controllers\SupportController::class, 'faqs']);
+        Route::get('support/tickets', [\App\Http\Controllers\SupportController::class, 'tickets']);
+        Route::post('support/tickets', [\App\Http\Controllers\SupportController::class, 'storeTicket']);
+        Route::get('support/tickets/{ticket}', [\App\Http\Controllers\SupportController::class, 'ticket'])->whereNumber('ticket');
+        Route::post('support/tickets/{ticket}/reply', [\App\Http\Controllers\SupportController::class, 'reply'])->whereNumber('ticket');
+        Route::post('support/tickets/{ticket}/attachments', [\App\Http\Controllers\SupportController::class, 'attachments'])->whereNumber('ticket');
+        Route::get('support/tickets/{ticket}/attachments/{attachment}/download', [\App\Http\Controllers\SupportController::class, 'downloadAttachment'])->whereNumber(['ticket', 'attachment']);
+        Route::get('support/system-info', [\App\Http\Controllers\SupportController::class, 'systemInfo']);
         Route::get('dashboard', [\App\Http\Controllers\ClinicDashboardController::class, 'dashboard']);
         Route::get('reports/overview', [\App\Http\Controllers\ReportsController::class, 'overview']);
         Route::get('reports/patients', [\App\Http\Controllers\ReportsController::class, 'patients']);
