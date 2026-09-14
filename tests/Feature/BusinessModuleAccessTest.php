@@ -57,7 +57,7 @@ class BusinessModuleAccessTest extends TestCase
             $sections = $this->getJson('/api/v1/clinic/settings')->assertOk()->json('data.sections');
             foreach (['patients', 'appointments', 'clinical', 'pharmacy'] as $section) $this->assertArrayNotHasKey($section, $sections);
             $this->getJson('/api/v1/clinic/support/articles')->assertOk()->assertJsonMissing(['slug' => 'create-prescription']);
-            $this->getJson('/api/v1/clinic/dashboard')->assertOk()->assertJsonPath('data.recent_patients', [])->assertJsonPath('data.today_appointments', []);
+            $this->getJson('/api/v1/clinic/dashboard')->assertOk()->assertJsonMissingPath('data.recent_patients')->assertJsonMissingPath('data.today_appointments')->assertJsonMissingPath('data.stats');
         }
     }
 
@@ -87,6 +87,45 @@ class BusinessModuleAccessTest extends TestCase
         foreach ([[$clinic, 'Patient', 'clinic'], [$salon, 'Client', 'beauty-salon'], [$stadium, 'Customer', 'stadium'], [$clinic, 'Patient', 'clinic']] as [$tenant, $label, $profile]) {
             $this->postJson('/api/v1/session/clinic', ['clinic_id' => $tenant->id])->assertOk();
             $this->getJson('/api/v1/clinic/context')->assertOk()->assertJsonPath('data.clinic.id', $tenant->id)->assertJsonPath('data.labels.customer', $label)->assertJsonPath('data.navigation_profile_key', $profile);
+            $this->getJson('/api/v1/clinic/dashboard')->assertOk()->assertJsonPath('data.profile', $profile)->assertJsonPath('data.business.id', $tenant->id);
+        }
+    }
+
+    public function test_dashboard_profiles_use_real_shared_metrics_without_clinical_queries(): void
+    {
+        foreach (['beauty-salon' => 'Salon Information', 'stadium' => 'Stadium Information'] as $slug => $title) {
+            $this->workspace($slug);
+            DB::flushQueryLog(); DB::enableQueryLog();
+            $data = $this->getJson('/api/v1/clinic/dashboard')->assertOk()->assertJsonPath('data.profile', $slug)->json('data');
+            $queries = DB::getQueryLog(); DB::disableQueryLog();
+            foreach ($queries as $query) $this->assertDoesNotMatchRegularExpression('/(?:from|join) ["`]?(patients|doctors|appointments|consultations|prescriptions)\b/i', $query['query']);
+            $widgets = collect($data['widgets'])->keyBy('key');
+            $this->assertSame(['staff_count', 'branch_count', 'subscription', 'monthly_revenue'], $widgets->keys()->all());
+            $this->assertSame(1, $widgets['staff_count']['value']);
+            $this->assertSame(1, $widgets['branch_count']['value']);
+            $this->assertSame('Complete', $widgets['subscription']['value']);
+            $this->assertNull($widgets['monthly_revenue']['value']);
+            $this->assertFalse($widgets['monthly_revenue']['available']);
+            $this->assertSame(['business_information'], array_keys($data['sections']));
+            $this->assertSame($title, $data['sections']['business_information']['title']);
+            $this->assertSame([], $data['quick_actions']);
+        }
+    }
+
+    public function test_healthcare_dashboard_generic_contract_and_quick_action_permissions(): void
+    {
+        foreach (['clinic', 'dental'] as $slug) {
+            [$tenant] = $this->workspace($slug);
+            $data = $this->getJson('/api/v1/clinic/dashboard')->assertOk()->assertJsonPath('data.profile', 'clinic')->json('data');
+            $widgets = collect($data['widgets'])->keyBy('key');
+            $this->assertSame(0, $widgets['total_patients']['value']);
+            $this->assertSame(0, $widgets['today_appointments']['value']);
+            $this->assertNull($widgets['monthly_revenue']['value']);
+            $this->assertSame(['add_patient', 'book_appointment', 'create_prescription'], array_column($data['quick_actions'], 'key'));
+            DB::table('tenant_memberships')->where('tenant_id', $tenant->id)->update(['permissions' => json_encode(['dashboard.view', 'patients.view'])]);
+            $data = $this->getJson('/api/v1/clinic/dashboard')->assertOk()->json('data');
+            $this->assertSame([], $data['quick_actions']);
+            $this->assertArrayNotHasKey('appointments', $data['sections']);
         }
     }
 }

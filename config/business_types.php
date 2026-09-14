@@ -9,6 +9,7 @@ return [
         'dashboard_profile_key' => 'clinic',
         'navigation_profile_key' => 'clinic',
         'labels' => [
+            'workspace' => 'clinic', 'information' => 'Clinic Information',
             'customer' => 'Patient',
             'customers' => 'Patients',
             'staff' => 'Staff',
@@ -41,12 +42,7 @@ return [
             ['label' => 'Analytics', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
         ],
-        'dashboard_profile' => [
-            ['key' => 'total_patients', 'label' => 'Total Patients'],
-            ['key' => 'today_appointments', 'label' => "Today's Appointments"],
-            ['key' => 'active_doctors', 'label' => 'Active Doctors'],
-            ['key' => 'monthly_revenue', 'label' => 'Monthly Revenue'],
-        ],
+
     ],
     'dental' => [
         'name' => 'Dental Clinic',
@@ -56,6 +52,7 @@ return [
         'dashboard_profile_key' => 'clinic',
         'navigation_profile_key' => 'clinic',
         'labels' => [
+            'workspace' => 'clinic', 'information' => 'Clinic Information',
             'customer' => 'Patient',
             'customers' => 'Patients',
             'staff' => 'Staff',
@@ -88,12 +85,7 @@ return [
             ['label' => 'Analytics', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
         ],
-        'dashboard_profile' => [
-            ['key' => 'total_patients', 'label' => 'Total Patients'],
-            ['key' => 'today_appointments', 'label' => "Today's Appointments"],
-            ['key' => 'active_doctors', 'label' => 'Active Doctors'],
-            ['key' => 'monthly_revenue', 'label' => 'Monthly Revenue'],
-        ],
+
     ],
     'beauty-salon' => [
         'name' => 'Beauty Salon',
@@ -103,6 +95,7 @@ return [
         'dashboard_profile_key' => 'beauty-salon',
         'navigation_profile_key' => 'beauty-salon',
         'labels' => [
+            'workspace' => 'salon', 'information' => 'Salon Information',
             'customer' => 'Client',
             'customers' => 'Clients',
             'staff' => 'Stylist',
@@ -135,12 +128,7 @@ return [
             ['label' => 'Reports', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
         ],
-        'dashboard_profile' => [
-            ['key' => 'staff_count', 'label' => 'Staff'],
-            ['key' => 'branch_count', 'label' => 'Locations'],
-            ['key' => 'subscription', 'label' => 'Subscription'],
-            ['key' => 'business_name', 'label' => 'Business Name'],
-        ],
+
     ],
     'stadium' => [
         'name' => 'Stadium / Sports Facility',
@@ -150,6 +138,7 @@ return [
         'dashboard_profile_key' => 'stadium',
         'navigation_profile_key' => 'stadium',
         'labels' => [
+            'workspace' => 'facility', 'information' => 'Stadium Information',
             'customer' => 'Customer',
             'customers' => 'Customers',
             'staff' => 'Staff',
@@ -180,11 +169,6 @@ return [
             ['label' => 'Reports', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
         ],
-        'dashboard_profile' => [
-            ['key' => 'staff_count', 'label' => 'Staff'],
-            ['key' => 'branch_count', 'label' => 'Locations'],
-            ['key' => 'subscription', 'label' => 'Subscription'],
-            ['key' => 'business_name', 'label' => 'Business Name'],
-        ],
+
     ],
 ];

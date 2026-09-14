@@ -27,7 +27,7 @@ class BusinessProfileService
             'settings_label' => $profile['settings_label'] ?? 'Clinic Settings',
             'dashboard_profile_key' => $profile['dashboard_profile_key'] ?? null,
             'navigation_profile_key' => $profile['navigation_profile_key'] ?? null,
-            'dashboard_profile' => $profile['dashboard_profile'] ?? [],
+            'dashboard_profile' => collect(config('dashboard.profiles.'.($profile['dashboard_profile_key'] ?? '').'.widgets', []))->map(fn ($key) => ['key' => $key] + config('dashboard.widgets.'.$key, []))->all(),
             'navigation_profile' => $profile['navigation_profile'] ?? [],
             'labels' => $profile['labels'] ?? [],
             'modules' => $profile['modules'] ?? [],

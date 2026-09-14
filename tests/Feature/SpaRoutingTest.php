@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SpaRoutingTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_application_routes_serve_the_vue_shell(): void
     {
         foreach (['/', '/app', '/app/missing-page'] as $path) {

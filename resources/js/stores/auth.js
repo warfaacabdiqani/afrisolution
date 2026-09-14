@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { useClinicContextStore } from './clinicContext';
 import { useClinicSettingsStore } from './clinicSettings';
+import { useClinicDashboardStore } from './clinicDashboard';
 import { ref } from 'vue';
 import api from '../services/api';
 
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
         loaded.value = true;
     }
     async function selectClinic(id) {
+        useClinicDashboardStore().clear();
         useClinicContextStore().clear();
         const settings = useClinicSettingsStore(); settings.version++; settings.data = null; settings.scope = ''; settings.notice = '';
         user.value = (await api.post('/v1/session/clinic', { clinic_id: id })).data.data;
