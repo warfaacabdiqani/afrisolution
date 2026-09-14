@@ -1,8 +1,17 @@
 ﻿<script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../../services/api';
 import FormErrors from '../../../components/ui/FormErrors.vue';
+
+function generateSlug(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80);
+}
 
 const router = useRouter();
 const plans = ref([]);
@@ -25,6 +34,15 @@ const form = reactive({
 
 const activeBusinessTypes = computed(() =>
     businessTypes.value.filter((type) => type.status === 'active')
+);
+
+watch(
+    () => form.name,
+    (value) => {
+        if (!value || form.slug.trim()) return;
+        form.slug = generateSlug(value);
+    },
+    { immediate: true }
 );
 
 const selectedBusinessType = computed(() => {
@@ -128,6 +146,10 @@ async function submit() {
     error.value = null;
 
     try {
+        if (!form.slug.trim()) {
+            form.slug = generateSlug(form.name);
+        }
+
         const id = (await api.post('/v1/platform/tenants', form)).data.data.id;
 
         await router.replace({
@@ -187,6 +209,7 @@ async function submit() {
                     <label class="field">
                         {{ businessProfile.codeLabel }}
                         <input v-model="form.slug" required pattern="[A-Za-z0-9_-]+" maxlength="80" />
+                        <span v-if="form.name" class="hint">Auto-generated from the business name. You can edit the code before creating.</span>
                     </label>
                     <label class="field">
                         Timezone

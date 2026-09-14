@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 class SystemSettingsController extends Controller
 {
     private const DEFAULTS = [
-        'general'=>['platform_name'=>'Afri Clinic','platform_url'=>'http://localhost','support_email'=>null,'support_phone'=>null,'organization_name'=>'Afri Clinic Healthcare SaaS','default_trial_days'=>14,'default_plan_id'=>null,'registration_enabled'=>true,'platform_status'=>'active'],
+        'general'=>['platform_name'=>'Afri Clinic','platform_url'=>'http://localhost','support_email'=>null,'support_phone'=>null,'organization_name'=>'Afri Clinic Healthcare SaaS','default_trial_days'=>14,'default_plan_id'=>null,'registration_enabled'=>true,'platform_status'=>'active','code_prefix'=>null,'code_contains'=>null],
         'branding'=>['display_name'=>'Afri Clinic','footer_text'=>'Healthcare SaaS','logo'=>null,'small_logo'=>null,'favicon'=>null,'login_logo'=>null],
         'localization'=>['timezone'=>'Africa/Nairobi','currency'=>'USD','currency_symbol'=>'$','date_format'=>'DD/MM/YYYY','time_format'=>'12','language'=>'en'],
         'email'=>['mailer'=>'log','smtp_host'=>null,'smtp_port'=>587,'smtp_username'=>null,'smtp_password'=>null,'encryption'=>'tls','from_email'=>'hello@example.com','from_name'=>'Afri Clinic'],
