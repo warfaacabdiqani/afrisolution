@@ -27,4 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontFlash(['owner_password', 'owner_password_confirmation']);
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if (! $request->is('api/v1/clinic/support/*', 'api/v1/platform/support-tickets', 'api/v1/platform/support-tickets/*')) return null;
+            if ($e instanceof \Illuminate\Validation\ValidationException || $e instanceof \Illuminate\Auth\AuthenticationException) return null;
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface && $e->getStatusCode() < 500) return null;
+            return response()->json(['message' => 'Unable to complete the support request. Please try again.'], 500);
+        });
     })->create();

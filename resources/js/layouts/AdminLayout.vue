@@ -19,9 +19,11 @@ const links = [
     ['admin.subscriptions', 'Subscriptions', 'subscriptions'],
     ['admin.users', 'Users', 'members'],
     ['admin.roles', 'Roles & Permissions', 'roles'],
+    ['admin.support', 'Support Tickets', 'support'],
     ['admin.audit', 'Audit Log', 'audit'],
     ['admin.settings', 'System Settings', 'settings'],
 ];
+const visibleLinks = computed(() => links.filter(([name]) => name !== 'admin.support' || auth.user?.platform_permissions?.includes('support_tickets.view')));
 const title = computed(() => route.meta.title || 'Platform administration');
 
 async function logout() {
@@ -40,7 +42,7 @@ function toggleCollapsed() { collapsed.value = !collapsed.value; localStorage.se
                 <div :class="collapsed?'lg:hidden':''"><p class="text-xl font-bold">{{ platformSettings.name }}</p><p class="text-xs text-teal-100">{{ platformSettings.footer }}</p></div>
             </div>
             <nav class="flex-1 space-y-1 px-3 py-6" aria-label="Platform administration">
-                <RouterLink v-for="[name, label, icon] in links" :key="name" :to="{ name }" :data-tooltip="collapsed?label:null" :class="['admin-nav', collapsed?'admin-nav-tooltip lg:justify-center lg:px-2':'', route.name === name || route.name?.startsWith(name + '.') ? 'admin-nav-active' : '']" @click="menu = false">
+                <RouterLink v-for="[name, label, icon] in visibleLinks" :key="name" :to="{ name }" :data-tooltip="collapsed?label:null" :class="['admin-nav', collapsed?'admin-nav-tooltip lg:justify-center lg:px-2':'', route.name === name || route.name?.startsWith(name + '.') ? 'admin-nav-active' : '']" @click="menu = false">
                     <span class="admin-nav-icon"><AppIcon :name="icon" :size="21"/></span><span :class="collapsed?'lg:hidden':''">{{ label }}</span>
                 </RouterLink>
             </nav>

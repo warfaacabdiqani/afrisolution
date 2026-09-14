@@ -74,12 +74,15 @@ const router = createRouter({
     history: createWebHistory(),
     routes: [
         { path: '/', name: 'home', component: HomeView },
+        { path: '/app/forbidden', name: 'forbidden', component: () => import('../views/ForbiddenView.vue'), meta: { auth: true } },
         { path: '/app/login', name: 'login', component: LoginView },
         {
             path: '/app/admin',
             component: AdminLayout,
             meta: { auth: true, platform: true, adminLayout: true },
             children: [
+                { path: 'support-tickets', name: 'admin.support', component: () => import('../pages/admin/support/Index.vue'), meta: { title: 'Support Tickets', platformPermission: 'support_tickets.view' } },
+                { path: 'support-tickets/:id', name: 'admin.support.show', component: () => import('../pages/admin/support/Show.vue'), meta: { title: 'Support Ticket', platformPermission: 'support_tickets.view' } },
                 { path: '', name: 'admin.dashboard', component: DashboardPage, meta: { title: 'Dashboard' } },
                 { path: 'clinics', name: 'admin.clinics', component: ClinicsIndex, meta: { title: 'Businesses / Tenants' } },
                 { path: 'clinics/create', name: 'admin.clinics.create', component: ClinicCreate, meta: { title: 'Add New Business' } },
@@ -194,6 +197,7 @@ router.beforeEach(async (to, from) => {
     if (!auth.loaded) await auth.restore();
     if (to.meta.auth && !auth.user) return { name: 'login' };
     if (to.meta.platform && !auth.user?.is_platform_admin) return { name: 'clinics' };
+    if (to.meta.platformPermission && !auth.user?.platform_permissions?.includes(to.meta.platformPermission)) return { name: 'forbidden' };
     if (to.name === 'clinics' && auth.user?.active_tenant_id && to.query.switch !== '1') return { name: 'clinic.dashboard' };
     if (to.meta.clinicLayout) {
         if (!auth.user?.active_tenant_id) {

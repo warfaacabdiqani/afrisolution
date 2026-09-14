@@ -1,6 +1,7 @@
 <?php
 
 return [
+    ...\App\Support\SupportTicketOptions::PERMISSIONS,
     'platform.dashboard.view' => 'View platform dashboard',
     'tenants.view' => 'View clinics and tenants',
     'tenants.manage' => 'Create and manage clinics',

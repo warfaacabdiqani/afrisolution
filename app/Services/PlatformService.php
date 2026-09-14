@@ -28,7 +28,7 @@ class PlatformService
     }
 
     private function auditSubject(string $type,int $id): array { return match($type){'plan'=>['name'=>Plan::find($id)?->name],'tenant'=>['name'=>Tenant::find($id)?->name],'user'=>['name'=>User::find($id)?->name],'platform_role'=>['name'=>PlatformRole::find($id)?->name],default=>[]}; }
-    private function auditModule(string $action): string { return match(strtok($action,'.')){'plan'=>'Subscription Plans','tenant','branch','member'=>'Clinics','subscription'=>'Subscriptions','admin'=>'Users','role','permission'=>'Roles & Permissions','login','logout'=>'Authentication','settings','maintenance'=>'System Settings',default=>'System'}; }
+    private function auditModule(string $action): string { return match(strtok($action,'.')){'support','support_ticket'=>'Support Tickets','plan'=>'Subscription Plans','tenant','branch','member'=>'Clinics','subscription'=>'Subscriptions','admin'=>'Users','role','permission'=>'Roles & Permissions','login','logout'=>'Authentication','settings','maintenance'=>'System Settings',default=>'System'}; }
     private function auditDescription(string $action,?string $name): string { $label=str_replace('.',' ',ucwords($action,'.')); return trim($label.($name?' - '.$name:'')); }
     private function redact(mixed $value,?string $key=null): mixed { $sensitive=['password','password_confirmation','current_password','token','access_token','refresh_token','api_key','secret','authorization','cookie','session']; if($key&&in_array(strtolower($key),$sensitive,true))return '[REDACTED]'; if(is_array($value))foreach($value as $k=>$v)$value[$k]=$this->redact($v,(string)$k); return $value; }
 

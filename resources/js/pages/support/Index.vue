@@ -4,6 +4,7 @@ import AppIcon from '../../components/ui/AppIcon.vue';
 import FormErrors from '../../components/ui/FormErrors.vue';
 import { supportService } from '../../services/support';
 import { useClinicContextStore } from '../../stores/clinicContext';
+import { ticketStatus } from '../../config/supportTickets';
 
 const context = useClinicContextStore();
 const articles = ref([]);
@@ -140,7 +141,7 @@ onMounted(async () => {
                 <span class="clinic-kpi-icon blue"><AppIcon name="calendar" :size="28" /></span>
                 <div>
                     <h2>Open tickets</h2>
-                    <strong>{{ tickets.filter(ticket => ticket.status !== 'Resolved').length }}</strong>
+                    <strong>{{ tickets.filter(ticket => ![ticketStatus.resolved, ticketStatus.closed].includes(ticket.status)).length }}</strong>
                     <p>Awaiting update</p>
                 </div>
             </section>

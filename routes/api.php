@@ -16,6 +16,15 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('session', [AuthController::class, 'session']);
     Route::post('session/clinic', [AuthController::class, 'select']);
     Route::prefix('platform')->middleware('platform')->group(function () {
+        Route::prefix('support-tickets')->middleware('platform.permission:support_tickets.view')->group(function () {
+            Route::get('/', [\App\Http\Controllers\PlatformSupportTicketController::class, 'index']);
+            Route::get('stats', [\App\Http\Controllers\PlatformSupportTicketController::class, 'stats']);
+            Route::get('options', [\App\Http\Controllers\PlatformSupportTicketController::class, 'options']);
+            Route::get('{ticket}', [\App\Http\Controllers\PlatformSupportTicketController::class, 'show'])->whereNumber('ticket');
+            Route::post('{ticket}/reply', [\App\Http\Controllers\PlatformSupportTicketController::class, 'reply'])->whereNumber('ticket')->middleware('platform.permission:support_tickets.reply');
+            Route::put('{ticket}/{field}', [\App\Http\Controllers\PlatformSupportTicketController::class, 'update'])->whereNumber('ticket')->whereIn('field', ['status', 'priority', 'category']);
+            Route::get('{ticket}/attachments/{attachment}/download', [\App\Http\Controllers\PlatformSupportTicketController::class, 'download'])->whereNumber(['ticket', 'attachment']);
+        });
         Route::get('dashboard', [PlatformController::class, 'dashboard'])->middleware('platform.permission:platform.dashboard.view');
         Route::get('subscriptions', [PlatformController::class, 'subscriptions'])->middleware('platform.permission:subscriptions.view');
         Route::get('users', [PlatformUserController::class, 'index']);

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 const props = defineProps({ error: { type: Object, default: null } });
 const messages = computed(() => {
+    if (props.error?.response?.status >= 500) return ['Unable to complete the request. Please try again.'];
     const data = props.error?.response?.data;
     return data?.errors ? Object.values(data.errors).flat() : [data?.message || 'Unable to complete the request. Please try again.'];
 });
@@ -11,4 +12,3 @@ const messages = computed(() => {
         <p v-for="message in messages" :key="message">{{ message }}</p>
     </div>
 </template>
-
