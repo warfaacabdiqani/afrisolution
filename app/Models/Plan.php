@@ -10,7 +10,7 @@ class Plan extends Model
     protected $fillable = [
         'name', 'slug', 'description', 'status', 'price', 'currency', 'billing_period', 'trial_days',
         'branch_limit', 'member_limit', 'doctor_limit', 'patient_limit', 'storage_limit_gb',
-        'appointment_limit', 'invoice_limit', 'features',
+        'appointment_limit', 'invoice_limit', 'client_limit', 'service_limit', 'features',
     ];
 
     protected function casts(): array

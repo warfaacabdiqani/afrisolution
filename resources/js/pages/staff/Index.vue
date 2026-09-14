@@ -8,6 +8,10 @@ import { useStaffStore } from '../../stores/staff';
 import { staffService } from '../../services/staff';
 
 const context = useClinicContextStore();
+function toggleSalonPermission(permission, checked) {
+    const current = staffForm.permissions.length ? staffForm.permissions : (store.options?.role_permissions?.find(item => item.role === staffForm.role)?.permissions || []);
+    staffForm.permissions = checked ? [...new Set([...current, permission])] : current.filter(value => value !== permission);
+}
 const store = useStaffStore();
 const route = useRoute();
 const router = useRouter();
@@ -300,12 +304,14 @@ onMounted(initialize);
                     </label>
                 </div>
 
+                <fieldset v-if="store.options?.salon_permissions?.length" class="md:col-span-2"><legend class="font-semibold mb-3">Salon Permissions</legend><p v-if="staffForm.permissions.includes('*')" class="text-sm mb-3">This account has full access through its existing permissions.</p><label v-for="permission in store.options.salon_permissions" :key="permission" class="inline-flex items-center gap-2 mr-4 mb-2"><input :checked="staffForm.permissions.includes(permission)" @change="toggleSalonPermission(permission, $event.target.checked)" type="checkbox" :value="permission" :disabled="staffForm.permissions.includes('*')">{{ permission.replaceAll('_',' ').replaceAll('.',' ? ') }}</label><p class="text-sm text-slate-500">Custom selections override role defaults. Existing selected permissions are preserved.</p></fieldset>
                 <div class="md:col-span-2 flex justify-end gap-3 pt-2">
                     <button class="btn-secondary" type="button" @click="resetForm()">Discard</button>
                     <button class="btn" type="submit" :disabled="saving">
                         {{ saving ? 'Saving...' : editingId ? 'Update Staff Member' : 'Create Staff Member' }}
                     </button>
                 </div>
+
             </form>
         </section>
 

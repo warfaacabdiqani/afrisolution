@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'salon_permissions' => ['clients.view','clients.create','clients.update','clients.archive','salon_staff.view','salon_staff.manage','services.view','services.create','services.update','services.archive','service_categories.manage','clinic_settings.salon.update'],
     'settings_permissions' => ['clinic_settings.view','clinic_settings.update', ...array_map(fn($section)=>'clinic_settings.'.$section.'.'.($section==='branches'?'manage':'update'), ['general','branding','branches','patients','appointments','clinical','pharmacy','billing','notifications','documents','security']), 'clinic_settings.subscription.view'],
     'prescription_permissions' => ['prescriptions.view','prescriptions.create','prescriptions.update','prescriptions.cancel','prescriptions.print','prescriptions.dispense','prescriptions.view_all_doctors','prescriptions.medications.manage'],
     'appointment_permissions' => ['appointments.view','appointments.view_all','appointments.create','appointments.update','appointments.reschedule','appointments.cancel','appointments.check_in','appointments.start_consultation','appointments.complete','appointments.override_schedule','appointments.types.manage'],
@@ -8,6 +9,7 @@ return [
     'patient_permissions' => ['patients.view', 'patients.create', 'patients.update', 'patients.archive', 'patients.restore', 'patients.documents.view', 'patients.documents.upload', 'patients.documents.delete', 'patients.medical_history.view', 'patients.medical_history.update'],
     // Additional capabilities protect workspace implementations that remain clinical.
     'business_module_map' => [
+        'clients' => ['salon_core','customers'], 'stylists' => ['salon_core','staff'], 'services' => ['salon_core','services'], 'salon' => ['salon_core'],
         'dashboard' => ['dashboard'], 'patients' => ['customers', 'patients'],
         'appointments' => ['bookings', 'clinical'], 'doctors' => ['clinical'],
         'consultations' => ['clinical'], 'prescriptions' => ['prescriptions'],
@@ -15,6 +17,9 @@ return [
         'staff' => ['staff'], 'settings' => ['settings'], 'support' => ['support'],
     ],
     'modules' => [
+        'clients' => ['Clients','clients.view','clients','members','Clients'],
+        'stylists' => ['Stylists','salon_staff.view','salon_staff','doctor','Services'],
+        'services' => ['Services','services.view','services','activity','Services'],
         'dashboard' => ['Dashboard', 'dashboard.view', null, 'dashboard', ''],
         'patients' => ['Patients', 'patients.view', 'patient_management', 'patient', 'Patient care'],
         'appointments' => ['Appointments', 'appointments.view', 'appointments', 'calendar', 'Patient care'],

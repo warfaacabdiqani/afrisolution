@@ -148,6 +148,7 @@ class ClinicStaffController extends Controller
 
         return response()->json([
             'data' => [
+                'salon_permissions' => $context['business_type']['slug'] === 'beauty-salon' ? config('clinic.salon_permissions') : [],
                 'roles' => $roles,
                 'role_permissions' => collect(config('clinic.roles'))
                     ->map(fn (array $permissions, string $role) => [

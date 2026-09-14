@@ -7,6 +7,13 @@ $number = fn($label,$default,$min,$max) => $f($label,'number',$default,"required
 $prefix = fn($label,$default) => $f($label,'text',$default,'required|string|max:20|regex:/^[A-Za-z0-9-]+$/');
 $currency = $f('Currency','select','USD','required|in:USD,KES,SOS,ETB,UGX,TZS,RWF,EUR,GBP,AED',['USD','KES','SOS','ETB','UGX','TZS','RWF','EUR','GBP','AED']);
 return [
+    'salon'=>['label'=>'Salon Preferences','feature'=>null,'fields'=>[
+        'default_duration'=>$number('Default Appointment Duration (minutes)',30,5,480),
+        'cancellation_policy'=>$f('Cancellation Policy','textarea','','nullable|string|max:2000'),
+        'deposit_policy'=>$f('Deposit Policy','textarea','','nullable|string|max:2000'),
+        'allow_walk_in'=>$bool('Allow Walk-ins',true),
+        'default_service_tax'=>$f('Default Service Tax (%)','number',0,'required|numeric|between:0,100'),
+    ],'notice'=>'Booking preferences will apply when salon booking is available. Currency is shared under General; receipt footers are shared under Documents.'],
     'general'=>['label'=>'General','feature'=>null,'fields'=>[
         'name'=>$f('Clinic Name','text','','required|string|max:150'), 'code'=>$f('Clinic Code','text','','prohibited',[],'Stable clinic identifier; managed by the platform.',true),
         'email'=>$f('Email','email','','nullable|email|max:255'), 'phone'=>$text('Phone','',40),'alternative_phone'=>$text('Alternative Phone','',40),

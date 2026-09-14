@@ -32,6 +32,8 @@ class PlanRequest extends FormRequest
             'storage_limit_gb' => ['nullable', 'integer', 'between:1,1000000'],
             'appointment_limit' => ['nullable', 'integer', 'between:1,100000000'],
             'invoice_limit' => ['nullable', 'integer', 'between:1,100000000'],
+            'client_limit' => ['nullable','integer','between:1,100000000'],
+            'service_limit' => ['nullable','integer','between:1,100000000'],
             'features' => ['present', 'array'],
             'features.*' => ['boolean'],
             'tenant_id' => ['prohibited'],

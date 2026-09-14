@@ -106,6 +106,7 @@ return [
             'services' => 'Services',
         ],
         'modules' => [
+            'salon_core' => true,
             'dashboard' => true, 'settings' => true, 'support' => true,
             'patients' => false,
             'customers' => true,
@@ -123,7 +124,8 @@ return [
         ],
         'navigation_profile' => [
             ['label' => 'Dashboard', 'items' => ['dashboard']],
-            // Client and booking workflows are not implemented yet.
+            ['label' => 'Clients', 'items' => ['clients']],
+            ['label' => 'Services', 'items' => ['stylists','services']],
             ['label' => 'Operations', 'items' => ['billing']],
             ['label' => 'Reports', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],

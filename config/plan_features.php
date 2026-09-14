@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'clients', 'services', 'salon_staff',
     'patient_management', 'appointments', 'clinicians', 'emr', 'vital_signs', 'prescriptions',
     'pharmacy', 'medicine_inventory', 'suppliers', 'purchases', 'stock_alerts',
     'billing', 'invoices', 'payments', 'receipts', 'advanced_financial_reports',

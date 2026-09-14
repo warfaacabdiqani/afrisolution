@@ -138,6 +138,12 @@ const router = createRouter({
             { path: 'prescriptions/:id/edit', component: () => import('../pages/prescriptions/FormPage.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.update' } },
             { path: 'prescriptions/:id/print', component: () => import('../pages/prescriptions/Print.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.print' } },
             { path: 'prescriptions/:id', component: () => import('../pages/prescriptions/Show.vue'), meta: { clinicModule: 'prescriptions' } },
+            ...[['clients','clients','clients','clients.create','clients.update'],['stylists','stylists','stylists','salon_staff.manage','salon_staff.manage'],['services/categories','categories','services','service_categories.manage','service_categories.manage'],['services','services','services','services.create','services.update']].flatMap(([path,kind,module,create,update]) => [
+                { path, component: () => import('../pages/salon/Index.vue'), props: { kind }, meta: { clinicModule: module } },
+                { path: path+'/create', component: () => import('../pages/salon/Form.vue'), props: { kind }, meta: { clinicModule: module, permission: create } },
+                { path: path+'/:id/edit', component: () => import('../pages/salon/Form.vue'), props: { kind }, meta: { clinicModule: module, permission: update } },
+                { path: path+'/:id', component: () => import('../pages/salon/Show.vue'), props: { kind }, meta: { clinicModule: module } },
+            ]),
             { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients', patientList: true } },
             { path: 'appointments', component: AppointmentsIndex, meta: { clinicModule: 'appointments', appointmentCalendar: true } },
             { path: 'appointments/create', component: AppointmentFormPage, meta: { clinicModule: 'appointments', permission: 'appointments.create' } },

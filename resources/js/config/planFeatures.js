@@ -1,4 +1,5 @@
 export const planFeatureGroups = [
+    ['Beauty Salon', [['clients','Salon Clients'],['services','Salon Services'],['salon_staff','Salon Stylists']]],
     ['Core clinical', [['patient_management','Patient Management'],['appointments','Appointments'],['clinicians','Doctors / Clinicians'],['emr','Electronic Medical Records'],['vital_signs','Vital Signs'],['prescriptions','Prescriptions']]],
     ['Pharmacy', [['pharmacy','Pharmacy'],['medicine_inventory','Medicine Inventory'],['suppliers','Suppliers'],['purchases','Purchases'],['stock_alerts','Stock Alerts']]],
     ['Finance', [['billing','Billing'],['invoices','Invoices'],['payments','Payments'],['receipts','Receipts'],['advanced_financial_reports','Advanced Financial Reports']]],

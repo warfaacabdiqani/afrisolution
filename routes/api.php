@@ -69,6 +69,16 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('tenants/{tenant}/branches', [ProvisioningController::class, 'branches'])->middleware('platform.permission:tenants.view');
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
+    Route::prefix('salon')->middleware(['platform.available','tenant'])->group(function () {
+        foreach (['clients'=>\App\Http\Controllers\ClientController::class,'stylists'=>\App\Http\Controllers\SalonStaffController::class,'services'=>\App\Http\Controllers\SalonServiceController::class,'service-categories'=>\App\Http\Controllers\SalonServiceCategoryController::class] as $path=>$controller) {
+            Route::get($path.'/options',[$controller,'options']);
+            Route::get($path,[$controller,'index']);
+            Route::post($path,[$controller,'store']);
+            Route::get($path.'/{record}',[$controller,'show'])->whereNumber('record');
+            Route::put($path.'/{record}',[$controller,'update'])->whereNumber('record');
+            if (in_array($path,['clients','services'])) Route::post($path.'/{record}/archive',[$controller,'archive'])->whereNumber('record');
+        }
+    });
     Route::prefix('clinic')->middleware(['platform.available','tenant'])->group(function () {
 
 
