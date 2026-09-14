@@ -12,6 +12,7 @@ const organization = computed(() => settings.values['general.organization_name']
 const email = computed(() => settings.values['general.support_email']);
 const phone = computed(() => settings.values['general.support_phone']);
 const categories = [
+    ['calendar', 'Salon operations', 'Manage salon services, styling sessions and client relationships in one place.'],
     ['activity', 'Patient care', 'Organize patient records, appointments and clinical workflows.'],
     ['storage', 'Pharmacy', 'Keep medicines, purchasing and stock information together.'],
     ['revenue', 'Finance', 'Support your clinic’s billing and payment workflows.'],
@@ -26,14 +27,14 @@ const categories = [
         <section class="landing-hero" aria-labelledby="landing-title">
             <div>
                 <p class="landing-eyebrow">{{ settings.footer }}</p>
-                <h1 id="landing-title">Your clinic.<br>Your team.<br><span>One connected workspace.</span></h1>
-                <p class="landing-intro">Welcome to {{ settings.name }}. Bring patient records, clinician schedules and appointments together, so your team can focus on care.</p>
+                <h1 id="landing-title">Your business.<br>Your team.<br><span>One connected workspace.</span></h1>
+                <p class="landing-intro">Welcome to {{ settings.name }}. Bring your operations, staff schedules, customer records and appointments together so your team can focus on growth.</p>
                 <div class="landing-actions"><RouterLink :to="workspace" class="btn">{{ auth.user ? 'Open your workspace' : 'Sign in to your workspace' }} <AppIcon name="chevronRight" :size="18" /></RouterLink><a href="#services">Explore services ↓</a></div>
             </div>
             <aside class="landing-overview" aria-label="Clinic workspace overview">
-                <div class="landing-overview-title"><img v-if="settings.logo" :src="settings.logo" :alt="settings.name" class="landing-logo"><span v-else class="landing-symbol"><AppIcon name="activity" :size="28" /></span><div><strong>{{ settings.name }}</strong><p>Your clinic workspace</p></div></div>
-                <div v-for="item in [['patient','Patient records','Keep patient information organized.'],['doctor','Your clinical team','Manage clinicians and working hours.'],['calendar','Appointments','Plan visits and follow their progress.']]" :key="item[0]" class="landing-workflow"><AppIcon :name="item[0]" :size="24" /><div><strong>{{ item[1] }}</strong><p>{{ item[2] }}</p></div><AppIcon name="check" :size="18" /></div>
-                <div class="landing-overview-footer"><AppIcon name="branch" :size="18" /> Built around your clinic’s daily work</div>
+                <div class="landing-overview-title"><img v-if="settings.logo" :src="settings.logo" :alt="settings.name" class="landing-logo"><span v-else class="landing-symbol"><AppIcon name="activity" :size="28" /></span><div><strong>{{ settings.name }}</strong><p>Your business workspace</p></div></div>
+                <div v-for="item in [['patient','Client records','Keep customer and patient information organized.'],['doctor','Your team','Manage staff, schedules and responsibilities.'],['calendar','Appointments & services','Plan visits, bookings and service delivery.']]" :key="item[0]" class="landing-workflow"><AppIcon :name="item[0]" :size="24" /><div><strong>{{ item[1] }}</strong><p>{{ item[2] }}</p></div><AppIcon name="check" :size="18" /></div>
+                <div class="landing-overview-footer"><AppIcon name="branch" :size="18" /> Built around your business’s daily work</div>
             </aside>
         </section>
         <section id="services" class="landing-services" aria-labelledby="services-title">
