@@ -35,6 +35,8 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('roles', [PlatformRoleController::class, 'store']);
         Route::put('roles/{role}', [PlatformRoleController::class, 'update']);
         Route::get('permissions', [PlatformRoleController::class, 'permissions']);
+        Route::get('businesses/next-code', [\App\Http\Controllers\BusinessCodeController::class, 'preview'])->middleware('platform.permission:tenants.manage');
+        Route::get('businesses/code-examples', [\App\Http\Controllers\BusinessCodeController::class, 'examples'])->middleware('platform.permission:settings.view');
         Route::get('tenants', [PlatformController::class, 'tenants'])->middleware('platform.permission:tenants.view');
         Route::get('business-types', [PlatformController::class, 'businessTypes'])->middleware('platform.permission:tenants.view');
         Route::post('business-types', [PlatformController::class, 'storeBusinessType'])->middleware('platform.permission:tenants.manage');

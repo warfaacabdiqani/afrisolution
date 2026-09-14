@@ -20,6 +20,8 @@ class PrescriptionManagementTest extends TestCase {
         $actor = User::factory()->create();
         $plan = Plan::create(['name' => 'Scheduling', 'branch_limit' => 3, 'member_limit' => 10, 'doctor_limit' => 10, 'appointment_limit' => 100, 'trial_days' => 14, 'features' => ['prescriptions' => true, 'pharmacy' => true, 'appointments' => true, 'patient_management' => true, 'clinicians' => true, 'multi_branch' => true]]);
         $tenant = app(PlatformService::class)->createTenant(['name' => $slug, 'slug' => $slug, 'timezone' => 'Africa/Nairobi', 'plan_id' => $plan->id, 'owner_name' => 'Owner', 'owner_email' => $slug.'@example.test', 'owner_password' => 'SecurePass12345'], $actor->id);
+        // Preserve legacy tenant identifiers in patient-number search fixtures.
+        $tenant->update(['slug' => $slug]);
         $owner = User::where('email', $slug.'@example.test')->firstOrFail();
         $this->select($owner, $tenant->id);
         $branch = DB::table('branches')->where('tenant_id', $tenant->id)->value('id');

@@ -1,17 +1,8 @@
 ﻿<script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../../services/api';
 import FormErrors from '../../../components/ui/FormErrors.vue';
-
-function generateSlug(value) {
-    return String(value || '')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 80);
-}
 
 const router = useRouter();
 const plans = ref([]);
@@ -21,7 +12,6 @@ const error = ref(null);
 
 const form = reactive({
     name: '',
-    slug: '',
     timezone: 'Africa/Nairobi',
     owner_name: '',
     owner_email: '',
@@ -36,14 +26,26 @@ const activeBusinessTypes = computed(() =>
     businessTypes.value.filter((type) => type.status === 'active')
 );
 
-watch(
-    () => form.name,
-    (value) => {
-        if (!value || form.slug.trim()) return;
-        form.slug = generateSlug(value);
-    },
-    { immediate: true }
-);
+const codePreview = ref('');
+const previewBusy = ref(false);
+const previewError = ref(null);
+let previewRequest = 0;
+watch(() => form.business_type_id, async (id) => {
+    const request = ++previewRequest;
+    codePreview.value = '';
+    previewError.value = null;
+    previewBusy.value = Boolean(id);
+    if (!id) return;
+    try {
+        const response = await api.get('/v1/platform/businesses/next-code', { params: { business_type_id: id } });
+        if (request === previewRequest) codePreview.value = response.data.code;
+    } catch (e) {
+        if (request === previewRequest) previewError.value = e;
+    } finally {
+        if (request === previewRequest) previewBusy.value = false;
+    }
+});
+onBeforeUnmount(() => { ++previewRequest; });
 
 const selectedBusinessType = computed(() => {
     const selectedId = Number(form.business_type_id);
@@ -146,10 +148,6 @@ async function submit() {
     error.value = null;
 
     try {
-        if (!form.slug.trim()) {
-            form.slug = generateSlug(form.name);
-        }
-
         const id = (await api.post('/v1/platform/tenants', form)).data.data.id;
 
         await router.replace({
@@ -208,8 +206,10 @@ async function submit() {
                     </label>
                     <label class="field">
                         {{ businessProfile.codeLabel }}
-                        <input v-model="form.slug" required pattern="[A-Za-z0-9_-]+" maxlength="80" />
-                        <span v-if="form.name" class="hint">Auto-generated from the business name. You can edit the code before creating.</span>
+                        <input :value="codePreview" readonly :placeholder="previewBusy ? 'Loading preview...' : 'Code preview'" />
+                        <span class="hint">Generated automatically from platform settings.</span>
+                        <span class="hint">Preview only. The final code is assigned when the business is created.</span>
+                        <FormErrors :error="previewError" />
                     </label>
                     <label class="field">
                         Timezone
@@ -273,7 +273,7 @@ async function submit() {
 
             <div class="flex justify-end gap-3 pt-2 pb-8">
                 <RouterLink class="btn-secondary" :to="{ name: 'admin.clinics' }">Cancel</RouterLink>
-                <button class="btn" type="submit" :disabled="busy">
+                <button class="btn" type="submit" :disabled="busy || previewBusy || !codePreview">
                     {{ busy ? 'Creating...' : businessProfile.createLabel }}
                 </button>
             </div>

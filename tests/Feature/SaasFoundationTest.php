@@ -234,7 +234,7 @@ class SaasFoundationTest extends TestCase
             ->assertJsonPath('data.stats.active_clinics', 1)
             ->assertJsonPath('data.stats.trial_clinics', 1)
             ->assertJsonPath('data.stats.total_members', 1)
-            ->assertJsonCount(1, 'data.recent_activity');
+            ->assertJsonCount(2, 'data.recent_activity');
     }
 
     public function test_tenant_list_and_detail_include_real_management_summary(): void
@@ -249,10 +249,11 @@ class SaasFoundationTest extends TestCase
             ->assertJsonPath('data.0.branches_count', 1);
         $this->getJson('/api/v1/platform/tenants/'.$tenant->id)
             ->assertOk()
-            ->assertJsonPath('data.slug', 'alpha');
+            ->assertJsonPath('data.slug', $tenant->slug);
         $this->getJson('/api/v1/platform/tenants/'.$tenant->id.'/audits')
             ->assertOk()
-            ->assertJsonPath('data.0.action', 'tenant.created');
+            ->assertJsonFragment(['action' => 'tenant.created'])
+            ->assertJsonFragment(['action' => 'tenant.business_code.generated']);
     }
 
     public function test_platform_plan_management_works_without_tenant_context_and_preserves_subscription_snapshots(): void

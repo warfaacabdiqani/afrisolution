@@ -2,6 +2,7 @@
 
 return [
     'clinic' => [
+        'code_prefix' => 'CLN',
         'name' => 'Healthcare / Clinic',
         'category' => 'healthcare',
         'subtitle' => 'Healthcare',
@@ -45,6 +46,7 @@ return [
 
     ],
     'dental' => [
+        'code_prefix' => 'DEN',
         'name' => 'Dental Clinic',
         'category' => 'healthcare',
         'subtitle' => 'Dental Healthcare',
@@ -88,6 +90,7 @@ return [
 
     ],
     'beauty-salon' => [
+        'code_prefix' => 'SAL',
         'name' => 'Beauty Salon',
         'category' => 'beauty',
         'subtitle' => 'Beauty & Wellness',
@@ -133,6 +136,7 @@ return [
 
     ],
     'stadium' => [
+        'code_prefix' => 'STD',
         'name' => 'Stadium / Sports Facility',
         'category' => 'sports',
         'subtitle' => 'Sports & Facilities',

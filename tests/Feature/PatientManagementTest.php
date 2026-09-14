@@ -20,6 +20,8 @@ class PatientManagementTest extends TestCase
         $actor = User::factory()->create();
         $plan = Plan::create(['name' => 'Clinical', 'branch_limit' => 3, 'member_limit' => 10, 'trial_days' => 14, 'patient_limit' => 100, 'storage_limit_gb' => 1, 'features' => ['patient_management' => true, 'multi_branch' => true]]);
         $tenant = app(PlatformService::class)->createTenant(['name' => $slug, 'slug' => $slug, 'timezone' => 'Africa/Nairobi', 'plan_id' => $plan->id, 'owner_name' => 'Owner', 'owner_email' => $slug.'@example.test', 'owner_password' => 'SecurePass12345'], $actor->id);
+        // A legacy tenant retains its patient-number prefix after auto-generation launches.
+        $tenant->update(['slug' => $slug]);
         $owner = User::where('email', $slug.'@example.test')->firstOrFail();
         $this->flushSession();
         $this->app['auth']->forgetGuards();

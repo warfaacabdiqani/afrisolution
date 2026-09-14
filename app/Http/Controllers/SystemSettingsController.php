@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 class SystemSettingsController extends Controller
 {
     private const DEFAULTS = [
-        'general'=>['platform_name'=>'Afri Clinic','platform_url'=>'http://localhost','support_email'=>null,'support_phone'=>null,'organization_name'=>'Afri Clinic Healthcare SaaS','default_trial_days'=>14,'default_plan_id'=>null,'registration_enabled'=>true,'platform_status'=>'active','code_prefix'=>null,'code_contains'=>null],
+        'general'=>['platform_name'=>'Afri Clinic','platform_url'=>'http://localhost','support_email'=>null,'support_phone'=>null,'organization_name'=>'Afri Clinic Healthcare SaaS','default_trial_days'=>14,'default_plan_id'=>null,'registration_enabled'=>true,'platform_status'=>'active','code_prefix'=>'AFRI','business_code_start'=>200001,'code_contains'=>null],
         'branding'=>['display_name'=>'Afri Clinic','footer_text'=>'Healthcare SaaS','logo'=>null,'small_logo'=>null,'favicon'=>null,'login_logo'=>null],
         'localization'=>['timezone'=>'Africa/Nairobi','currency'=>'USD','currency_symbol'=>'$','date_format'=>'DD/MM/YYYY','time_format'=>'12','language'=>'en'],
         'email'=>['mailer'=>'log','smtp_host'=>null,'smtp_port'=>587,'smtp_username'=>null,'smtp_password'=>null,'encryption'=>'tls','from_email'=>'hello@example.com','from_name'=>'Afri Clinic'],
@@ -28,6 +28,7 @@ class SystemSettingsController extends Controller
     {
         abort_unless($request->user()->hasPlatformPermission('settings.view'),403);
         $sections=[]; foreach(self::DEFAULTS as $group=>$defaults)$sections[$group]=array_replace($defaults,$settings->section($group));
+        $sections['general'] = array_replace($sections['general'], app(\App\Services\BusinessCodeGenerator::class)->settings());
         return response()->json(['data'=>$sections,'plans'=>Plan::where('status','active')->orderBy('name')->get(['id','name'])]);
     }
     public function publicSettings(SystemSettingsService $settings)
@@ -42,9 +43,25 @@ class SystemSettingsController extends Controller
     {
         abort_unless(isset(self::DEFAULTS[$section]),404); $values=$request->validated();
         if($section==='branding')foreach(['logo','small_logo','favicon','login_logo'] as $key)if($request->hasFile($key))$values[$key]='/storage/'.$request->file($key)->store('branding','public');
-        [$before,$after]=$settings->setSection($section,$values,$section==='branding'?['display_name','footer_text','logo','small_logo','favicon','login_logo']:($section==='localization'?['language']:($section==='general'?['platform_name']:[])));
-        $platform->audit($request->user()->id,"settings.$section.updated",'system_settings',0,['section'=>$section],$before,$after);
-        return response()->json(['message'=>'Settings updated successfully.','data'=>array_replace(self::DEFAULTS[$section],$after)]);
+        return DB::transaction(function () use ($request, $section, $settings, $platform, $values) {
+            $codes = app(\App\Services\BusinessCodeGenerator::class);
+            $codeBefore = $section === 'general' ? $codes->validateSettingsChange($values) : [];
+            $publicKeys = match ($section) {
+                'branding' => ['display_name', 'footer_text', 'logo', 'small_logo', 'favicon', 'login_logo'],
+                'localization' => ['language'],
+                'general' => ['platform_name'],
+                default => [],
+            };
+            [$before, $after] = $settings->setSection($section, $values, $publicKeys);
+            $platform->audit($request->user()->id, "settings.$section.updated", 'system_settings', 0, ['section' => $section], $before, $after);
+            if ($section === 'general') {
+                $codeAfter = $codes->settings(true);
+                if ($codeBefore !== $codeAfter) {
+                    $platform->audit($request->user()->id, 'platform.business_code_settings.updated', 'system_settings', 0, [], $codeBefore, $codeAfter);
+                }
+            }
+            return response()->json(['message' => 'Settings updated successfully.', 'data' => array_replace(self::DEFAULTS[$section], $after)]);
+        }, 5);
     }
     public function testEmail(Request $request, SystemSettingsService $settings)
     {

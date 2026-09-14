@@ -44,7 +44,7 @@ class ClinicSettingsTest extends TestCase {
         $c=$this->clinic();
         $this->putJson(self::ROOT.'/general',$this->values('general',['name'=>'Updated clinic','phone'=>'+252 611 123 456','currency'=>'KES']))->assertOk()->assertJsonPath('data.name','Updated clinic');
         $this->getJson(self::ROOT)->assertJsonPath('data.summary.clinic.name','Updated clinic')->assertJsonPath('data.sections.general.values.phone','+252 611 123 456');
-        $this->assertDatabaseHas('tenants',['id'=>$c['tenant']->id,'slug'=>'alpha']);
+        $this->assertDatabaseHas('tenants',['id'=>$c['tenant']->id,'slug'=>$c['tenant']->slug]);
         $this->assertDatabaseCount('system_settings',0);
         foreach(['code'=>'hijack','status'=>'inactive','tenant_id'=>999,'smtp_password'=>'secret'] as $k=>$v) $this->putJson(self::ROOT.'/general',$this->values('general',[$k=>$v]))->assertUnprocessable();
         $audit=DB::table('platform_audit_logs')->where('action','clinic.settings.general.updated')->first();

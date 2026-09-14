@@ -19,9 +19,6 @@ class TenantRequest extends FormRequest
 
         if ($this->isMethod('POST')) {
             return $rules + [
-                'slug' => ['nullable', 'alpha_dash:ascii', 'max:80', 'unique:tenants,slug'],
-                'code_prefix' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/'],
-                'code_contains' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9-]+$/'],
                 'business_type_id' => ['nullable', 'integer', Rule::exists('business_types', 'id')->where(fn ($query) => $query->where('status', 'active'))],
                 'owner_name' => ['required', 'string', 'max:150'], 'owner_email' => ['required', 'email', 'max:255', 'unique:users,email'],
                 'owner_password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()],

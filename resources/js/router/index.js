@@ -85,7 +85,7 @@ const router = createRouter({
                 { path: 'support-tickets/:id', name: 'admin.support.show', component: () => import('../pages/admin/support/Show.vue'), meta: { title: 'Support Ticket', platformPermission: 'support_tickets.view' } },
                 { path: '', name: 'admin.dashboard', component: DashboardPage, meta: { title: 'Dashboard' } },
                 { path: 'clinics', name: 'admin.clinics', component: ClinicsIndex, meta: { title: 'Businesses / Tenants' } },
-                { path: 'clinics/create', name: 'admin.clinics.create', component: ClinicCreate, meta: { title: 'Add New Business' } },
+                { path: 'clinics/create', alias: 'businesses/create', name: 'admin.clinics.create', component: ClinicCreate, meta: { title: 'Add New Business' } },
                 { path: 'business-types/:id', component: () => import('../pages/admin/business-types/BusinessTypeShow.vue'), meta: { title: 'Business Type' } },
                 { path: 'business-types', name: 'admin.business-types', component: BusinessTypesIndex, meta: { title: 'Business Types' } },
                 {

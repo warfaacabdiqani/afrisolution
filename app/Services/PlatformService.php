@@ -10,7 +10,6 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PlatformService
@@ -36,6 +35,8 @@ class PlatformService
     public function createTenant(array $data, int $actor): Tenant
     {
         return DB::transaction(function () use ($data, $actor) {
+            $codes = app(BusinessCodeGenerator::class);
+            $codes->lockSequence();
             $plan = Plan::findOrFail($data['plan_id']);
             $businessTypeId = $data['business_type_id'] ?? BusinessType::where('slug', 'clinic')->value('id');
             abort_unless($businessTypeId, 422, 'A valid business type is required.');
@@ -46,48 +47,7 @@ class PlatformService
                 default => 'Main Branch',
             };
 
-            $slug = trim((string) ($data['slug'] ?? ''));
-            $nameSlug = Str::slug((string) ($data['name'] ?? ''), '-');
-            $nameSlug = preg_replace('/-+/', '-', $nameSlug) ?: '';
-            $nameSlug = trim($nameSlug, '-');
-            $nameSlug = Str::limit($nameSlug, 80, '');
-
-            $settings = app(SystemSettingsService::class);
-            $prefix = trim((string) ($data['code_prefix'] ?? $settings->get('general.code_prefix', '')));
-            $contains = trim((string) ($data['code_contains'] ?? $settings->get('general.code_contains', '')));
-
-            if ($slug === '') {
-                $base = $nameSlug;
-                if ($prefix !== '') {
-                    $base = Str::slug($prefix, '-').' '.Str::slug($nameSlug, '-');
-                    $base = preg_replace('/\s+/', '-', $base);
-                }
-                if ($contains !== '') {
-                    $containsSlug = Str::slug($contains, '-');
-                    if ($containsSlug !== '') {
-                        $base = $base === '' ? $containsSlug : $base.'-'.$containsSlug;
-                    }
-                }
-                $base = preg_replace('/-+/', '-', (string) $base) ?: '';
-                $base = trim($base, '-');
-                $slug = $base === '' ? $nameSlug : $base;
-            }
-
-            $slug = preg_replace('/-+/', '-', $slug) ?: '';
-            $slug = trim($slug, '-');
-            $slug = Str::limit($slug, 80, '');
-            if ($slug === '') {
-                throw ValidationException::withMessages([
-                    'slug' => 'A business code could not be generated from the business name.',
-                ]);
-            }
-
-            $baseSlug = $slug;
-            $suffix = 1;
-            while (Tenant::where('slug', $slug)->exists()) {
-                $slug = $baseSlug.'-'.$suffix;
-                $suffix++;
-            }
+            $slug = $codes->generate($businessType);
 
             $tenant = Tenant::create(collect($data)->only(['name', 'timezone'])->all() + ['slug' => $slug, 'business_type_id' => $businessTypeId]);
             $owner = User::create(['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password']]);
@@ -96,9 +56,10 @@ class PlatformService
             DB::table('branches')->insert(['tenant_id' => $tenant->id, 'name' => $locationName, 'created_at' => now(), 'updated_at' => now()]);
             DB::table('subscriptions')->insert(['tenant_id' => $tenant->id, 'plan_id' => $plan->id, 'status' => 'trial', 'trial_ends_at' => now()->addDays($plan->trial_days), 'branch_limit' => $plan->branch_limit, 'member_limit' => $plan->member_limit, 'created_at' => now(), 'updated_at' => now()]);
             $this->audit($actor, 'tenant.created', 'tenant', $tenant->id);
+            $this->audit($actor, 'tenant.business_code.generated', 'tenant', $tenant->id, ['code' => $slug, 'business_type_id' => $businessTypeId]);
 
             return $tenant->load('businessType');
-        });
+        }, 5);
     }
 
     public function updateTenant(Tenant $tenant, array $data, int $actor): Tenant
