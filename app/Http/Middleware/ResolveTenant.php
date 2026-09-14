@@ -25,7 +25,7 @@ class ResolveTenant
             abort_unless($allowed, 403, 'Select an active clinic you belong to.');
             $context->set((int) $id);
             $subscription = DB::table('subscriptions')->where('tenant_id', $id)->first();
-            abort_unless($subscription && ($subscription->status === 'active' || ($subscription->status === 'trial' && $subscription->trial_ends_at && now()->lt($subscription->trial_ends_at))), 403, 'The clinic subscription is inactive or its trial has ended.');
+            if (!($subscription && ($subscription->status === 'active' || ($subscription->status === 'trial' && $subscription->trial_ends_at && now()->lt($subscription->trial_ends_at))))) app(\App\Services\ClinicAccessService::class)->deny('SUBSCRIPTION_INACTIVE', 'The business subscription is inactive or its trial has ended.');
 
             return $next($request);
         } finally {

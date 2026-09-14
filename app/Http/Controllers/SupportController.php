@@ -34,24 +34,31 @@ class SupportController extends Controller
         );
     }
 
+    private function businessArticles(array $context): \Illuminate\Support\Collection
+    {
+        return collect(config('support.articles'))->filter(fn ($article) =>
+            !empty($context['business_modules']['clinical']) || in_array($article['slug'], ['switching-clinics', 'switching-branches', 'understanding-roles', 'add-staff', 'branch-access', 'clinic-settings'], true)
+        );
+    }
+
     public function articles(Request $request)
     {
-        $this->context($request, 'support.view');
+        $context = $this->context($request, 'support.view');
 
         return response()->json([
-            'data' => config('support.articles'),
+            'data' => $this->businessArticles($context)->values()->all(),
         ]);
     }
 
     public function article(Request $request, string $slug)
     {
-        $this->context($request, 'support.view');
+        $context = $this->context($request, 'support.view');
 
-        $article = collect(config('support.articles'))->firstWhere('slug', $slug);
+        $article = $this->businessArticles($context)->firstWhere('slug', $slug);
 
         abort_unless($article, 404, 'Help article not found.');
 
-        $related = collect(config('support.articles'))
+        $related = $this->businessArticles($context)
             ->filter(fn ($item) => in_array($item['slug'], $article['related'], true))
             ->values()
             ->all();
@@ -66,16 +73,16 @@ class SupportController extends Controller
 
     public function faqs(Request $request)
     {
-        $this->context($request, 'support.view');
+        $context = $this->context($request, 'support.view');
 
         return response()->json([
-            'data' => config('support.faqs'),
+            'data' => collect(config('support.faqs'))->filter(fn ($faq) => !isset($faq['business_module']) || !empty($context['business_modules'][$faq['business_module']]))->values()->all(),
         ]);
     }
 
     public function search(Request $request)
     {
-        $this->context($request, 'support.view');
+        $context = $this->context($request, 'support.view');
 
         $query = trim((string) $request->query('q', ''));
 
@@ -85,7 +92,7 @@ class SupportController extends Controller
 
         $normalized = strtolower($query);
 
-        $results = collect(config('support.articles'))
+        $results = $this->businessArticles($context)
             ->filter(function ($article) use ($normalized) {
                 $text = collect([
                     $article['title'],
@@ -231,7 +238,7 @@ class SupportController extends Controller
 
     public function systemInfo(Request $request)
     {
-        $this->context($request, 'support.view');
+        $context = $this->context($request, 'support.view');
 
         $context = app(ClinicAccessService::class)->context($request);
         $settings = app(SystemSettingsService::class);

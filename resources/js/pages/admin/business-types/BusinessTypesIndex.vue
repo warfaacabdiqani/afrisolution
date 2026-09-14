@@ -70,7 +70,7 @@ onMounted(load);
                     <tbody>
                         <tr v-for="row in rows" :key="row.id">
                             <td>
-                                <div class="font-semibold">{{ row.name }}</div>
+                                <RouterLink class="font-semibold" :to="`/app/admin/business-types/${row.id}`">{{ row.name }}</RouterLink>
                             </td>
                             <td>{{ row.category }}</td>
                             <td>{{ row.slug }}</td>

@@ -15,7 +15,7 @@ let idleTimer, heartbeatTimer, lastInteraction = Date.now(), lastHeartbeat = Dat
 const idleDuration = () => (clinic.data?.idle_timeout_minutes || 120) * 60000;
 const navigationSections = computed(() => {
     const lookup = new Map((clinic.data?.modules || []).filter(module => module.allowed).map(module => [module.key, module]));
-    const profile = clinic.businessProfile?.navigation_profile;
+    const profile = clinic.navigationProfileKey ? clinic.businessProfile?.navigation_profile : [];
     if (Array.isArray(profile) && profile.length) {
         return profile.map((section) => ({
             label: section.label,
@@ -75,16 +75,16 @@ async function logout() {
         <button v-if="drawer" class="clinic-overlay" aria-label="Close navigation" @click="drawer = false"></button>
         <aside class="clinic-sidebar" :class="{ 'is-open': drawer }">
             <RouterLink class="clinic-brand" to="/app/dashboard"><span class="clinic-logo"><AppIcon name="activity" :size="28" /></span><span>{{ clinic.data?.clinic.name || 'Clinic workspace' }}<small>{{ clinic.businessProfile?.subtitle || 'Business workspace' }}</small></span></RouterLink>
-            <nav class="clinic-navigation" aria-label="Clinic navigation">
+            <nav class="clinic-navigation" aria-label="Business navigation">
                 <template v-for="(section, sectionIndex) in navigationSections" :key="section.label || sectionIndex">
                     <p v-if="section.label" class="clinic-nav-label">{{ section.label }}</p>
                     <RouterLink v-for="item in section.items" :key="item.key" :to="item.to" :class="{ selected: route.path.split('/')[2] === item.key }" @click="drawer = false"><AppIcon :name="item.icon" />{{ item.label }}</RouterLink>
                 </template>
             </nav>
             <div class="clinic-sidebar-bottom">
-                <small>MY CLINIC</small><div class="clinic-current"><AppIcon name="clinics" /><span>{{ clinic.data?.clinic.name || 'Select clinic' }}<small>{{ clinic.data?.branch?.name || 'No branch selected' }}</small></span></div>
-                <RouterLink to="/app/clinics?switch=1">＋ Switch Clinic</RouterLink>
-                <RouterLink to="/app/support"><AppIcon name="roles" />Help &amp; Support</RouterLink>
+                <small>MY BUSINESS</small><div class="clinic-current"><AppIcon name="clinics" /><span>{{ clinic.data?.clinic.name || 'Select clinic' }}<small>{{ clinic.data?.branch?.name || 'No branch selected' }}</small></span></div>
+                <RouterLink to="/app/clinics?switch=1">＋ Switch Business</RouterLink>
+                <RouterLink v-if="clinic.allowed('support')" to="/app/support"><AppIcon name="roles" />Help &amp; Support</RouterLink>
                 <button @click="logout"><AppIcon name="chevronLeft" />Sign out</button>
             </div>
         </aside>
@@ -93,7 +93,7 @@ async function logout() {
                 <button class="clinic-menu" aria-label="Open navigation" :aria-expanded="drawer" @click="drawer = !drawer"><AppIcon name="menu" /></button>
                 <details class="clinic-switcher">
                     <summary><AppIcon name="clinics" :size="25" /><span><strong>{{ clinic.data?.clinic.name || 'Clinic workspace' }}</strong><small>{{ clinic.data?.branch?.name || 'Select a branch' }}</small></span><span>⌄</span></summary>
-                    <div class="clinic-switcher-panel"><small>CURRENT CLINIC</small><strong>{{ clinic.data?.clinic.name }}</strong><label class="field">Branch<select :value="clinic.data?.branch?.id" :disabled="clinic.busy || !clinic.data?.operational" @change="switchBranch"><option v-for="branch in clinic.data?.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label><RouterLink to="/app/clinics?switch=1">Switch Clinic →</RouterLink></div>
+                    <div class="clinic-switcher-panel"><small>CURRENT BUSINESS</small><strong>{{ clinic.data?.clinic.name }}</strong><label class="field">Branch<select :value="clinic.data?.branch?.id" :disabled="clinic.busy || !clinic.data?.operational" @change="switchBranch"><option v-for="branch in clinic.data?.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label><RouterLink to="/app/clinics?switch=1">Switch Business →</RouterLink></div>
                 </details>
                 <div class="clinic-user"><span class="clinic-avatar">{{ auth.user?.name?.slice(0, 1) }}</span><span><strong>{{ auth.user?.name }}</strong><small>{{ clinic.data?.role?.replaceAll('_', ' ') || 'Clinic member' }}</small></span></div>
             </header>
@@ -102,10 +102,10 @@ async function logout() {
                 <RouterView v-if="route.meta.clinicSelection" />
                 <div v-else-if="clinic.error" class="clinic-panel"><p>Unable to load your clinic.</p><button class="btn mt-4" @click="clinic.load()">Try again</button><RouterLink class="ml-4" to="/app/clinics?switch=1">Switch clinic</RouterLink></div>
                 <div v-else-if="!clinic.data" class="clinic-panel" role="status">Loading clinic…</div>
-                <div v-else-if="!clinic.data.operational" class="clinic-panel"><AppIcon name="roles" :size="36" /><h1 class="mt-4 text-2xl font-bold">Clinic access restricted</h1><p class="mt-3 text-slate-500">{{ clinic.data.restriction }}</p><p class="mt-3">Subscription: {{ clinic.data.subscription?.status || 'Unavailable' }}</p><RouterLink class="mt-5 inline-block btn" to="/app/clinics?switch=1">Switch clinic</RouterLink></div>
+                <div v-else-if="!clinic.data.operational && route.name !== 'clinic.access'" class="clinic-panel"><AppIcon name="roles" :size="36" /><h1 class="mt-4 text-2xl font-bold">Clinic access restricted</h1><p class="mt-3 text-slate-500">{{ clinic.data.restriction }}</p><p class="mt-3">Subscription: {{ clinic.data.subscription?.status || 'Unavailable' }}</p><RouterLink class="mt-5 inline-block btn" to="/app/clinics?switch=1">Switch clinic</RouterLink></div>
                 <template v-else>
                     <div v-if="clinic.data.subscription?.status === 'trial'" class="clinic-trial"><AppIcon name="trial" />Your trial ends in {{ trialDays }} {{ trialDays === 1 ? 'day' : 'days' }}.<span>{{ clinic.data.plan?.name }} plan</span></div>
-                    <RouterView :key="`${clinic.data.clinic.id}:${clinic.data.branch.id}:${route.path}`" />
+                    <RouterView :key="`${clinic.data.clinic.id}:${clinic.data.branch?.id}:${route.path}`" />
                 </template>
             </div>
         </div>

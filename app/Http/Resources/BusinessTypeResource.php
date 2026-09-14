@@ -9,6 +9,7 @@ class BusinessTypeResource extends JsonResource
     public function toArray($request): array
     {
         return [
+            'profile' => app(\App\Services\BusinessProfileService::class)->resolveBusinessType($this->resource),
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,

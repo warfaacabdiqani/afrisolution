@@ -18,6 +18,8 @@ class ReportsController extends Controller
 {
     public function overview(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
         $billing = app(ClinicSettingsService::class)->section($context['clinic']->id, 'billing');
@@ -58,6 +60,8 @@ class ReportsController extends Controller
 
     public function patients(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
 
@@ -91,6 +95,8 @@ class ReportsController extends Controller
 
     public function appointments(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
         $appointments = $this->appointmentScope($state)->with(['patient', 'doctor', 'branch', 'type'])->get();
@@ -117,6 +123,8 @@ class ReportsController extends Controller
 
     public function clinical(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
         $appointments = $this->appointmentScope($state)->with(['patient', 'doctor', 'branch', 'type'])->get();
@@ -143,6 +151,8 @@ class ReportsController extends Controller
 
     public function doctors(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
         $appointments = $this->appointmentScope($state)->with(['doctor'])->get();
@@ -177,6 +187,8 @@ class ReportsController extends Controller
 
     public function prescriptions(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
         $prescriptions = $this->prescriptionScope($state)->with(['patient', 'doctor'])->get();
@@ -212,6 +224,8 @@ class ReportsController extends Controller
 
     public function financial(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
         $billing = app(ClinicSettingsService::class)->section($context['clinic']->id, 'billing');
@@ -239,6 +253,8 @@ class ReportsController extends Controller
 
     public function branches(Request $request, ClinicAccessService $access)
     {
+        $context = $access->context($request);
+        $access->authorizeBusiness($context, 'consultations');
         $context = $access->authorize($request, 'reports');
         $state = $this->resolveState($request, $context);
         $billing = app(ClinicSettingsService::class)->section($context['clinic']->id, 'billing');

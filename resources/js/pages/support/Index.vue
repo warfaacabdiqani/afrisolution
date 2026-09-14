@@ -123,7 +123,7 @@ onMounted(async () => {
                     Help &amp; Support
                 </p>
                 <h1>Help &amp; Support</h1>
-                <p>Search help articles, review common questions, and manage support tickets for your clinic.</p>
+                <p>Search help articles, review common questions, and manage support tickets for {{ context.businessType?.name || 'your business' }}.</p>
             </div>
             <RouterLink to="/app/support/tickets/create" class="btn" type="button">+ New Support Ticket</RouterLink>
         </div>
@@ -132,7 +132,7 @@ onMounted(async () => {
             <section class="clinic-panel clinic-kpi">
                 <span class="clinic-kpi-icon members"><AppIcon name="activity" :size="28" /></span>
                 <div>
-                    <h2>Clinic</h2>
+                    <h2>Business</h2>
                     <strong>{{ context.data.clinic?.name || 'Current clinic' }}</strong>
                     <p>{{ context.data.branch?.name || 'Active branch' }}</p>
                 </div>

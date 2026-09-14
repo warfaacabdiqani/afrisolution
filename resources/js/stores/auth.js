@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia';
+import { useClinicContextStore } from './clinicContext';
+import { useClinicSettingsStore } from './clinicSettings';
 import { ref } from 'vue';
 import api from '../services/api';
 
@@ -25,7 +27,10 @@ export const useAuthStore = defineStore('auth', () => {
         loaded.value = true;
     }
     async function selectClinic(id) {
+        useClinicContextStore().clear();
+        const settings = useClinicSettingsStore(); settings.version++; settings.data = null; settings.scope = ''; settings.notice = '';
         user.value = (await api.post('/v1/session/clinic', { clinic_id: id })).data.data;
+        await useClinicContextStore().load();
     }
     return { user, loaded, restore, login, logout, selectClinic, reset };
 });

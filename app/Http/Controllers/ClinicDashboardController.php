@@ -36,11 +36,11 @@ class ClinicDashboardController extends Controller
             });
         $profiles = \App\Models\Doctor::where('status', 'active')->whereHas('branches', fn ($q) => $q->where('branches.id', $context['branch']->id))->count();
         $doctors = $profiles + (clone $members)->where('role', 'doctor')->whereNotIn('tenant_memberships.user_id', \App\Models\Doctor::whereNotNull('user_id')->select('user_id'))->count();
-        $patientsAllowed = $access->can($context['permissions'], 'patients.view') && ($context['features']['patient_management'] ?? false);
+        $patientsAllowed = !empty($context['business_modules']['patients']) && $access->can($context['permissions'], 'patients.view') && ($context['features']['patient_management'] ?? false);
         $patientQuery = \App\Models\Patient::where('status', 'active');
         $patientCount = $patientsAllowed ? (clone $patientQuery)->count() : 0;
         $recentPatients = $patientsAllowed ? \App\Http\Resources\PatientResource::collection($patientQuery->latest('registered_at')->latest('id')->limit(5)->get())->resolve($request) : [];
-        $appointmentsAllowed = $access->can($context['permissions'], 'appointments.view') && ($context['features']['appointments'] ?? false);
+        $appointmentsAllowed = !empty($context['business_modules']['clinical']) && $access->can($context['permissions'], 'appointments.view') && ($context['features']['appointments'] ?? false);
         $todayAppointments=[];$appointmentCount=0;$dates=[];
         if($appointmentsAllowed){
             $appointments=app(\App\Services\AppointmentService::class)->visible($context)->where('branch_id',$context['branch']->id);
@@ -51,7 +51,7 @@ class ClinicDashboardController extends Controller
             $dates=(clone $appointments)->where('starts_at','>=',$month->format('Y-m-d H:i:s'))->where('starts_at','<',$month->copy()->addMonth()->format('Y-m-d H:i:s'))->selectRaw('DATE(starts_at) as date')->distinct()->pluck('date');
         }
         return response()->json(['data' => [
-            'stats' => ['total_patients' => $patientCount, 'today_appointments' => $appointmentCount, 'active_doctors' => $doctors, 'monthly_revenue' => 0],
+            'stats' => ['total_patients' => $patientCount, 'today_appointments' => $appointmentCount, 'active_doctors' => !empty($context['business_modules']['clinical']) ? $doctors : 0, 'monthly_revenue' => 0],
             'staff_count' => $members->count(), 'today_appointments' => $todayAppointments, 'recent_patients' => $recentPatients, 'visit_types' => [], 'calendar' => $dates,
             'availability' => ['patients' => $patientsAllowed, 'appointments' => $appointmentsAllowed, 'revenue' => false],
             'today' => $context['today'],

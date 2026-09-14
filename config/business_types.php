@@ -18,6 +18,7 @@ return [
             'services' => 'Consultations',
         ],
         'modules' => [
+            'dashboard' => true, 'settings' => true, 'support' => true,
             'patients' => true,
             'customers' => true,
             'bookings' => true,
@@ -64,6 +65,7 @@ return [
             'services' => 'Dental Consultations',
         ],
         'modules' => [
+            'dashboard' => true, 'settings' => true, 'support' => true,
             'patients' => true,
             'customers' => true,
             'bookings' => true,
@@ -74,7 +76,7 @@ return [
             'inventory' => false,
             'clinical' => true,
             'prescriptions' => true,
-            'pharmacy' => true,
+            'pharmacy' => false,
             'facilities' => false,
             'events' => false,
         ],
@@ -82,7 +84,7 @@ return [
             ['label' => 'Dashboard', 'items' => ['dashboard']],
             ['label' => 'Patient Care', 'items' => ['patients', 'appointments']],
             ['label' => 'Clinical', 'items' => ['doctors', 'consultations', 'prescriptions']],
-            ['label' => 'Operations', 'items' => ['pharmacy', 'billing']],
+            ['label' => 'Operations', 'items' => ['billing']],
             ['label' => 'Analytics', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
         ],
@@ -111,6 +113,7 @@ return [
             'services' => 'Services',
         ],
         'modules' => [
+            'dashboard' => true, 'settings' => true, 'support' => true,
             'patients' => false,
             'customers' => true,
             'bookings' => true,
@@ -127,7 +130,7 @@ return [
         ],
         'navigation_profile' => [
             ['label' => 'Dashboard', 'items' => ['dashboard']],
-            ['label' => 'Customers', 'items' => ['appointments']],
+            // Client and booking workflows are not implemented yet.
             ['label' => 'Operations', 'items' => ['billing']],
             ['label' => 'Reports', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],
@@ -156,6 +159,7 @@ return [
             'services' => 'Facilities',
         ],
         'modules' => [
+            'dashboard' => true, 'settings' => true, 'support' => true,
             'patients' => false,
             'customers' => true,
             'bookings' => true,

@@ -9,6 +9,7 @@ class TenantResource extends JsonResource
     public function toArray($request): array
     {
         return [
+            'business_profile' => $this->whenLoaded('businessType', fn () => app(\App\Services\BusinessProfileService::class)->resolveBusinessType($this->businessType)),
             'id' => $this->id, 'name' => $this->name, 'slug' => $this->slug,
             'status' => $this->status, 'timezone' => $this->timezone, 'created_at' => $this->created_at,
             'business_type' => $this->whenLoaded('businessType', fn () => [

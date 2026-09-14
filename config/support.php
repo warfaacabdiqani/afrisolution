@@ -339,6 +339,7 @@ return [
             'answer' => 'Go to Users / Staff, choose Add Staff Member, provide the person\'s details, assign a role and branches, and save the account.',
         ],
         [
+            'business_module' => 'pharmacy',
             'question' => 'Why can\'t I access Pharmacy?',
             'answer' => 'Pharmacy is only available when your account holds the required permissions and the subscription has the relevant feature enabled.',
         ],

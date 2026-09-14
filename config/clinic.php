@@ -6,6 +6,14 @@ return [
     'appointment_permissions' => ['appointments.view','appointments.view_all','appointments.create','appointments.update','appointments.reschedule','appointments.cancel','appointments.check_in','appointments.start_consultation','appointments.complete','appointments.override_schedule','appointments.types.manage'],
     'doctor_permissions' => ['doctors.view','doctors.create','doctors.update','doctors.deactivate','doctors.schedule.view','doctors.schedule.update','doctors.leave.manage','doctors.specialties.manage'],
     'patient_permissions' => ['patients.view', 'patients.create', 'patients.update', 'patients.archive', 'patients.restore', 'patients.documents.view', 'patients.documents.upload', 'patients.documents.delete', 'patients.medical_history.view', 'patients.medical_history.update'],
+    // Additional capabilities protect workspace implementations that remain clinical.
+    'business_module_map' => [
+        'dashboard' => ['dashboard'], 'patients' => ['customers', 'patients'],
+        'appointments' => ['bookings', 'clinical'], 'doctors' => ['clinical'],
+        'consultations' => ['clinical'], 'prescriptions' => ['prescriptions'],
+        'pharmacy' => ['pharmacy'], 'billing' => ['billing'], 'reports' => ['reports'],
+        'staff' => ['staff'], 'settings' => ['settings'], 'support' => ['support'],
+    ],
     'modules' => [
         'dashboard' => ['Dashboard', 'dashboard.view', null, 'dashboard', ''],
         'patients' => ['Patients', 'patients.view', 'patient_management', 'patient', 'Patient care'],

@@ -37,7 +37,13 @@ class ClinicSettingsService {
             return array_replace($before,$values);
         },3);
     }
+    public function businessAllowed(array $c, string $section): bool {
+        $module = $section === 'clinical' ? 'consultations' : $section;
+        $requirements = config('clinic.business_module_map.'.$module, []);
+        return collect($requirements)->every(fn ($key) => !empty($c['business_modules'][$key]));
+    }
     public function allowed(array $c,string $section): bool {
+        if (!$this->businessAllowed($c, $section)) return false;
         $definition=config("clinic_settings.$section"); if(!$definition) return false;
         $features=$definition['feature']; return !$features || collect((array)$features)->contains(fn($feature)=>!empty($c['features'][$feature]));
     }
@@ -47,6 +53,7 @@ class ClinicSettingsService {
     }
     public function authorize($request,string $section,bool $write=false): array {
         $c=app(ClinicAccessService::class)->authorize($request,'settings');
+        if (!$this->businessAllowed($c, $section)) app(ClinicAccessService::class)->deny('BUSINESS_MODULE_UNAVAILABLE', 'This settings section is not available for your business type.');
         abort_unless($this->allowed($c,$section),403,'This settings section is not included in your plan.');
         if($write) abort_unless($this->canUpdate($c,$section),403,'You cannot update this settings section.');
         return $c;
