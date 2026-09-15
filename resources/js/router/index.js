@@ -147,6 +147,7 @@ const router = createRouter({
             ]),
             { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients', patientList: true } },
             { path: 'appointments', component: BusinessAppointments, meta: { clinicModule: 'appointments', appointmentCalendar: true } },
+            { path: 'appointments/hours', component: () => import('../pages/salon/bookings/Hours.vue'), meta: { clinicModule: 'appointments', salonOnly: true } },
             { path: 'appointments/create', component: BusinessAppointments, props: { form: true }, meta: { clinicModule: 'appointments', permission: 'appointments.create' } },
             { path: 'appointments/:id/edit', component: BusinessAppointments, props: { form: true }, meta: { clinicModule: 'appointments', permission: 'appointments.update' } },
             { path: 'appointments/:id/reschedule', component: BusinessAppointments, props: { form: true }, meta: { clinicModule: 'appointments', permission: 'appointments.reschedule', reschedule: true } },
@@ -177,7 +178,9 @@ const router = createRouter({
                 { path: 'billing', component: BillingIndex, props: { patientId: route => Number(route.params.id) }, meta: { permission: 'billing.view', feature: 'billing' } },
                 ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null]].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
-            { path: 'billing', component: BillingIndex, meta: { clinicModule: 'billing', permission: 'billing.view' } },
+            { path: 'billing', component: () => import('../pages/billing/BusinessBilling.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
+            { path: 'billing/invoices', component: () => import('../pages/billing/Ledger.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
+            { path: 'billing/invoices/:id', component: () => import('../pages/billing/Ledger.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
             { path: 'staff', component: () => import('../pages/staff/Index.vue'), meta: { clinicModule: 'staff', permission: 'staff.view' } },
             { path: 'reports', component: ReportsIndex, meta: { clinicModule: 'reports' } },
             { path: 'reports/generate/:type', component: ReportsGenerate, meta: { clinicModule: 'reports' } },
@@ -221,6 +224,7 @@ router.beforeEach(async (to, from) => {
             to.meta.businessModule = entry?.business_modules || [];
             to.meta.planFeature = entry?.feature;
             if (to.meta.create) to.meta.permission = to.meta.clinicModule + '.create';
+            if (to.meta.salonOnly && clinic.businessTypeSlug !== 'beauty-salon') return { name: 'clinic.access', query: { reason: 'BUSINESS_MODULE_UNAVAILABLE', module: 'appointments' } };
             const reason = !clinic.data.operational ? clinic.data.restriction_code : (to.meta.clinicSettings && clinic.data.settings_business_access?.[to.params.section] === false) ? 'BUSINESS_MODULE_UNAVAILABLE' : accessDenial(clinic.data, to.meta);
             if (reason) return { name: 'clinic.access', query: { reason, module: to.meta.clinicModule } };
             if (!clinic.hasBusinessModule('clinical') && (to.meta.clinicModule === 'reports' || (to.meta.clinicModule === 'billing' && clinic.businessTypeSlug !== 'beauty-salon'))) {

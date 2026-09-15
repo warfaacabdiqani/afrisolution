@@ -10,4 +10,5 @@ class SalonClient extends Model {
     public function getFullNameAttribute(): string { return implode(' ',array_filter([$this->first_name,$this->middle_name,$this->last_name])); }
     public function preferredStylist() { return $this->belongsTo(SalonStaffProfile::class,'preferred_stylist_id'); }
     public function branch() { return $this->belongsTo(Branch::class); }
+    public function appointments() { return $this->hasMany(SalonAppointment::class,'client_id'); }
 }

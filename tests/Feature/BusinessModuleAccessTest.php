@@ -47,7 +47,7 @@ class BusinessModuleAccessTest extends TestCase
         foreach (['beauty-salon' => ['Client', 'Salon Settings'], 'stadium' => ['Customer', 'Stadium Settings']] as $slug => [$label, $settings]) {
             $this->workspace($slug);
             $data = $this->getJson('/api/v1/clinic/context')->assertOk()->assertJsonPath('data.labels.customer', $label)->assertJsonPath('data.business_profile.settings_label', $settings)->json('data');
-            $this->assertSame(['dashboard', 'billing', 'reports', 'staff', 'support', 'settings'], collect($data['modules'])->where('allowed', true)->pluck('key')->all());
+            $this->assertSame($slug==='beauty-salon'?['dashboard','appointments','billing','reports','staff','support','settings']:['dashboard', 'billing', 'reports', 'staff', 'support', 'settings'], collect($data['modules'])->where('allowed', true)->pluck('key')->all());
             foreach (['patients', 'appointments', 'doctors', 'consultations', 'prescriptions', 'pharmacy'] as $module) {
                 $this->getJson('/api/v1/clinic/modules/'.$module)->assertForbidden()->assertJsonPath('code', 'BUSINESS_MODULE_UNAVAILABLE');
             }
@@ -100,15 +100,24 @@ class BusinessModuleAccessTest extends TestCase
             $queries = DB::getQueryLog(); DB::disableQueryLog();
             foreach ($queries as $query) $this->assertDoesNotMatchRegularExpression('/(?:from|join) ["`]?(patients|doctors|appointments|consultations|prescriptions)\b/i', $query['query']);
             $widgets = collect($data['widgets'])->keyBy('key');
-            $this->assertSame(['staff_count', 'branch_count', 'subscription', 'monthly_revenue'], $widgets->keys()->all());
-            $this->assertSame(1, $widgets['staff_count']['value']);
-            $this->assertSame(1, $widgets['branch_count']['value']);
-            $this->assertSame('Complete', $widgets['subscription']['value']);
-            $this->assertNull($widgets['monthly_revenue']['value']);
-            $this->assertFalse($widgets['monthly_revenue']['available']);
+            if ($slug==='beauty-salon') {
+                $this->assertSame(['total_clients','today_appointments','active_stylists','monthly_revenue'],$widgets->keys()->all());
+                $this->assertNull($widgets['total_clients']['value']); // Plan omits salon client access.
+                $this->assertNull($widgets['active_stylists']['value']);
+                $this->assertSame(0,$widgets['today_appointments']['value']);
+                $this->assertEquals(0,$widgets['monthly_revenue']['value']);
+                $this->assertTrue($widgets['monthly_revenue']['available']);
+            } else {
+                $this->assertSame(['staff_count', 'branch_count', 'subscription', 'monthly_revenue'], $widgets->keys()->all());
+                $this->assertSame(1, $widgets['staff_count']['value']);
+                $this->assertSame(1, $widgets['branch_count']['value']);
+                $this->assertSame('Complete', $widgets['subscription']['value']);
+                $this->assertNull($widgets['monthly_revenue']['value']);
+                $this->assertFalse($widgets['monthly_revenue']['available']);
+            }
             $this->assertSame(['business_information'], array_keys($data['sections']));
             $this->assertSame($title, $data['sections']['business_information']['title']);
-            $this->assertSame([], $data['quick_actions']);
+            $this->assertSame($slug==='beauty-salon'?['book_appointment']:[], array_column($data['quick_actions'],'key'));
         }
     }
 

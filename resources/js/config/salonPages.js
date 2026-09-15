@@ -22,7 +22,7 @@ export const salonPages = {
 };
 export const salonPath = kind => '/app/' + (salonPages[kind].path || kind);
 export function salonValue(value,key,currency='USD') {
-    if (key==='last_visit') return 'Not available yet';
+    if (key==='last_visit') return value ? value.slice(0,16) : 'No completed visit';
     if (value === null || value === undefined || value === '') return '�';
     if (Array.isArray(value)) return value.map(row=>row.display_name || row.name).join(', ') || '�';
     if (typeof value==='object') return value.display_name || value.name || '�';

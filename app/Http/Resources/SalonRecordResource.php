@@ -9,9 +9,13 @@ class SalonRecordResource extends JsonResource
         $record = $this->resource;
         $context = $request->attributes->get('salon_context');
         $data = ['id'=>$this->id,'status'=>$this->status,'created_at'=>$this->created_at?->toISOString(),'updated_at'=>$this->updated_at?->toISOString()];
+        $historyAllowed = ($context['modules']->firstWhere('key','appointments')['allowed'] ?? false);
+        $history = $record instanceof SalonClient && $historyAllowed ? app(\App\Services\SalonBookingService::class)->visible($context)->where('client_id',$record->id)->where('branch_id',$context['branch']->id) : null;
         if ($record instanceof SalonClient) return $data + $record->only(['client_number','first_name','middle_name','last_name','gender','phone','email','address','notes','preferred_stylist_id','branch_id']) + [
             'full_name'=>$record->full_name,'date_of_birth'=>$record->date_of_birth?->toDateString(),'preferred_stylist'=>$record->preferredStylist?->only(['id','display_name','status']),
-            'last_visit'=>null,'history_available'=>false,'editable'=>$record->status!=='archived',
+            'last_visit'=>$history ? (clone $history)->where('status','completed')->max('starts_at') : null,
+            'next_appointment'=>$history ? (clone $history)->whereNotIn('status',['completed','cancelled','no_show'])->where('starts_at','>=',now($context['clinic']->timezone)->format('Y-m-d H:i:s'))->min('starts_at') : null,
+            'history_available'=>$historyAllowed,'editable'=>$record->status!=='archived',
         ];
         if ($record instanceof SalonStaffProfile || $record instanceof SalonService) {
             $data['editable']=$record->status!=='archived' && $record->branches->pluck('id')->diff($context['branches']->pluck('id'))->isEmpty();

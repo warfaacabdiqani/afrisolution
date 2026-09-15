@@ -38,12 +38,17 @@ class SalonScheduleController extends Controller
             app(BookingCore::class)->lock($c['clinic']->id);
             $availability=app(SalonBookingAvailability::class);
             foreach($data['days'] as $day) {
+                $day['day_of_week']=(int)$day['day_of_week'];
                 if ($day['start_time'] >= $day['end_time']) throw ValidationException::withMessages(['days'=>'Working end must be after working start.']);
                 $breakStart=$day['break_start']??null; $breakEnd=$day['break_end']??null;
                 if (($breakStart || $breakEnd) && (!$breakStart || !$breakEnd || $breakStart < $day['start_time'] || $breakEnd > $day['end_time'] || $breakStart >= $breakEnd)) throw ValidationException::withMessages(['days'=>'Provide a complete break within working hours.']);
                 if ($stylist && $day['is_available']) {
                     $hours=$availability->table('salon_location_hours',$c)->where('branch_id',$branch)->where('day_of_week',$day['day_of_week'])->first();
                     if (!$hours || !$hours->is_available || $day['start_time'] < substr($hours->start_time,0,5) || $day['end_time'] > substr($hours->end_time,0,5)) throw ValidationException::withMessages(['days'=>'Stylist working hours must fit within configured location hours.']);
+                }
+                if (!$stylist) {
+                    $staffHours=$availability->table('salon_staff_schedules',$c)->where('branch_id',$branch)->where('day_of_week',$day['day_of_week'])->where('is_available',true)->get();
+                    foreach ($staffHours as $hours) if (!$day['is_available'] || substr($hours->start_time,0,5)<$day['start_time'] || substr($hours->end_time,0,5)>$day['end_time']) throw ValidationException::withMessages(['days'=>'Adjust stylist schedules before reducing location working hours.']);
                 }
                 $future=\App\Models\SalonAppointment::where('branch_id',$branch)->when($stylist,fn($q)=>$q->where('stylist_id',$stylist))->whereNotIn('status',['completed','cancelled','no_show'])->where('ends_at','>',now($c['clinic']->timezone)->format('Y-m-d H:i:s'))->get();
                 foreach ($future as $a) if (Carbon::parse($a->starts_at)->isoWeekday() === $day['day_of_week'] && (!$day['is_available'] || substr($a->starts_at,11,5) < $day['start_time'] || substr($a->ends_at,11,5) > $day['end_time'] || ($breakStart && BookingCore::overlaps(substr($a->starts_at,11,5),substr($a->ends_at,11,5),$breakStart,$breakEnd)))) throw ValidationException::withMessages(['days'=>'Reschedule existing appointments before changing these working hours.']);
@@ -61,13 +66,16 @@ class SalonScheduleController extends Controller
     }
     public function createTimeOff(Request $r, int $stylist) {
         [$c]=$this->scope($r,$stylist,true);
+        app(\App\Services\SalonAccessService::class)->canEditLocations(SalonStaffProfile::findOrFail($stylist),'stylists',$c);
         $data=$r->validate(['starts_at'=>'required|date_format:Y-m-d H:i','ends_at'=>'required|date_format:Y-m-d H:i|after:starts_at','kind'=>'required|in:leave,day_off,unavailable','reason'=>'nullable|string|max:1000']);
         $id=DB::transaction(function() use($c,$stylist,$data) {
             app(BookingCore::class)->lock($c['clinic']->id);
             $a=app(SalonBookingAvailability::class);
             // Time off affects this stylist at every location; never hide conflicting bookings at another location.
             $query=\App\Models\SalonAppointment::where('stylist_id',$stylist)->whereNotIn('status',['completed','cancelled','no_show']);
-            if (app(BookingCore::class)->conflicts($query,$data['starts_at'].':00',$data['ends_at'].':00')->exists()) throw ValidationException::withMessages(['starts_at'=>'Reschedule existing appointments before adding time off.']);
+            $buffer=(int)app(\App\Services\ClinicSettingsService::class)->get($c['clinic']->id,'salon.buffer_minutes',0);
+            $start=Carbon::parse($data['starts_at'])->subMinutes($buffer)->format('Y-m-d H:i:s');
+            if (app(BookingCore::class)->conflicts($query,$start,$data['ends_at'].':00')->exists()) throw ValidationException::withMessages(['starts_at'=>'Reschedule existing appointments before adding time off.']);
             $id=DB::table('salon_staff_time_off')->insertGetId($data+['tenant_id'=>$c['clinic']->id,'stylist_id'=>$stylist,'created_at'=>now(),'updated_at'=>now()]);
             app(PlatformService::class)->audit(request()->user()->id,'salon.time_off.created','tenant',$c['clinic']->id,['stylist_id'=>$stylist,'time_off_id'=>$id]);
             return $id;
@@ -76,6 +84,7 @@ class SalonScheduleController extends Controller
     }
     public function cancelTimeOff(Request $r, int $stylist, int $id) {
         [$c]=$this->scope($r,$stylist,true);
+        app(\App\Services\SalonAccessService::class)->canEditLocations(SalonStaffProfile::findOrFail($stylist),'stylists',$c);
         DB::transaction(function() use($c,$stylist,$id) {
             app(BookingCore::class)->lock($c['clinic']->id);
             $q=app(SalonBookingAvailability::class)->table('salon_staff_time_off',$c)->where('stylist_id',$stylist)->where('id',$id); $q->firstOrFail(); $q->update(['status'=>'cancelled','updated_at'=>now()]);

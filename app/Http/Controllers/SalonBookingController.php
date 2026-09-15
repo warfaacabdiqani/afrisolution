@@ -21,7 +21,7 @@ class SalonBookingController extends Controller
         if (!empty($data['service_id'])) $query->whereHas('items',fn($q)=>$q->where('service_id',$data['service_id']));
         if (!empty($data['search'])) {
             $term = '%'.$data['search'].'%';
-            $query->where(fn($q)=>$q->where('appointment_number','like',$term)->orWhereHas('client',fn($q)=>$q->where('first_name','like',$term)->orWhere('last_name','like',$term)->orWhereRaw("TRIM(first_name || ' ' || last_name) LIKE ?",[$term])->orWhere('phone','like',$term))->orWhereHas('stylist',fn($q)=>$q->where('display_name','like',$term))->orWhereHas('items',fn($q)=>$q->where('name','like',$term)));
+            $query->where(fn($q)=>$q->where('appointment_number','like',$term)->orWhereHas('client',fn($q)=>$q->where('first_name','like',$term)->orWhere('last_name','like',$term)->orWhere(function($q) use($data) { foreach(preg_split('/\s+/',trim($data['search'])) as $word) $q->where(fn($q)=>$q->where('first_name','like','%'.$word.'%')->orWhere('middle_name','like','%'.$word.'%')->orWhere('last_name','like','%'.$word.'%')); })->orWhere('phone','like',$term))->orWhereHas('stylist',fn($q)=>$q->where('display_name','like',$term))->orWhereHas('items',fn($q)=>$q->where('name','like',$term)));
         }
         $todayQuery = (clone $query)->where('starts_at','>=',$c['today'].' 00:00:00')->where('starts_at','<',Carbon::parse($c['today'])->addDay()->format('Y-m-d').' 00:00:00');
         $summary = (clone $todayQuery)->reorder()->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total','status');
@@ -106,6 +106,9 @@ class SalonBookingController extends Controller
         $last=(clone $query)->where('status','completed')->max('starts_at');
         $next=(clone $query)->whereNotIn('status',['completed','cancelled','no_show'])->where('starts_at','>=',now($c['clinic']->timezone)->format('Y-m-d H:i:s'))->min('starts_at');
         $count=(clone $query)->count();
-        return SalonAppointmentResource::collection($query->with(['client','stylist','branch','items','invoice'])->orderByDesc('starts_at')->paginate(25))->additional(['last_visit'=>$last,'next_appointment'=>$next,'booking_count'=>$count]);
+        $query->with(['client','stylist','branch','items','invoice']);
+        $today=(clone $query)->whereDate('starts_at',$c['today'])->orderBy('starts_at')->limit(25)->get();
+        $upcoming=(clone $query)->whereNotIn('status',['completed','cancelled','no_show'])->where('starts_at','>=',now($c['clinic']->timezone)->format('Y-m-d H:i:s'))->orderBy('starts_at')->limit(10)->get();
+        return SalonAppointmentResource::collection($query->orderByDesc('starts_at')->paginate(25))->additional(['last_visit'=>$last,'next_appointment'=>$next,'booking_count'=>$count,'today'=>SalonAppointmentResource::collection($today),'upcoming'=>SalonAppointmentResource::collection($upcoming)]);
     }
 }

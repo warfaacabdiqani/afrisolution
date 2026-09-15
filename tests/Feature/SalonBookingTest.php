@@ -54,6 +54,8 @@ class SalonBookingTest extends TestCase
         $this->postJson('/api/v1/billing/invoices/'.$invoice.'/payments',$payment)->assertOk(); $this->assertDatabaseCount('billing_payments',1);
         $this->postJson('/api/v1/billing/invoices/'.$invoice.'/payments',['amount'=>26,'method'=>'cash','idempotency_key'=>'two'])->assertUnprocessable();
         $this->postJson('/api/v1/billing/invoices/'.$invoice.'/payments',['amount'=>25,'method'=>'cash','idempotency_key'=>'two'])->assertOk()->assertJsonPath('data.status','paid');
+        $this->getJson('/api/v1/salon/clients/'.$c['client'])->assertOk()->assertJsonPath('data.last_visit','2026-10-07 10:00:00')->assertJsonPath('data.history_available',true);
+        foreach (['clients'=>$c['client'],'stylists'=>$c['stylist'],'services'=>$c['service']] as $kind=>$record) $this->getJson('/api/v1/salon/booking-history/'.$kind.'/'.$record)->assertOk()->assertJsonPath('booking_count',1)->assertJsonCount(1,'data');
         $widgets=collect($this->getJson('/api/v1/clinic/dashboard')->assertOk()->json('data.widgets'))->keyBy('key');
         $this->assertEquals(45,$widgets['monthly_revenue']['value']); $this->assertEquals(1,$widgets['today_appointments']['value']);
         $this->postJson(self::ROOT.'/'.$id.'/cancel',['reason'=>'Too late'])->assertUnprocessable();
@@ -96,9 +98,15 @@ class SalonBookingTest extends TestCase
     }
 
     public function test_tenant_isolation_and_business_and_action_permissions(): void {
-        $a=$this->fixture('a'); $id=$this->create($a); $b=$this->fixture('b');
+        $a=$this->fixture('a'); $id=$this->create($a);
+        foreach(['check-in','start-service','complete'] as $action) $this->postJson(self::ROOT.'/'.$id.'/'.$action)->assertOk();
+        $invoice=$this->postJson(self::ROOT.'/'.$id.'/invoice')->assertCreated()->json('data.id');
+        $b=$this->fixture('b');
         $this->getJson(self::ROOT.'/'.$id)->assertNotFound();
         $this->postJson(self::ROOT.'/'.$id.'/check-in')->assertNotFound();
+        $this->getJson('/api/v1/billing/invoices/'.$invoice)->assertNotFound();
+        $this->postJson('/api/v1/billing/invoices/'.$invoice.'/payments',['amount'=>15,'method'=>'cash','idempotency_key'=>'foreign'])->assertNotFound();
+        $this->getJson('/api/v1/salon/booking-history/clients/'.$a['client'])->assertNotFound();
         $this->postJson(self::ROOT,$this->data($b,['client_id'=>$a['client']]))->assertUnprocessable();
         $this->postJson(self::ROOT,$this->data($b,['stylist_id'=>$a['stylist']]))->assertUnprocessable();
         $this->postJson(self::ROOT,$this->data($b,['service_ids'=>[$a['service']]]))->assertUnprocessable();
@@ -108,5 +116,49 @@ class SalonBookingTest extends TestCase
         foreach(['check-in','start-service','complete','cancel'] as $action) $this->postJson(self::ROOT.'/'.$own.'/'.$action,['reason'=>'Denied'])->assertForbidden();
         $this->postJson(self::ROOT.'/'.$own.'/invoice')->assertForbidden();
         foreach(['clinic','dental','stadium'] as $type) { $this->workspace($type,$type); $this->getJson(self::ROOT.'/options')->assertForbidden()->assertJsonPath('code','BUSINESS_MODULE_UNAVAILABLE'); }
+    }
+
+    public function test_buffer_override_no_show_search_and_calendar_filters(): void {
+        $c=$this->fixture();$id=$this->create($c);
+        app(ClinicSettingsService::class)->set($c['tenant']->id,'salon',['buffer_minutes'=>15,'allow_overbooking'=>true],$c['user']->id);
+        $this->postJson(self::ROOT,$this->data($c,['start_time'=>'10:30']))->assertUnprocessable();
+        $this->create($c,['start_time'=>'10:45']);
+        $other=$this->postJson('/api/v1/salon/clients',['first_name'=>'Other','last_name'=>'Client','status'=>'active'])->assertCreated()->json('data.id');
+        $this->create($c,['client_id'=>$other,'override_conflict'=>true,'override_reason'=>'Reception approved']);
+        $this->postJson(self::ROOT.'/'.$id.'/no-show')->assertUnprocessable();
+        $this->travelTo(Carbon::parse('2026-10-07 08:00:00','UTC'));
+        $this->postJson(self::ROOT.'/'.$id.'/no-show')->assertOk()->assertJsonPath('data.status','no_show');
+        foreach(['Amina Ali','0700112233','Asha','Haircut','APT-000002'] as $term) {
+            $response=$this->getJson(self::ROOT.'?'.http_build_query(['start'=>'2026-10-07','end'=>'2026-10-07','search'=>$term]))->assertOk();
+            $this->assertGreaterThan(0,$response->json('meta.total'));
+        }
+        $this->getJson(self::ROOT.'?'.http_build_query(['start'=>'2026-10-07','end'=>'2026-10-07','status'=>'no_show']))->assertOk()->assertJsonPath('meta.total',1);
+        $this->getJson(self::ROOT.'?start=2026-01-01&end=2026-12-31')->assertUnprocessable();
+    }
+
+    public function test_schedule_and_location_permissions_and_reschedule_cannot_edit_notes(): void {
+        $c=$this->fixture();$id=$this->create($c,['notes'=>'Original']);
+        $short=$this->days();$short[0]['start_time']='07:00';
+        $this->putJson('/api/v1/salon/stylists/'.$c['stylist'].'/schedule',['branch_id'=>$c['branch'],'days'=>$short])->assertUnprocessable();
+        $member=DB::table('tenant_memberships')->where('tenant_id',$c['tenant']->id)->first();
+        DB::table('tenant_memberships')->where('id',$member->id)->update(['permissions'=>json_encode(['appointments.view','appointments.view_all','appointments.reschedule'])]);
+        $this->putJson(self::ROOT.'/'.$id,$this->data($c,['notes'=>'Unauthorized']))->assertForbidden();
+        $this->postJson(self::ROOT.'/'.$id.'/reschedule',$this->data($c,['start_time'=>'14:00','notes'=>'Unauthorized']))->assertOk()->assertJsonPath('data.notes','Original');
+        $this->putJson('/api/v1/salon/stylists/'.$c['stylist'].'/schedule',['branch_id'=>$c['branch'],'days'=>$this->days()])->assertForbidden();
+        $this->putJson('/api/v1/salon/location-hours',['branch_id'=>$c['branch'],'days'=>$this->days()])->assertForbidden();
+        $branch=DB::table('branches')->insertGetId(['tenant_id'=>$c['tenant']->id,'name'=>'Restricted','status'=>'active']);
+        DB::table('tenant_memberships')->where('id',$member->id)->update(['all_branches'=>false]);
+        DB::table('branch_memberships')->insert(['tenant_id'=>$c['tenant']->id,'membership_id'=>$member->id,'branch_id'=>$c['branch']]);
+        $this->getJson(self::ROOT.'/options?branch_id='.$branch)->assertForbidden();
+        $this->getJson('/api/v1/salon/location-hours?branch_id='.$branch)->assertForbidden();
+        $this->withHeader('X-Branch-Context',(string)$branch)->getJson(self::ROOT.'/'.$id)->assertStatus(409);
+    }
+
+    public function test_sql_constraint_rejects_a_cross_tenant_client_even_without_the_api(): void {
+        $a=$this->fixture('constraint-a');$id=$this->create($a);$b=$this->fixture('constraint-b');
+        $row=(array)DB::table('salon_appointments')->where('id',$id)->first();
+        unset($row['id']);$row['appointment_number']='APT-FORGED';$row['client_id']=$b['client'];
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        DB::table('salon_appointments')->insert($row);
     }
 }

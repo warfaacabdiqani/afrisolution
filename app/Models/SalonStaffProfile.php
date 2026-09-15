@@ -9,4 +9,7 @@ class SalonStaffProfile extends Model {
     public function user() { return $this->belongsTo(User::class); }
     public function branches() { return $this->belongsToMany(Branch::class,'salon_staff_branch')->withPivot('tenant_id'); }
     public function services() { return $this->belongsToMany(SalonService::class,'salon_service_staff','salon_staff_profile_id','service_id')->withPivot('tenant_id'); }
+    public function appointments() { return $this->hasMany(SalonAppointment::class,'stylist_id'); }
+    public function schedules() { return $this->hasMany(SalonStaffSchedule::class,'stylist_id'); }
+    public function timeOff() { return $this->hasMany(SalonStaffTimeOff::class,'stylist_id'); }
 }

@@ -85,6 +85,7 @@ class SalonBookingService
             if ($discount > $subtotal) throw ValidationException::withMessages(['discount'=>'Discount cannot exceed the service subtotal.']);
             $taxRate = $id ? $a->tax_rate : $settings['default_service_tax'];
             $tax = (int)round(($subtotal - $discount) * (float)$taxRate / 100);
+            if ($subtotal > 999999999999 || $subtotal-$discount+$tax > 999999999999) throw ValidationException::withMessages(['service_ids'=>'The appointment total exceeds the supported amount.']);
             $limit = $c['limits']['appointment_limit'] ?? null;
             if ($limit !== null && (!$id || substr($a->starts_at, 0, 7) !== $start->format('Y-m')) && SalonAppointment::when($id, fn ($q) => $q->where('id','!=',$id))->where('starts_at','>=',$start->copy()->startOfMonth()->format('Y-m-d H:i:s'))->where('starts_at','<',$start->copy()->startOfMonth()->addMonth()->format('Y-m-d H:i:s'))->count() >= $limit) throw ValidationException::withMessages(['plan'=>'Your monthly appointment limit has been reached.']);
             $before = $id ? $a->only(['starts_at','ends_at','stylist_id','branch_id']) : [];
