@@ -36,7 +36,7 @@ class DashboardProfileService
             $patientCount = (clone $patients)->count();
             $recentPatients = PatientResource::collection($patients->latest('registered_at')->latest('id')->limit(5)->get())->resolve($request);
         }
-        if ($appointmentsAllowed) {
+        if ($appointmentsAllowed && !empty($context['business_modules']['clinical'])) {
             $appointments = app(AppointmentService::class)->visible($context)->where('branch_id', $context['branch']->id);
             $today = (clone $appointments)->where('starts_at', '>=', $context['today'].' 00:00:00')->where('starts_at', '<', Carbon::parse($context['today'])->addDay()->toDateString().' 00:00:00');
             $appointmentCount = (clone $today)->count();
@@ -47,11 +47,18 @@ class DashboardProfileService
         // There is no invoice/payment ledger yet. Never estimate revenue from appointments.
         $values = ['total_patients' => $patientCount, 'today_appointments' => $appointmentCount, 'active_doctors' => $doctors,
             'monthly_revenue' => null, 'staff_count' => $staffCount, 'branch_count' => $context['branches']->count(), 'subscription' => $context['plan']['name'] ?? null];
+        if ($profile === 'beauty-salon') {
+            $values['total_clients'] = $allowed('clients') ? \App\Models\SalonClient::where('branch_id',$context['branch']->id)->where('status','active')->count() : null;
+            $values['active_stylists'] = $allowed('stylists') ? \App\Models\SalonStaffProfile::where('status','active')->whereHas('branches',fn($q)=>$q->where('branches.id',$context['branch']->id))->whereHas('user',fn($q)=>$q->where('status','active'))->count() : null;
+            $values['today_appointments'] = $allowed('appointments') ? app(SalonBookingService::class)->visible($context)->where('branch_id',$context['branch']->id)->whereDate('starts_at',$context['today'])->count() : null;
+            $currency = app(ClinicSettingsService::class)->get($context['clinic']->id,'general.currency','USD');
+            $values['monthly_revenue'] = $allowed('billing') ? (float)\App\Models\BillingPayment::whereHas('invoice',fn($q)=>$q->where('branch_id',$context['branch']->id)->where('currency',$currency))->where('paid_at','>=',Carbon::parse($context['today'],$context['clinic']->timezone)->startOfMonth()->utc())->where('paid_at','<',Carbon::parse($context['today'],$context['clinic']->timezone)->startOfMonth()->addMonth()->utc())->sum('amount') : null;
+        }
         $widgets = collect($definition['widgets'])->filter(fn ($key) => $context['modules']->firstWhere('key', config('dashboard.widgets.'.$key.'.module'))['business_allowed'] ?? false)->map(function ($key) use ($values, $allowed, $context) {
             $widget = config('dashboard.widgets.'.$key);
             $available = $allowed($widget['module']) && $values[$key] !== null;
             return ['key' => $key] + $widget + ['value' => $available ? $values[$key] : null, 'available' => $available,
-                'currency' => $context['plan']['currency'] ?? 'USD',
+                'currency' => app(ClinicSettingsService::class)->get($context['clinic']->id,'general.currency',$context['plan']['currency'] ?? 'USD'),
                 'description' => $available ? ($key === 'staff_count' ? 'Active members in this location' : ($key === 'branch_count' ? 'Authorized locations' : 'Current summary')) : ($key === 'monthly_revenue' && $allowed('billing') ? 'Billing transactions are not implemented yet.' : 'Not available with your access')];
         })->values()->all();
         $sections = [];

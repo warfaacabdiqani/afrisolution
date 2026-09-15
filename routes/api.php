@@ -71,7 +71,32 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('tenants/{tenant}/branches', [ProvisioningController::class, 'branches'])->middleware('platform.permission:tenants.view');
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
+    Route::prefix('billing')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('invoices', [\App\Http\Controllers\BillingController::class, 'index']);
+        Route::get('invoices/{id}', [\App\Http\Controllers\BillingController::class, 'show'])->whereNumber('id');
+        Route::post('invoices/{id}/payments', [\App\Http\Controllers\BillingController::class, 'payment'])->whereNumber('id');
+    });
     Route::prefix('salon')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('booking-history/{kind}/{id}', [\App\Http\Controllers\SalonBookingController::class, 'history'])->whereIn('kind',['clients','stylists','services'])->whereNumber('id');
+        Route::get('appointments/options', [\App\Http\Controllers\SalonBookingController::class, 'options']);
+        Route::get('appointments/clients', [\App\Http\Controllers\SalonBookingController::class, 'clients']);
+        Route::get('appointments/available-slots', [\App\Http\Controllers\SalonBookingController::class, 'slots']);
+        Route::get('appointments/available-stylists', [\App\Http\Controllers\SalonBookingController::class, 'availableStylists']);
+        Route::get('appointments', [\App\Http\Controllers\SalonBookingController::class, 'index']);
+        Route::post('appointments', [\App\Http\Controllers\SalonBookingController::class, 'store']);
+        Route::get('appointments/{id}', [\App\Http\Controllers\SalonBookingController::class, 'show'])->whereNumber('id');
+        Route::put('appointments/{id}', [\App\Http\Controllers\SalonBookingController::class, 'update'])->whereNumber('id');
+        Route::post('appointments/{id}/reschedule', [\App\Http\Controllers\SalonBookingController::class, 'reschedule'])->whereNumber('id');
+        Route::get('appointments/{id}/activity', [\App\Http\Controllers\SalonBookingController::class, 'activity'])->whereNumber('id');
+        Route::post('appointments/{id}/invoice', [\App\Http\Controllers\BillingController::class, 'fromSalon'])->whereNumber('id');
+        Route::post('appointments/{id}/{action}', [\App\Http\Controllers\SalonBookingController::class, 'status'])->whereNumber('id')->whereIn('action', array_keys(config('salon_booking.actions')));
+        Route::get('location-hours', [\App\Http\Controllers\SalonScheduleController::class, 'hours']);
+        Route::put('location-hours', [\App\Http\Controllers\SalonScheduleController::class, 'saveHours']);
+        Route::get('stylists/{stylist}/schedule', [\App\Http\Controllers\SalonScheduleController::class, 'schedule'])->whereNumber('stylist');
+        Route::put('stylists/{stylist}/schedule', [\App\Http\Controllers\SalonScheduleController::class, 'saveSchedule'])->whereNumber('stylist');
+        Route::get('stylists/{stylist}/time-off', [\App\Http\Controllers\SalonScheduleController::class, 'timeOff'])->whereNumber('stylist');
+        Route::post('stylists/{stylist}/time-off', [\App\Http\Controllers\SalonScheduleController::class, 'createTimeOff'])->whereNumber('stylist');
+        Route::post('stylists/{stylist}/time-off/{id}/cancel', [\App\Http\Controllers\SalonScheduleController::class, 'cancelTimeOff'])->whereNumber(['stylist','id']);
         foreach (['clients'=>\App\Http\Controllers\ClientController::class,'stylists'=>\App\Http\Controllers\SalonStaffController::class,'services'=>\App\Http\Controllers\SalonServiceController::class,'service-categories'=>\App\Http\Controllers\SalonServiceCategoryController::class] as $path=>$controller) {
             Route::get($path.'/options',[$controller,'options']);
             Route::get($path,[$controller,'index']);

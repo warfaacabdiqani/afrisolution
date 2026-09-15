@@ -13,7 +13,7 @@ class SalonRecordRules
         $locations = ['branch_ids'=>'required|array|min:1','branch_ids.*'=>'required|integer|distinct'];
         if ($kind === 'clients') $rules += [
             'first_name'=>'required|string|max:100','middle_name'=>'nullable|string|max:100','last_name'=>'required|string|max:100',
-            'gender'=>['nullable',Rule::in(['female','male','other','prefer_not_to_say'])],'date_of_birth'=>'nullable|date_format:Y-m-d|before_or_equal:today',
+            'gender'=>['nullable',Rule::in(['male','female'])],'date_of_birth'=>'nullable|date_format:Y-m-d|before_or_equal:today',
             'phone'=>'nullable|string|max:40','email'=>'nullable|email|max:255','address'=>'nullable|string|max:2000','notes'=>'nullable|string|max:5000','status'=>$status,
             'preferred_stylist_id'=>['nullable','integer',Rule::exists('salon_staff_profiles','id')->where('tenant_id',$tenant)->where('status','active')],
         ];

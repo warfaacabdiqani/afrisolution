@@ -7,8 +7,8 @@ return [
             'quick_actions' => ['add_patient', 'book_appointment', 'create_prescription'],
         ],
         'beauty-salon' => [
-            'widgets' => ['staff_count', 'branch_count', 'subscription', 'monthly_revenue'],
-            'sections' => ['business_information'], 'quick_actions' => [],
+            'widgets' => ['total_clients', 'today_appointments', 'active_stylists', 'monthly_revenue'],
+            'sections' => ['business_information'], 'quick_actions' => ['book_appointment'],
         ],
         'stadium' => [
             'widgets' => ['staff_count', 'branch_count', 'subscription', 'monthly_revenue'],
@@ -16,6 +16,8 @@ return [
         ],
     ],
     'widgets' => [
+        'total_clients' => ['label' => 'Total Clients', 'format' => 'number', 'module' => 'clients', 'icon' => 'members', 'tone' => 'mint'],
+        'active_stylists' => ['label' => 'Active Stylists', 'format' => 'number', 'module' => 'stylists', 'icon' => 'doctor', 'tone' => 'blue'],
         'total_patients' => ['label' => 'Total Patients', 'format' => 'number', 'module' => 'patients', 'icon' => 'members', 'tone' => 'mint'],
         'today_appointments' => ['label' => "Today's Appointments", 'format' => 'number', 'module' => 'appointments', 'icon' => 'calendar', 'tone' => 'blue'],
         'active_doctors' => ['label' => 'Active Doctors', 'format' => 'number', 'module' => 'doctors', 'icon' => 'doctor', 'tone' => 'blue'],

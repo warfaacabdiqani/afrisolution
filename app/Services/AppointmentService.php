@@ -37,7 +37,7 @@ class AppointmentService
     public function save(array $context, array $data, ?int $id = null, bool $reschedule = false): Appointment
     {
         return DB::transaction(function () use ($context, $data, $id) {
-            $tenant = Tenant::lockForUpdate()->findOrFail($context['clinic']->id);
+            $tenant = app(BookingCore::class)->lock($context['clinic']->id);
             $a = $id ? $this->find($context, $id) : new Appointment;
             if ($id && in_array($a->status, array_merge(config('appointments.terminal'), ['in_consultation']))) {
                 throw ValidationException::withMessages(['status' => 'This appointment can no longer be edited or rescheduled.']);
@@ -85,8 +85,7 @@ class AppointmentService
             $a->is_walk_in = $walkIn;
             $a->updated_by = request()->user()->id;
             if (! $id) {
-                $tenant->increment('appointment_sequence');
-                $a->appointment_number = 'APT-'.str_pad($tenant->appointment_sequence, 6, '0', STR_PAD_LEFT);
+                $a->appointment_number = app(BookingCore::class)->number($tenant);
                 $a->created_by = request()->user()->id;
                 $a->status = $walkIn ? ($data['status'] ?? 'waiting') : 'scheduled';
             } elseif ($changed) {

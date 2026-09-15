@@ -38,6 +38,7 @@ class ClinicSettingsService {
         },3);
     }
     public function businessAllowed(array $c, string $section): bool {
+        if ($section === 'appointments' && empty($c['business_modules']['clinical'])) return false;
         $module = $section === 'clinical' ? 'consultations' : $section;
         $requirements = config('clinic.business_module_map.'.$module, []);
         return collect($requirements)->every(fn ($key) => !empty($c['business_modules'][$key]));

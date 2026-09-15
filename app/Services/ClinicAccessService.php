@@ -106,6 +106,9 @@ class ClinicAccessService
         abort_unless($entry, 403, 'This module is not available.');
 
         $this->authorizeBusiness($context, $module);
+        if ($module === 'appointments' && $request->is('api/v1/clinic/*') && empty($context['business_modules']['clinical'])) {
+            $this->deny('BUSINESS_MODULE_UNAVAILABLE', 'This appointment API is for healthcare businesses.');
+        }
 
         $hasFeature = ! $entry['feature'] || (($context['features'][$entry['feature']] ?? false));
         if (!$hasFeature) $this->deny('PLAN_FEATURE_UNAVAILABLE', 'Your current plan does not include this feature.');

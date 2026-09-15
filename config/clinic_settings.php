@@ -9,11 +9,15 @@ $currency = $f('Currency','select','USD','required|in:USD,KES,SOS,ETB,UGX,TZS,RW
 return [
     'salon'=>['label'=>'Salon Preferences','feature'=>null,'fields'=>[
         'default_duration'=>$number('Default Appointment Duration (minutes)',30,5,480),
+        'slot_interval'=>$number('Booking Interval (minutes)',15,5,60),
+        'buffer_minutes'=>$number('Appointment Buffer (minutes)',0,0,120),
+        'allow_overbooking'=>$bool('Allow Overbooking',false),
+        'default_status'=>$f('Default Booking Status','select','scheduled','required|in:scheduled,confirmed',['scheduled','confirmed']),
         'cancellation_policy'=>$f('Cancellation Policy','textarea','','nullable|string|max:2000'),
         'deposit_policy'=>$f('Deposit Policy','textarea','','nullable|string|max:2000'),
         'allow_walk_in'=>$bool('Allow Walk-ins',true),
         'default_service_tax'=>$f('Default Service Tax (%)','number',0,'required|numeric|between:0,100'),
-    ],'notice'=>'Booking preferences will apply when salon booking is available. Currency is shared under General; receipt footers are shared under Documents.'],
+    ],'notice'=>'Booking preferences apply to salon appointments. Configure location business hours under Locations and stylist schedules on each stylist profile.'],
     'general'=>['label'=>'General','feature'=>null,'fields'=>[
         'name'=>$f('Clinic Name','text','','required|string|max:150'), 'code'=>$f('Clinic Code','text','','prohibited',[],'Stable clinic identifier; managed by the platform.',true),
         'email'=>$f('Email','email','','nullable|email|max:255'), 'phone'=>$text('Phone','',40),'alternative_phone'=>$text('Alternative Phone','',40),

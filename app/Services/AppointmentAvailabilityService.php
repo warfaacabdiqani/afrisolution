@@ -57,7 +57,7 @@ class AppointmentAvailabilityService
 
             return null;
         }
-        $conflicts = Appointment::whereNotIn('status', config('appointments.non_blocking'))->when($ignore, fn ($q) => $q->where('id', '!=', $ignore))->where('starts_at', '<', $end->format('Y-m-d H:i:s'))->where('ends_at', '>', $start->format('Y-m-d H:i:s'));
+        $conflicts = app(BookingCore::class)->conflicts(Appointment::whereNotIn('status', config('appointments.non_blocking')), $start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s'), $ignore);
         if ((clone $conflicts)->where('doctor_id', $doctor->id)->exists()) {
             return 'This clinician already has an overlapping appointment.';
         }

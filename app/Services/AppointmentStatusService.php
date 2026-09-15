@@ -15,7 +15,7 @@ class AppointmentStatusService
         abort_unless(app(ClinicAccessService::class)->can($context['permissions'], $definition['permission']), 403);
 
         return DB::transaction(function () use ($context, $id, $action, $data, $definition) {
-            Tenant::lockForUpdate()->findOrFail($context['clinic']->id);
+            app(BookingCore::class)->lock($context['clinic']->id);
             $service = app(AppointmentService::class);
             $a = $service->find($context, $id);
             if (! in_array($a->status, $definition['from'])) {
