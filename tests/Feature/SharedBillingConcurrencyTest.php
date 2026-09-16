@@ -7,6 +7,8 @@ use Tests\TestCase;
 
 class SharedBillingConcurrencyTest extends TestCase
 {
+    protected function worker(): string { return 'tests/Support/shared-billing-worker.php'; }
+    protected function expectedItems(): int { return 2; }
     public function test_simultaneous_invoice_requests_create_one_invoice_and_consume_one_number(): void
     {
         $directory = storage_path('framework/testing');
@@ -16,9 +18,9 @@ class SharedBillingConcurrencyTest extends TestCase
         $env = ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => $database, 'DB_URL' => false, 'CACHE_STORE' => 'array'];
         $workers = [];
         try {
-            (new Process([PHP_BINARY, 'tests/Support/shared-billing-worker.php', 'setup'], base_path(), $env, null, 60))->mustRun();
+            (new Process([PHP_BINARY, $this->worker(), 'setup'], base_path(), $env, null, 60))->mustRun();
             foreach (['1', '2'] as $id) {
-                $workers[] = $process = new Process([PHP_BINARY, 'tests/Support/shared-billing-worker.php', $id], base_path(), $env, null, 40);
+                $workers[] = $process = new Process([PHP_BINARY, $this->worker(), $id], base_path(), $env, null, 40);
                 $process->start();
             }
             $deadline = microtime(true) + 20;
@@ -31,7 +33,7 @@ class SharedBillingConcurrencyTest extends TestCase
             $this->assertSame($results[0], $results[1]);
             $db = new \PDO('sqlite:'.$database);
             $this->assertSame(1, (int) $db->query('SELECT COUNT(*) FROM billing_invoices')->fetchColumn());
-            $this->assertSame(2, (int) $db->query('SELECT COUNT(*) FROM billing_invoice_items')->fetchColumn());
+            $this->assertSame($this->expectedItems(), (int) $db->query('SELECT COUNT(*) FROM billing_invoice_items')->fetchColumn());
             $this->assertSame(1, (int) $db->query('SELECT billing_invoice_sequence FROM tenants')->fetchColumn());
             $db = null;
         } finally {

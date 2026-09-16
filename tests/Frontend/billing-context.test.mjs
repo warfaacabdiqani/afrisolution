@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import * as vue from 'vue';
 
 // Exercise the real composable with Vue reactivity/lifecycle and deliberately late API responses.
-async function harness() {
+async function harness(customer = null) {
     const route = vue.reactive({ params: { id: '10' } });
     const auth = vue.reactive({ user: { active_tenant_id: 1 } });
     const context = vue.reactive({ data: { clinic: { id: 1 }, branch: { id: 11 } },
@@ -14,7 +14,7 @@ async function harness() {
     });
     const requests = [];
     const request = (kind, id, payload, config) => new Promise((resolve, reject) => requests.push({ kind, id, payload, config, resolve, reject }));
-    const api = { list: (page, config) => request('list', page, null, config), show: (id, config) => request('show', id, null, config),
+    const api = { list: (page, config, filter) => request('list', page, filter, config), show: (id, config) => request('show', id, null, config),
         payment: (id, payload, config) => request('payment', id, payload, config) };
     const replacements = [];
     const router = { replace(path) { replacements.push(path); route.params = {}; } };
@@ -35,12 +35,28 @@ async function harness() {
     const renderer = vue.createRenderer({ createElement: () => ({}), createText: () => ({}), createComment: () => ({}),
         insert() {}, remove() {}, setText() {}, setElementText() {}, parentNode() {}, nextSibling() {}, patchProp() {} });
     let state;
-    const app = renderer.createApp({ setup() { state = module.namespace.useBillingLedger(); return () => vue.h('div'); } });
+    const app = renderer.createApp({ setup() { state = module.namespace.useBillingLedger(() => customer); return () => vue.h('div'); } });
     app.mount({});
     return { route, auth, context, requests, replacements, state, stop: () => app.unmount() };
 }
 const flush = async () => { await Promise.resolve(); await vue.nextTick(); await Promise.resolve(); };
 const detail = (name = 'Business A customer') => ({ data: { data: { id: 10, customer: { name }, balance: '45.00' }, methods: ['cash'] } });
+
+test('patient profile IDs are customer filters, never invoice IDs, and changing patient ignores stale history', async () => {
+    const customer = vue.reactive({ customer_type: 'patient', customer_id: 7 });
+    const h = await harness(customer);
+    try {
+        const old = h.requests[0];
+        assert.equal(old.kind, 'list'); assert.equal(old.payload.customer_id, 7);
+        assert.equal(h.state.invoiceId.value, null);
+        customer.customer_id = 8;
+        assert.equal(h.state.data.value, null);
+        assert.equal(h.requests.at(-1).payload.customer_id, 8);
+        h.requests.at(-1).resolve({ data: { data: { data: [], current_page: 1, last_page: 1 }, methods: ['cash'] } }); await flush();
+        old.resolve(detail()); await flush();
+        assert.equal(h.state.data.value.data.length, 0);
+    } finally { h.stop(); }
+});
 
 test('switching business clears detail, payment form and selection, and ignores stale responses', async () => {
     const h = await harness();

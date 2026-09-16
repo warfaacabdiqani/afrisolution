@@ -53,7 +53,6 @@ import PatientActivity from '../pages/patients/tabs/Activity.vue';
 import PatientFuture from '../pages/patients/tabs/Future.vue';
 import ConsultationsIndex from '../pages/consultations/Index.vue';
 import BusinessAppointments from '../pages/appointments/BusinessAppointments.vue';
-import PatientBilling from '../pages/patients/tabs/Billing.vue';
 import ReportsIndex from '../pages/reports/Index.vue';
 import ReportsGenerate from '../pages/reports/Generate.vue';
 import ReportsCategory from '../pages/reports/Category.vue';
@@ -175,7 +174,7 @@ const router = createRouter({
                 { path: 'appointments', component: PatientAppointments, meta: { permission:'appointments.view',feature:'appointments' } },
                 { path: 'consultations', component: ConsultationsIndex, props: { patientId: route => Number(route.params.id) }, meta: { permission: 'consultations.view', feature: 'emr' } },
                 { path: 'prescriptions', component: () => import('../pages/patients/tabs/Prescriptions.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.view', feature: 'prescriptions' } },
-                { path: 'billing', component: PatientBilling, meta: { clinicModule: 'billing', permission: 'billing.view', feature: 'billing' } },
+                { path: 'billing', component: () => import('../pages/patients/tabs/Billing.vue'), meta: { clinicModule: 'billing', permission: 'billing.view', feature: 'billing' } },
                 ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null]].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
             { path: 'billing', component: () => import('../pages/billing/BusinessBilling.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
