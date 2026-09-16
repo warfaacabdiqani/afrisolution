@@ -25,7 +25,7 @@ class AppointmentService
 
     public function find(array $context, int $id): Appointment
     {
-        return $this->visible($context)->with(['patient', 'doctor', 'branch', 'type', 'creator'])->findOrFail($id);
+        return $this->visible($context)->with(['patient', 'doctor', 'branch', 'type', 'creator', 'invoice'])->findOrFail($id);
     }
 
     public function audit(Appointment $appointment, string $action, array $extra = []): void

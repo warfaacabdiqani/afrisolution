@@ -148,6 +148,7 @@ class ClinicStaffController extends Controller
 
         return response()->json([
             'data' => [
+                'billing_permissions' => !empty($context['business_modules']['billing']) ? config('clinic.billing_permissions') : [],
                 'salon_permissions' => $context['business_type']['slug'] === 'beauty-salon' ? config('clinic.salon_permissions') : [],
                 'roles' => $roles,
                 'role_permissions' => collect(config('clinic.roles'))

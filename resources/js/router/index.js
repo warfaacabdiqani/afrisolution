@@ -53,7 +53,7 @@ import PatientActivity from '../pages/patients/tabs/Activity.vue';
 import PatientFuture from '../pages/patients/tabs/Future.vue';
 import ConsultationsIndex from '../pages/consultations/Index.vue';
 import BusinessAppointments from '../pages/appointments/BusinessAppointments.vue';
-import BillingIndex from '../pages/billing/Index.vue';
+import PatientBilling from '../pages/patients/tabs/Billing.vue';
 import ReportsIndex from '../pages/reports/Index.vue';
 import ReportsGenerate from '../pages/reports/Generate.vue';
 import ReportsCategory from '../pages/reports/Category.vue';
@@ -175,7 +175,7 @@ const router = createRouter({
                 { path: 'appointments', component: PatientAppointments, meta: { permission:'appointments.view',feature:'appointments' } },
                 { path: 'consultations', component: ConsultationsIndex, props: { patientId: route => Number(route.params.id) }, meta: { permission: 'consultations.view', feature: 'emr' } },
                 { path: 'prescriptions', component: () => import('../pages/patients/tabs/Prescriptions.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.view', feature: 'prescriptions' } },
-                { path: 'billing', component: BillingIndex, props: { patientId: route => Number(route.params.id) }, meta: { permission: 'billing.view', feature: 'billing' } },
+                { path: 'billing', component: PatientBilling, meta: { clinicModule: 'billing', permission: 'billing.view', feature: 'billing' } },
                 ...[['vitals','Vital Signs','vital_signs'],['laboratory','Laboratory',null]].map(([path,title,feature]) => ({ path, component: PatientFuture, meta: { title, feature } })),
             ] },
             { path: 'billing', component: () => import('../pages/billing/BusinessBilling.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
@@ -227,7 +227,7 @@ router.beforeEach(async (to, from) => {
             if (to.meta.salonOnly && clinic.businessTypeSlug !== 'beauty-salon') return { name: 'clinic.access', query: { reason: 'BUSINESS_MODULE_UNAVAILABLE', module: 'appointments' } };
             const reason = !clinic.data.operational ? clinic.data.restriction_code : (to.meta.clinicSettings && clinic.data.settings_business_access?.[to.params.section] === false) ? 'BUSINESS_MODULE_UNAVAILABLE' : accessDenial(clinic.data, to.meta);
             if (reason) return { name: 'clinic.access', query: { reason, module: to.meta.clinicModule } };
-            if (!clinic.hasBusinessModule('clinical') && (to.meta.clinicModule === 'reports' || (to.meta.clinicModule === 'billing' && clinic.businessTypeSlug !== 'beauty-salon'))) {
+            if (!clinic.hasBusinessModule('clinical') && to.meta.clinicModule === 'reports') {
                 return { name: 'clinic.access', query: { reason: 'COMING_SOON', module: to.meta.clinicModule } };
             }
         }

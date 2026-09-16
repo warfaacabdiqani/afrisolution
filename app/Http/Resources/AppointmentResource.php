@@ -20,6 +20,7 @@ class AppointmentResource extends JsonResource
         }
 
         return [
+            'invoice_id' => $this->whenLoaded('invoice', fn () => $this->invoice->id),
             'id' => $this->id, 'appointment_number' => $this->appointment_number, 'branch_id' => $this->branch_id, 'patient_id' => $this->patient_id, 'doctor_id' => $this->doctor_id, 'appointment_type_id' => $this->appointment_type_id,
             'starts_at' => $this->starts_at, 'ends_at' => $this->ends_at, 'status' => $this->status, 'source' => $this->source, 'is_walk_in' => $this->is_walk_in,
             'consultation_fee' => $consultationFee,

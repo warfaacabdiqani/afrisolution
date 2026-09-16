@@ -146,6 +146,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class, 'update'])->whereNumber('appointment');
         Route::post('appointments/{appointment}/reschedule', [\App\Http\Controllers\AppointmentController::class, 'reschedule'])->whereNumber('appointment')->name('appointments.reschedule');
         Route::get('appointments/{appointment}/activity', [\App\Http\Controllers\AppointmentController::class, 'activity'])->whereNumber('appointment');
+        Route::post('appointments/{appointment}/invoice', [\App\Http\Controllers\BillingController::class, 'fromClinic'])->whereNumber('appointment');
         Route::post('appointments/{appointment}/{action}', [\App\Http\Controllers\AppointmentController::class, 'status'])->whereNumber('appointment')->whereIn('action',array_keys(config('appointments.actions')));
         Route::get('doctors/{doctor}/available-slots', [\App\Http\Controllers\AppointmentAvailabilityController::class, 'slots'])->whereNumber('doctor');
         Route::get('doctors/options', [\App\Http\Controllers\DoctorController::class, 'options']);

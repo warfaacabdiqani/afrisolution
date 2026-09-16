@@ -10,6 +10,7 @@ export const appointmentService={
     options:branch_id=>api.get(`${root}/options`,config({branch_id})),
     patients:params=>api.get(`${root}/patients`,config(params)),
     get:id=>api.get(`${root}/${id}`,config()),
+    invoice:id=>api.post(`${root}/${id}/invoice`,{},config()),
     save:(id,data)=>id?api.put(`${root}/${id}`,data,config()):api.post(root,data,config()),
     reschedule:(id,data)=>api.post(`${root}/${id}/reschedule`,data,config()),
     action:(id,action,data={})=>api.post(`${root}/${id}/${action}`,data,config()),
