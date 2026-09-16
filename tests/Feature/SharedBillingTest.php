@@ -92,6 +92,128 @@ class SharedBillingTest extends TestCase
         $this->getJson('/api/v1/billing/invoices/'.$invoice['id'])->assertOk()->assertJsonPath('data.items.0.unit_price', '15.00');
     }
 
+    public function test_salon_cashier_can_issue_from_minimal_completed_sources_without_booking_access(): void
+    {
+        $f = $this->salon(); $a = $this->appointment($f);
+        $scheduled = $this->appointment($f, 'SCHEDULED');
+        DB::table('salon_appointments')->where('id', $scheduled)->update(['status' => 'scheduled']);
+        DB::table('tenant_memberships')->where('tenant_id', $f['tenant'])->update(['role' => 'cashier', 'permissions' => null]);
+        $this->getJson('/api/v1/clinic/context')->assertJsonPath('data.business_modules.clinical', false);
+        $this->getJson('/api/v1/salon/appointments/'.$a)->assertForbidden();
+        $this->getJson('/api/v1/salon/appointments?start=2026-09-16&end=2026-09-16')->assertForbidden();
+        $this->postJson('/api/v1/salon/appointments/'.$scheduled.'/complete')->assertForbidden();
+        $sources = $this->getJson('/api/v1/salon/billing/sources')->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $a)->assertJsonPath('data.0.customer.id', $f['client'])->json('data.0');
+        $this->assertEqualsCanonicalizing(['id', 'appointment_number', 'customer', 'branch', 'currency', 'total'], array_keys($sources));
+        $this->assertEqualsCanonicalizing(['type', 'id', 'name'], array_keys($sources['customer']));
+        $id = $this->issue($a)->assertCreated()->json('data.id');
+        $this->issue($a)->assertCreated()->assertJsonPath('data.id', $id);
+        $this->getJson('/api/v1/salon/billing/sources')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/billing/invoices/'.$id)->assertOk();
+        $this->postJson('/api/v1/billing/invoices/'.$id.'/payments', ['amount' => 45, 'method' => 'cash', 'idempotency_key' => 'cashier'])->assertOk()->assertJsonPath('data.status', 'paid');
+        $this->getJson('/api/v1/salon/appointments/'.$a)->assertForbidden();
+        $audit = json_decode(DB::table('platform_audit_logs')->where('action', 'billing.invoice.created')->value('metadata'), true);
+        $this->assertSame('beauty-salon', $audit['business_type']);
+        $this->assertSame('salon_appointment', $audit['source_type']);
+        $this->assertSame($a, $audit['source_id']);
+        $this->assertSame($f['client'], $audit['salon_client_id']);
+        $this->assertSame($f['branch'], $audit['branch_id']);
+        $this->assertSame(1, DB::table('platform_audit_logs')->where('action', 'billing.invoice.created')->count());
+    }
+
+    public function test_every_non_completed_salon_state_is_rejected_even_for_cashiers(): void
+    {
+        $f = $this->salon(); $a = $this->appointment($f);
+        $this->permissions($f, ['billing.view', 'billing.create']);
+        foreach (array_diff(array_keys(config('salon_booking.statuses')), ['completed']) as $status) {
+            DB::table('salon_appointments')->where('id', $a)->update(['status' => $status]);
+            $this->issue($a)->assertUnprocessable()->assertJsonValidationErrors('status');
+            $this->getJson('/api/v1/salon/billing/sources')->assertOk()->assertJsonCount(0, 'data');
+        }
+        $this->assertDatabaseCount('billing_invoices', 0);
+    }
+
+    public function test_salon_sources_preserve_stylist_scope_and_require_permission_plan_and_capability(): void
+    {
+        $f = $this->salon(); $a = $this->appointment($f);
+        // The owner fixture is also the stylist. Relink that stylist to another user.
+        DB::table('salon_staff_profiles')->where('id', $f['stylist'])->update(['user_id' => User::factory()->create()->id]);
+        $this->permissions($f, ['appointments.view', 'billing.view', 'billing.create']);
+        $this->issue($a)->assertNotFound();
+        $this->getJson('/api/v1/salon/billing/sources')->assertOk()->assertJsonCount(0, 'data');
+        $this->permissions($f, ['billing.view']);
+        $this->getJson('/api/v1/salon/billing/sources')->assertForbidden(); $this->issue($a)->assertForbidden();
+        $this->permissions($f, ['billing.view', 'billing.create']);
+        $plan = Plan::first(); $features = $plan->features;
+        foreach (['billing', 'appointments'] as $feature) {
+            $plan->update(['features' => array_replace($features, [$feature => false])]);
+            $this->getJson('/api/v1/salon/billing/sources')->assertForbidden()->assertJsonPath('code', 'PLAN_FEATURE_UNAVAILABLE');
+            $this->issue($a)->assertForbidden();
+        }
+        $plan->update(['features' => $features]);
+        config(['business_types.beauty-salon.modules.billing' => false]);
+        $this->getJson('/api/v1/salon/billing/sources')->assertForbidden()->assertJsonPath('code', 'BUSINESS_MODULE_UNAVAILABLE');
+        $this->issue($a)->assertForbidden();
+    }
+
+    public function test_salon_history_filters_by_direct_client_and_rejects_foreign_clients_and_sources(): void
+    {
+        $f = $this->salon(); $a = $this->appointment($f); $id = $this->issue($a)->assertCreated()->json('data.id');
+        $client = (array) DB::table('salon_clients')->find($f['client']); unset($client['id']);
+        $client['client_number'] = 'CLI-SECOND';
+        $second = DB::table('salon_clients')->insertGetId($client);
+        $b = $this->appointment(array_replace($f, ['client' => $second]), 'SECOND');
+        $this->issue($b)->assertCreated();
+        $filter = '/api/v1/billing/invoices?customer_type=salon_client&customer_id='.$f['client'];
+        $this->getJson($filter)->assertOk()->assertJsonCount(1, 'data.data')->assertJsonPath('data.data.0.id', $id);
+        $this->getJson('/api/v1/billing/invoices')->assertOk()->assertJsonCount(2, 'data.data');
+        $other = $this->other('beauty-salon'); $this->login($other);
+        $this->getJson($filter)->assertNotFound(); $this->issue($a)->assertNotFound();
+        $this->getJson('/api/v1/billing/invoices/'.$id)->assertNotFound();
+        $this->postJson('/api/v1/billing/invoices/'.$id.'/payments', ['amount' => 1, 'method' => 'cash', 'idempotency_key' => 'foreign'])->assertNotFound();
+        $this->getJson('/api/v1/salon/billing/sources')->assertOk()->assertJsonCount(0, 'data');
+        $clinic = $this->other('clinic'); $this->login($clinic);
+        $this->issue($a)->assertForbidden()->assertJsonPath('code', 'BUSINESS_MODULE_UNAVAILABLE');
+        $this->getJson('/api/v1/salon/billing/sources')->assertForbidden();
+    }
+
+    public function test_salon_cashier_source_and_client_filters_respect_branch_memberships(): void
+    {
+        $f = $this->salon(); $a = $this->appointment($f);
+        $this->permissions($f, ['billing.view', 'billing.create']);
+        $branch = DB::table('branches')->insertGetId(['tenant_id' => $f['tenant'], 'name' => 'Only allowed', 'status' => 'active']);
+        $member = DB::table('tenant_memberships')->where('tenant_id', $f['tenant'])->where('user_id', $f['user'])->first();
+        DB::table('tenant_memberships')->where('id', $member->id)->update(['all_branches' => false]);
+        DB::table('branch_memberships')->insert(['tenant_id' => $f['tenant'], 'membership_id' => $member->id, 'branch_id' => $branch]);
+        $this->issue($a)->assertNotFound();
+        $this->getJson('/api/v1/salon/billing/sources')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/billing/invoices?customer_type=salon_client&customer_id='.$f['client'])->assertNotFound();
+    }
+
+    public function test_salon_snapshots_precede_issuance_and_mismatched_totals_rollback(): void
+    {
+        $f = $this->salon(); $a = $this->appointment($f, discount: '5.00', rate: '7.50');
+        DB::table('salon_services')->whereIn('id', $f['services'])->update(['name' => 'New catalogue name', 'price' => 99]);
+        app(ClinicSettingsService::class)->set($f['tenant'], 'general', ['currency' => 'EUR'], $f['user']);
+        app(ClinicSettingsService::class)->set($f['tenant'], 'salon', ['default_service_tax' => 25], $f['user']);
+        DB::table('salon_appointments')->where('id', $a)->update(['total' => '43.01']);
+        $this->issue($a)->assertUnprocessable()->assertJsonValidationErrors('source');
+        $this->assertDatabaseCount('billing_invoices', 0);
+        $this->assertDatabaseHas('tenants', ['id' => $f['tenant'], 'billing_invoice_sequence' => 0]);
+        DB::table('salon_appointments')->where('id', $a)->update(['total' => '43.00']);
+        $invoice = $this->issue($a)->assertCreated()->assertJsonPath('data.currency', 'USD')
+            ->assertJsonPath('data.subtotal', '45.00')->assertJsonPath('data.discount', '5.00')
+            ->assertJsonPath('data.tax_rate', '7.50')->assertJsonPath('data.tax', '3.00')->assertJsonPath('data.total', '43.00')
+            ->assertJsonPath('data.items.0.description', 'Haircut')->assertJsonPath('data.items.0.unit_price', '15.00')
+            ->assertJsonCount(2, 'data.items')->json('data');
+        $occurrences = DB::table('salon_appointment_services')->where('appointment_id', $a)->orderBy('id')->pluck('id')->all();
+        $this->assertSame($occurrences, array_column(array_column($invoice['items'], 'source'), 'id'));
+        foreach ($invoice['items'] as $line) { $this->assertEquals(1, $line['quantity']); $this->assertSame('7.50', $line['tax_rate']); }
+        DB::table('salon_clients')->where('id', $f['client'])->update(['first_name' => 'Renamed']);
+        $this->assertSame($invoice, $this->issue($a)->assertCreated()->json('data'));
+        $this->postJson('/api/v1/salon/appointments/'.$a.'/invoice', ['client_id' => $f['client'], 'price' => 1, 'discount' => 44, 'total' => 1])->assertUnprocessable();
+    }
+
     public function test_shared_balance_payments_retries_and_overpayment(): void
     {
         $f = $this->salon(); $id = $this->issue($this->appointment($f))->assertCreated()->json('data.id');

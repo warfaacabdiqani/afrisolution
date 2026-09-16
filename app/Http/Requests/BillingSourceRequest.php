@@ -10,7 +10,7 @@ class BillingSourceRequest extends FormRequest
 
     public function rules(): array
     {
-        return array_fill_keys(['tenant_id', 'branch_id', 'patient_id', 'salon_client_id', 'customer', 'customer_id', 'customer_type',
+        return array_fill_keys(['tenant_id', 'branch_id', 'patient_id', 'salon_client_id', 'client_id', 'service_ids', 'unit_price', 'price', 'customer', 'customer_id', 'customer_type',
             'source_type', 'source_id', 'items', 'subtotal', 'discount', 'tax', 'tax_rate', 'total', 'paid', 'currency', 'number'], 'prohibited');
     }
 }

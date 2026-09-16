@@ -77,6 +77,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('invoices/{id}/payments', [\App\Http\Controllers\BillingController::class, 'payment'])->whereNumber('id');
     });
     Route::prefix('salon')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('billing/sources', [\App\Http\Controllers\BillingController::class, 'salonSources']);
         Route::get('booking-history/{kind}/{id}', [\App\Http\Controllers\SalonBookingController::class, 'history'])->whereIn('kind',['clients','stylists','services'])->whereNumber('id');
         Route::get('appointments/options', [\App\Http\Controllers\SalonBookingController::class, 'options']);
         Route::get('appointments/clients', [\App\Http\Controllers\SalonBookingController::class, 'clients']);

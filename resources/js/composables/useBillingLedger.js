@@ -8,7 +8,7 @@ export function useBillingLedger(customer = () => null) {
     const route = useRoute(), router = useRouter(), auth = useAuthStore(), context = useClinicContextStore();
     const data = ref(null), error = ref(null), busy = ref(false), loading = ref(false);
     const amount = ref(''), method = ref('cash'), reference = ref(''), methods = ref([]);
-    let generation = 0, controller, paymentKey = crypto.randomUUID(), previousTenant;
+    let generation = 0, controller, paymentKey = crypto.randomUUID(), previousTenant, detachedCustomer = false;
     const invoiceId = computed(() => customer() ? null : route.params.id);
     const ready = () => context.data?.clinic.id === auth.user?.active_tenant_id && context.allowed('billing');
     function reset() {
@@ -20,7 +20,7 @@ export function useBillingLedger(customer = () => null) {
         paymentKey = crypto.randomUUID();
     }
     async function load(page = 1) {
-        if (!ready()) return;
+        if (!ready() || detachedCustomer) return;
         const current = ++generation;
         controller?.abort(); controller = new AbortController();
         const config = { headers: context.headers(), signal: controller.signal };
@@ -53,7 +53,10 @@ export function useBillingLedger(customer = () => null) {
         const tenant = auth.user?.active_tenant_id;
         const changedTenant = previousTenant && tenant !== previousTenant;
         previousTenant = tenant;
-        if (changedTenant && invoiceId.value) { router.replace('/app/billing/invoices'); return; }
+        // Profile IDs belong to the original business. Do not send that filter to
+        // the next business while its profile component is being unmounted.
+        if (changedTenant && customer()) detachedCustomer = true;
+        if (changedTenant && (invoiceId.value || customer())) { router.replace('/app/billing/invoices'); return; }
         if (ready()) load();
     }, { immediate: true, flush: 'sync' });
     onUnmounted(reset);

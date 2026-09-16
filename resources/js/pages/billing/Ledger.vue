@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useBillingLedger } from '../../composables/useBillingLedger';
 import FormErrors from '../../components/ui/FormErrors.vue';
+import BillingSources from '../../components/salon/BillingSources.vue';
 const props = defineProps({ customer: { type: Object, default: null } });
 const { context, data, error, busy, loading, amount, method, reference, methods, invoiceId, load, pay } = useBillingLedger(() => props.customer);
 const customerLabel = computed(() => context.label('customer', 'Customer'));
@@ -16,6 +17,7 @@ const sourceLabel = source => ({ clinic_appointment: 'Consultation', salon_appoi
             <RouterLink v-if="context.allowed('settings')" class="btn-secondary" to="/app/settings/billing">Billing Settings</RouterLink>
         </header>
         <FormErrors :error="error"/>
+        <BillingSources v-if="!invoiceId && !customer && context.businessTypeSlug==='beauty-salon' && context.can('billing.create')" />
         <template v-if="data">
             <section v-if="!invoiceId" class="clinic-panel overflow-x-auto" aria-label="Invoices">
                 <table class="w-full text-sm">
