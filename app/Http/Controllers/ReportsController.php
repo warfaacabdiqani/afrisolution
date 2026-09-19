@@ -29,21 +29,19 @@ class ReportsController extends Controller
         $prescriptions = $this->prescriptionScope($state)->with(['patient', 'doctor'])->get();
 
         $completedAppointments = $appointments->where('status', 'completed');
-        $estimatedRevenue = $completedAppointments->sum(fn (Appointment $appointment) => $this->resolvedConsultationFee($appointment, $billing));
 
         return response()->json(['data' => [
             'metrics' => [
                 ['label' => 'Total Patients', 'value' => $patients->count(), 'help' => 'All active and archived patient records in scope'],
                 ['label' => 'Appointments', 'value' => $appointments->count(), 'help' => 'Appointments in the selected date range'],
                 ['label' => 'Consultations', 'value' => $completedAppointments->count(), 'help' => 'Completed consultations'],
-                ['label' => 'Revenue', 'value' => $estimatedRevenue, 'help' => 'Estimated revenue from completed consultations'],
-                ['label' => 'Outstanding', 'value' => 0, 'help' => 'No invoice/payment tables are present in this release yet'],
+                ['label' => 'Estimated Consultation Fees', 'value' => $completedAppointments->sum(fn (Appointment $appointment) => $this->resolvedConsultationFee($appointment, $billing)), 'help' => 'Operational estimate; see Billing Report for actual invoices and collections'],
             ],
             'charts' => [
                 ['title' => 'Patient Registrations Trend', 'type' => 'bar', 'items' => $this->chartItems($this->seriesByDay($patients, 'registered_at'))],
                 ['title' => 'Appointment Trend', 'type' => 'bar', 'items' => $this->chartItems($this->seriesByDay($appointments, 'starts_at'))],
                 ['title' => 'Consultation Trend', 'type' => 'bar', 'items' => $this->chartItems($this->seriesByDay($completedAppointments, 'completed_at'))],
-                ['title' => 'Revenue Trend', 'type' => 'bar', 'items' => $this->chartItems($this->seriesRevenueByDay($completedAppointments, $billing))],
+                ['title' => 'Estimated Consultation Fees Trend', 'type' => 'bar', 'items' => $this->chartItems($this->seriesRevenueByDay($completedAppointments, $billing))],
                 ['title' => 'Appointment Status Distribution', 'type' => 'bar', 'items' => $this->chartItems($this->seriesCounts($appointments, 'status'))],
             ],
             'table' => $patients->sortByDesc('registered_at')->take(10)->map(fn (Patient $patient) => [
@@ -170,7 +168,7 @@ class ReportsController extends Controller
                 'cancelled' => $doctorAppointments->where('status', 'cancelled')->count(),
                 'no_shows' => $doctorAppointments->where('status', 'no_show')->count(),
                 'prescriptions' => $doctorPrescriptions->count(),
-                'revenue' => round($doctorAppointments->where('status', 'completed')->sum(fn ($appointment) => $this->resolvedConsultationFee($appointment, app(ClinicSettingsService::class)->section($context['clinic']->id, 'billing'))), 2),
+                'estimated_consultation_fees' => round($doctorAppointments->where('status', 'completed')->sum(fn ($appointment) => $this->resolvedConsultationFee($appointment, app(ClinicSettingsService::class)->section($context['clinic']->id, 'billing'))), 2),
             ];
         }
 
@@ -224,31 +222,24 @@ class ReportsController extends Controller
 
     public function financial(Request $request, ClinicAccessService $access)
     {
-        $context = $access->context($request);
-        $access->authorizeBusiness($context, 'consultations');
-        $context = $access->authorize($request, 'reports');
-        $state = $this->resolveState($request, $context);
-        $billing = app(ClinicSettingsService::class)->section($context['clinic']->id, 'billing');
-        $appointments = $this->appointmentScope($state)->with(['doctor', 'branch'])->get();
-        $completed = $appointments->where('status', 'completed');
-        $grossBilled = $completed->sum(fn ($appointment) => $this->resolvedConsultationFee($appointment, $billing));
-
-        return response()->json(['data' => [
-            'metrics' => [
-                ['label' => 'Revenue', 'value' => $grossBilled],
-                ['label' => 'Amount Collected', 'value' => 0],
-                ['label' => 'Outstanding Balance', 'value' => 0],
-                ['label' => 'Refunds', 'value' => 0],
-                ['label' => 'Invoices', 'value' => $completed->count()],
-                ['label' => 'Payments', 'value' => 0],
-            ],
-            'charts' => [
-                ['title' => 'Revenue Trend', 'type' => 'bar', 'items' => $this->chartItems($this->seriesRevenueByDay($completed, $billing))],
-                ['title' => 'Revenue by Branch', 'type' => 'bar', 'items' => $this->chartItems($this->seriesBranchRevenue($completed, $billing))],
-            ],
-            'table' => [],
-            'message' => 'Financial transaction tables are not yet implemented in this release, so collected payments, refunds and outstanding balances remain derived from available appointment data only.',
-        ]]);
+        $context = $access->authorize($request, 'billing');
+        $filters = $request->validate([
+            'from' => ['sometimes', 'date_format:Y-m-d'], 'to' => ['sometimes', 'date_format:Y-m-d'],
+            'branch_id' => ['sometimes', Rule::in(['all', ...$context['branches']->pluck('id')->map(fn ($id) => (string) $id)->all()])],
+        ]);
+        if (isset($filters['from'], $filters['to']) && $filters['from'] > $filters['to']) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['to' => 'The end date must be on or after the start date.']);
+        }
+        $report = app(\App\Services\Billing\BillingReportService::class)->summary($context, $filters);
+        $metrics = [];
+        foreach ($report['currencies'] as $currency) {
+            foreach (['total_invoiced' => 'Total Invoiced', 'total_collected' => 'Total Collected', 'outstanding' => 'Outstanding'] as $key => $label) {
+                $metrics[] = ['label' => $label.' ('.$currency['currency'].')', 'value' => $currency[$key]];
+            }
+        }
+        return response()->json(['data' => ['metrics' => $metrics, 'charts' => [],
+            'table' => $report['invoices']->items(),
+            'message' => 'Financial figures use issued invoices and payment dates. Open the Billing Report for status and method details.']]);
     }
 
     public function branches(Request $request, ClinicAccessService $access)
@@ -272,9 +263,7 @@ class ReportsController extends Controller
                 'appointments' => $branchAppointments->count(),
                 'consultations' => $branchAppointments->where('status', 'completed')->count(),
                 'doctors' => Doctor::where('tenant_id', $context['clinic']->id)->whereHas('branches', fn ($q) => $q->where('branches.id', $branch->id))->count(),
-                'revenue' => round($branchAppointments->where('status', 'completed')->sum(fn ($appointment) => $this->resolvedConsultationFee($appointment, $billing)), 2),
-                'collections' => 0,
-                'outstanding' => 0,
+                'estimated_consultation_fees' => round($branchAppointments->where('status', 'completed')->sum(fn ($appointment) => $this->resolvedConsultationFee($appointment, $billing)), 2),
             ];
         }
 

@@ -67,6 +67,31 @@ class ClinicBillingTest extends TestCase
         $this->assertSame('clinic', $audit['business_type']); $this->assertArrayNotHasKey('notes', $audit);
     }
 
+    public function test_clinic_billing_report_uses_the_same_invoice_payment_and_receipt_ledger(): void
+    {
+        $f = $this->fixture();
+        $invoice = $this->issue($f)->assertCreated()->json('data.id');
+        $payment = $this->postJson('/api/v1/billing/invoices/'.$invoice.'/payments',
+            ['amount' => '5.00', 'method' => 'cash', 'idempotency_key' => 'clinic-report'])
+            ->assertOk()->assertJsonPath('data.status', 'partial')->json('data.payments.0');
+        $this->getJson('/api/v1/billing/payments/'.$payment['id'].'/receipt')->assertOk()
+            ->assertJsonPath('data.snapshot.customer_label', 'Patient');
+        $today = now('Africa/Nairobi')->toDateString();
+        $this->getJson('/api/v1/billing/reports/summary?from='.$today.'&to='.$today)->assertOk()
+            ->assertJsonPath('data.currencies.0.total_invoiced', '20.00')
+            ->assertJsonPath('data.currencies.0.total_collected', '5.00')
+            ->assertJsonPath('data.currencies.0.outstanding', '15.00')
+            ->assertJsonPath('data.currencies.0.statuses.partial', 1)
+            ->assertJsonPath('data.invoices.data.0.customer_label', 'Patient')
+            ->assertJsonPath('data.invoices.data.0.id', $invoice);
+        $this->getJson('/api/v1/clinic/reports/financial?from='.$today.'&to='.$today)->assertOk()
+            ->assertJsonPath('data.metrics.0.value', '20.00');
+        $plan = Plan::findOrFail($f['plan']); $features = $plan->features; $features['basic_reports'] = true; $plan->update(['features' => $features]);
+        $this->getJson('/api/v1/clinic/reports/overview')->assertOk()
+            ->assertJsonPath('data.metrics.3.label', 'Estimated Consultation Fees');
+        $this->getJson('/api/v1/clinic/reports/appointments')->assertOk();
+    }
+
     public function test_dashboard_revenue_uses_received_payments_in_the_active_branch(): void
     {
         $f = $this->fixture();

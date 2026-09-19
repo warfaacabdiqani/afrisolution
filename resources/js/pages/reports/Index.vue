@@ -58,11 +58,7 @@ const categories = [
     {
         section: 'BILLING REPORTS',
         items: [
-            { key: 'billing/invoices', title: 'Invoice Report', description: 'Printable invoice register', icon: 'revenue', route: '/app/reports/generate/invoices' },
-            { key: 'billing/payments', title: 'Payment Report', description: 'Payment activity and methods', icon: 'cash', route: '/app/reports/generate/payments' },
-            { key: 'billing/outstanding', title: 'Outstanding Balance Report', description: 'Open balances and overdue accounts', icon: 'warning', route: '/app/reports/generate/outstanding_balances' },
-            { key: 'billing/collections', title: 'Daily Collection Report', description: 'Daily cash and payment totals', icon: 'calendar', route: '/app/reports/generate/daily_collections' },
-            { key: 'billing/receipts', title: 'Receipt Report', description: 'Receipt summary for issued payments', icon: 'revenue', route: '/app/reports/generate/receipts' },
+            { key: 'billing', title: 'Billing Report', description: 'Invoices, collections, balances, and payment methods from the shared ledger', icon: 'revenue', route: '/app/billing/report' },
         ],
     },
     {

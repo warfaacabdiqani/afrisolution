@@ -71,6 +71,85 @@ class SharedBillingTest extends TestCase
             ->update(['permissions' => json_encode($permissions)]);
     }
 
+    public function test_salon_billing_report_uses_issue_and_payment_dates_with_separate_currencies(): void
+    {
+        $f = $this->salon();
+        app(ClinicSettingsService::class)->set($f['tenant'], 'billing', ['payment_methods' => ['cash', 'card']], $f['user']);
+        $paid = $this->issue($this->appointment($f, 'REPORT-PAID'))->assertCreated()->json('data.id');
+        $partial = $this->issue($this->appointment($f, 'REPORT-PARTIAL'))->assertCreated()->json('data.id');
+        $october = $this->issue($this->appointment($f, 'REPORT-OCTOBER'))->assertCreated()->json('data.id');
+        DB::table('billing_invoices')->whereIn('id', [$paid, $partial])->update(['issued_at' => '2026-09-30 20:30:00']);
+        DB::table('billing_invoices')->where('id', $october)->update(['issued_at' => '2026-09-30 22:30:00', 'currency' => 'KES']);
+        $first = $this->postJson('/api/v1/billing/invoices/'.$paid.'/payments',
+            ['amount' => '45.00', 'method' => 'cash', 'idempotency_key' => 'report-cash'])->assertOk()->json('data.payments.0.id');
+        $second = $this->postJson('/api/v1/billing/invoices/'.$partial.'/payments',
+            ['amount' => '20.00', 'method' => 'card', 'idempotency_key' => 'report-card'])->assertOk()->json('data.payments.0.id');
+        DB::table('billing_payments')->where('id', $first)->update(['paid_at' => '2026-09-30 20:40:00']);
+        DB::table('billing_payments')->where('id', $second)->update(['paid_at' => '2026-10-01 22:30:00']);
+
+        $url = '/api/v1/billing/reports/summary?from=2026-09-30&to=2026-09-30';
+        $response = $this->getJson($url)->assertOk()->assertJsonPath('data.filters.timezone', 'Africa/Nairobi')
+            ->assertJsonPath('data.currencies.0.currency', 'USD')->assertJsonPath('data.currencies.0.total_invoiced', '90.00')
+            ->assertJsonPath('data.currencies.0.total_collected', '45.00')->assertJsonPath('data.currencies.0.outstanding', '25.00')
+            ->assertJsonPath('data.currencies.0.invoice_count', 2)->assertJsonPath('data.currencies.0.statuses.paid', 1)
+            ->assertJsonPath('data.currencies.0.statuses.partial', 1)->assertJsonPath('data.currencies.0.payment_methods.0.method', 'cash')
+            ->assertJsonPath('data.invoices.total', 2)->assertJsonCount(2, 'data.invoices.data');
+        $this->assertSame('Client', $response->json('data.invoices.data.0.customer_label'));
+        $this->assertSame('45.00', $response->json('data.invoices.data.0.total'));
+        $this->getJson('/api/v1/billing/reports/summary?from=2026-10-01&to=2026-10-02')->assertOk()
+            ->assertJsonPath('data.currencies.0.currency', 'KES')->assertJsonPath('data.currencies.0.total_invoiced', '45.00')
+            ->assertJsonPath('data.currencies.0.total_collected', '0.00')
+            ->assertJsonPath('data.currencies.0.statuses.unpaid', 1)
+            ->assertJsonPath('data.currencies.1.currency', 'USD')->assertJsonPath('data.currencies.1.total_invoiced', '0.00')
+            ->assertJsonPath('data.currencies.1.total_collected', '20.00')
+            ->assertJsonPath('data.currencies.1.payment_methods.0.method', 'card')
+            ->assertJsonPath('data.invoices.total', 1)
+            ->assertJsonPath('data.invoices.data.0.issued_at', '2026-10-01');
+        $this->getJson('/api/v1/billing/reports/summary?from=2026-10-01&to=2026-10-01')->assertOk()
+            ->assertJsonCount(1, 'data.currencies')->assertJsonPath('data.currencies.0.currency', 'KES');
+        $this->getJson('/api/v1/clinic/reports/financial?from=2026-09-30&to=2026-09-30')->assertOk()
+            ->assertJsonPath('data.metrics.0.label', 'Total Invoiced (USD)')
+            ->assertJsonPath('data.metrics.0.value', '90.00');
+    }
+
+    public function test_billing_report_rejects_foreign_branch_and_tenant_data_and_requires_billing_access(): void
+    {
+        $f = $this->salon();
+        $id = $this->issue($this->appointment($f))->assertCreated()->json('data.id');
+        $this->postJson('/api/v1/billing/invoices/'.$id.'/payments',
+            ['amount' => '5.00', 'method' => 'cash', 'idempotency_key' => 'report-authorized-branch'])->assertOk();
+        $otherBranch = DB::table('branches')->insertGetId(['tenant_id' => $f['tenant'], 'name' => 'Restricted', 'status' => 'active']);
+        $row = (array) DB::table('billing_invoices')->find($id); unset($row['id']);
+        $row['branch_id'] = $otherBranch; $row['source_id'] = 999999; $row['number'] = 'OTHER-BRANCH';
+        $row['paid'] = '10.00'; $row['status'] = 'partial';
+        $otherInvoice = DB::table('billing_invoices')->insertGetId($row);
+        DB::table('billing_payments')->insert(['tenant_id' => $f['tenant'], 'invoice_id' => $otherInvoice,
+            'amount' => '10.00', 'method' => 'cash', 'idempotency_key' => 'report-restricted-branch',
+            'recorded_by' => $f['user'], 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $other = $this->other('beauty-salon');
+        $row['tenant_id'] = $other['tenant']; $row['branch_id'] = $other['branch'];
+        $row['source_id'] = 999998; $row['number'] = 'FOREIGN-TENANT'; $row['created_by'] = $other['user'];
+        $row['salon_client_id'] = null;
+        DB::table('billing_invoices')->insert($row);
+        $base = '/api/v1/billing/reports/summary?from=2026-09-01&to=2026-09-30';
+        $this->getJson($base)->assertOk()->assertJsonPath('data.currencies.0.total_invoiced', '90.00')
+            ->assertJsonPath('data.currencies.0.total_collected', '15.00');
+        $member = DB::table('tenant_memberships')->where('tenant_id', $f['tenant'])->where('user_id', $f['user'])->first();
+        DB::table('tenant_memberships')->where('id', $member->id)->update(['all_branches' => false]);
+        DB::table('branch_memberships')->insert(['tenant_id' => $f['tenant'], 'membership_id' => $member->id, 'branch_id' => $f['branch']]);
+        $this->getJson($base)->assertOk()->assertJsonPath('data.currencies.0.total_invoiced', '45.00')
+            ->assertJsonPath('data.currencies.0.total_collected', '5.00')
+            ->assertJsonPath('data.currencies.0.payment_methods.0.amount', '5.00')
+            ->assertJsonPath('data.invoices.total', 1);
+        $this->getJson($base.'&branch_id='.$otherBranch)->assertUnprocessable();
+        $this->getJson($base.'&tenant_id='.$other['tenant'])->assertUnprocessable();
+        $this->permissions($f, ['billing.payments']);
+        $this->getJson($base)->assertForbidden();
+        $this->permissions($f, ['billing.view']);
+        $plan = Plan::first(); $features = $plan->features; $features['billing'] = false; $plan->update(['features' => $features]);
+        $this->getJson($base)->assertForbidden()->assertJsonPath('code', 'PLAN_FEATURE_UNAVAILABLE');
+    }
+
     public function test_receipts_are_one_per_payment_with_immutable_snapshots_and_safe_reprints(): void
     {
         $f = $this->salon();

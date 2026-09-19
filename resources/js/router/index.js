@@ -179,6 +179,7 @@ const router = createRouter({
             ] },
             { path: 'billing', component: () => import('../pages/billing/BusinessBilling.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
             { path: 'billing/invoices', component: () => import('../pages/billing/Ledger.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
+            { path: 'billing/report', component: () => import('../pages/billing/Report.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
             { path: 'billing/invoices/:id/print', component: () => import('../pages/billing/Print.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
             { path: 'billing/payments/:id/receipt', component: () => import('../pages/billing/Print.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },
             { path: 'billing/invoices/:id', component: () => import('../pages/billing/Ledger.vue'), meta: { clinicModule: 'billing', permission: 'billing.view' } },

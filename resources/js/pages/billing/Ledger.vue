@@ -14,7 +14,7 @@ const sourceLabel = source => ({ clinic_appointment: 'Consultation', salon_appoi
         <header class="patient-page-header">
             <div><RouterLink v-if="invoiceId" to="/app/billing/invoices">← Invoices</RouterLink>
                 <h1>{{ invoiceId ? (data?.number || 'Invoice') : 'Billing' }}</h1><p>Invoices and recorded payments.</p></div>
-            <RouterLink v-if="context.allowed('settings')" class="btn-secondary" to="/app/settings/billing">Billing Settings</RouterLink>
+            <div class="flex gap-2"><RouterLink class="btn-secondary" to="/app/billing/report">Billing Report</RouterLink><RouterLink v-if="context.allowed('settings')" class="btn-secondary" to="/app/settings/billing">Billing Settings</RouterLink></div>
         </header>
         <FormErrors :error="error"/>
         <BillingSources v-if="!invoiceId && !customer && context.businessTypeSlug==='beauty-salon' && context.can('billing.create')" />

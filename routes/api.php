@@ -72,6 +72,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
     Route::prefix('billing')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('reports/summary', [\App\Http\Controllers\BillingReportController::class, 'summary']);
         Route::get('invoices', [\App\Http\Controllers\BillingController::class, 'index']);
         Route::get('invoices/{id}', [\App\Http\Controllers\BillingController::class, 'show'])->whereNumber('id');
         Route::get('invoices/{id}/print', [\App\Http\Controllers\BillingController::class, 'invoicePrint'])->whereNumber('id');
