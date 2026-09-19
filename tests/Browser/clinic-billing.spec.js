@@ -6,6 +6,7 @@ async function fixture(page, status = 'completed') {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     const manifest = JSON.parse(await readFile('public/build/manifest.json', 'utf8'));
     const entry = manifest['resources/js/app.js'];
+    const stylesheet = manifest['resources/css/app.css'].file;
     const modules = [['dashboard', 'dashboard'], ['billing', 'billing'], ['appointments', 'appointments'], ['patients', 'patient_management']].map(([key, feature]) => ({
         key, label: key, icon: 'calendar', allowed: true, business_allowed: true, business_modules: [key], feature, permission: key + '.view',
     }));
@@ -62,7 +63,7 @@ async function fixture(page, status = 'completed') {
             state.detailIds.push(url.pathname.split('/').at(-1));
             return json({ data: invoice, methods: ['cash'] });
         }
-        if (url.pathname.startsWith('/app/')) return route.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html><html><head><meta charset="utf-8">${(entry.css || []).map(css => `<link rel="stylesheet" href="/build/${css}">`).join('')}</head><body><div id="app"></div><script type="module" src="/build/${entry.file}"></script></body></html>` });
+        if (url.pathname.startsWith('/app/')) return route.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/build/${stylesheet}">${(entry.css || []).map(css => `<link rel="stylesheet" href="/build/${css}">`).join('')}</head><body><div id="app"></div><script type="module" src="/build/${entry.file}"></script></body></html>` });
         return route.fulfill({ status: 404, body: 'Unexpected request' });
     });
     return state;
@@ -110,6 +111,33 @@ test('dashboard revenue links to the shared Billing ledger', async ({ page }) =>
     await expect(page).toHaveURL(/\/app\/billing\/invoices$/);
     await expect(page.getByRole('columnheader', { name: 'Invoice', exact: true })).toBeVisible();
     expect(state.errors).toEqual([]);
+});
+
+test('sidebar keeps clinic identity fixed while navigation and business controls scroll together', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 500 });
+    await fixture(page);
+    await page.goto('/app/billing');
+    const brand = page.locator('.clinic-brand'), navigation = page.getByRole('navigation', { name: 'Business navigation' });
+    const scrollArea = page.locator('.clinic-sidebar-scroll');
+    const bottom = page.locator('.clinic-sidebar-bottom');
+    await expect(brand).toBeVisible();
+    await navigation.evaluate(nav => {
+        const link = nav.querySelector('a');
+        for (let index = 0; index < 20; index++) nav.appendChild(link.cloneNode(true));
+    });
+    const before = await brand.boundingBox();
+    const metrics = await scrollArea.evaluate(area => ({ height: area.clientHeight, scrollHeight: area.scrollHeight,
+        overflow: getComputedStyle(area).overflowY }));
+    expect(metrics.scrollHeight, JSON.stringify(metrics)).toBeGreaterThan(metrics.height);
+    await scrollArea.evaluate(area => { area.scrollTop = area.scrollHeight; });
+    await expect.poll(() => scrollArea.evaluate(area => area.scrollTop)).toBeGreaterThan(0);
+    const after = await brand.boundingBox();
+    expect(after.y).toBe(before.y);
+    expect(await page.locator('.clinic-sidebar').evaluate(sidebar => sidebar.scrollTop)).toBe(0);
+    const bottomBounds = await bottom.boundingBox();
+    expect(bottomBounds.y).toBeGreaterThanOrEqual(before.y + before.height);
+    expect(bottomBounds.y + bottomBounds.height).toBeLessThanOrEqual(500);
+    await expect(bottom.getByRole('link', { name: /Switch Business/ })).toBeVisible();
 });
 
 for (const status of ['scheduled', 'cancelled', 'no_show']) {

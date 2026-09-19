@@ -75,6 +75,7 @@ async function logout() {
         <button v-if="drawer" class="clinic-overlay" aria-label="Close navigation" @click="drawer = false"></button>
         <aside class="clinic-sidebar" :class="{ 'is-open': drawer }">
             <RouterLink class="clinic-brand" to="/app/dashboard"><span class="clinic-logo"><AppIcon name="activity" :size="28" /></span><span>{{ clinic.data?.clinic.name || 'Clinic workspace' }}<small>{{ clinic.businessProfile?.subtitle || 'Business workspace' }}</small></span></RouterLink>
+            <div class="clinic-sidebar-scroll">
             <nav class="clinic-navigation" aria-label="Business navigation">
                 <template v-for="(section, sectionIndex) in navigationSections" :key="section.label || sectionIndex">
                     <p v-if="section.label" class="clinic-nav-label">{{ section.label }}</p>
@@ -86,6 +87,7 @@ async function logout() {
                 <RouterLink to="/app/clinics?switch=1">＋ Switch Business</RouterLink>
                 <RouterLink v-if="clinic.allowed('support')" to="/app/support"><AppIcon name="roles" />Help &amp; Support</RouterLink>
                 <button @click="logout"><AppIcon name="chevronLeft" />Sign out</button>
+            </div>
             </div>
         </aside>
         <div class="clinic-workspace">
