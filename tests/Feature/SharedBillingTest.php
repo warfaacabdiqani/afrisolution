@@ -71,6 +71,85 @@ class SharedBillingTest extends TestCase
             ->update(['permissions' => json_encode($permissions)]);
     }
 
+    public function test_receipts_are_one_per_payment_with_immutable_snapshots_and_safe_reprints(): void
+    {
+        $f = $this->salon();
+        $id = $this->issue($this->appointment($f))->assertCreated()->json('data.id');
+        $first = $this->postJson('/api/v1/billing/invoices/'.$id.'/payments',
+            ['amount' => '20.00', 'method' => 'cash', 'reference' => 'first', 'idempotency_key' => 'receipt-first'])
+            ->assertOk()->assertJsonPath('data.status', 'partial')->json('data.payments.0');
+        $this->assertNotNull($first['receipt']['number']);
+        $second = $this->postJson('/api/v1/billing/invoices/'.$id.'/payments',
+            ['amount' => '25.00', 'method' => 'cash', 'reference' => 'second', 'idempotency_key' => 'receipt-second'])
+            ->assertOk()->assertJsonPath('data.status', 'paid')->json('data.payments.1');
+        $this->assertNotSame($first['receipt']['number'], $second['receipt']['number']);
+        $this->postJson('/api/v1/billing/invoices/'.$id.'/payments',
+            ['amount' => '20.00', 'method' => 'cash', 'reference' => 'first', 'idempotency_key' => 'receipt-first'])->assertOk();
+        $this->postJson('/api/v1/billing/invoices/'.$id.'/payments',
+            ['amount' => '20.00', 'method' => 'cash', 'reference' => 'changed', 'idempotency_key' => 'receipt-first'])->assertStatus(409);
+        $this->assertDatabaseCount('billing_payments', 2);
+        $this->assertDatabaseCount('billing_receipts', 2);
+        $this->assertSame(2, (int) DB::table('tenants')->where('id', $f['tenant'])->value('billing_receipt_sequence'));
+
+        DB::table('tenants')->where('id', $f['tenant'])->update(['name' => 'Renamed']);
+        DB::table('salon_clients')->where('id', $f['client'])->update(['first_name' => 'Changed']);
+        $this->getJson('/api/v1/billing/invoices/'.$id.'/print')->assertOk()
+            ->assertJsonPath('document.identity.customer_label', 'Client')
+            ->assertJsonPath('document.historical_identity_available', true)
+            ->assertJsonPath('data.customer.name', 'Amina Ali');
+        $this->getJson('/api/v1/billing/payments/'.$first['id'].'/receipt')->assertOk()
+            ->assertJsonPath('data.number', $first['receipt']['number'])
+            ->assertJsonPath('data.snapshot.customer_name', 'Amina Ali')
+            ->assertJsonPath('data.snapshot.customer_label', 'Client')
+            ->assertJsonPath('data.snapshot.payment_amount', '20.00')
+            ->assertJsonPath('data.snapshot.balance_after', '25.00');
+        $this->getJson('/api/v1/billing/payments/'.$second['id'].'/receipt')->assertOk()
+            ->assertJsonPath('data.snapshot.previously_paid', '20.00')
+            ->assertJsonPath('data.snapshot.balance_after', '0.00');
+        $this->assertDatabaseCount('billing_receipts', 2);
+        $this->assertSame(2, (int) DB::table('tenants')->where('id', $f['tenant'])->value('billing_receipt_sequence'));
+    }
+
+    public function test_document_access_is_scoped_and_historical_payments_do_not_gain_fabricated_receipts(): void
+    {
+        $f = $this->salon();
+        $id = $this->issue($this->appointment($f))->assertCreated()->json('data.id');
+        $payment = $this->postJson('/api/v1/billing/invoices/'.$id.'/payments',
+            ['amount' => '20.00', 'method' => 'cash', 'idempotency_key' => 'scope-receipt'])->assertOk()->json('data.payments.0.id');
+        $legacy = DB::table('billing_payments')->insertGetId(['tenant_id' => $f['tenant'], 'invoice_id' => $id,
+            'amount' => '1.00', 'method' => 'cash', 'idempotency_key' => 'legacy-before-receipts',
+            'recorded_by' => $f['user'], 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $this->getJson('/api/v1/billing/invoices/'.$id)->assertJsonPath('data.payments.1.receipt', null);
+        $this->getJson('/api/v1/billing/payments/'.$legacy.'/receipt')->assertNotFound();
+        $this->assertDatabaseCount('billing_receipts', 1);
+
+        $other = $this->other('beauty-salon');
+        $this->login($other);
+        $this->getJson('/api/v1/billing/invoices/'.$id.'/print')->assertNotFound();
+        $this->getJson('/api/v1/billing/payments/'.$payment.'/receipt')->assertNotFound();
+        $this->login($f);
+        $this->permissions($f, ['billing.payments']);
+        $this->getJson('/api/v1/billing/invoices/'.$id.'/print')->assertForbidden();
+        $this->getJson('/api/v1/billing/payments/'.$payment.'/receipt')->assertForbidden();
+    }
+
+    public function test_receipt_migration_is_additive_to_existing_invoices_and_payments(): void
+    {
+        $f = $this->salon();
+        $id = $this->issue($this->appointment($f))->assertCreated()->json('data.id');
+        $migration = require database_path('migrations/2026_09_19_100000_add_shared_billing_receipts.php');
+        $migration->down();
+        $payment = DB::table('billing_payments')->insertGetId(['tenant_id' => $f['tenant'], 'invoice_id' => $id,
+            'amount' => '10.00', 'method' => 'cash', 'idempotency_key' => 'pre-receipt-era',
+            'recorded_by' => $f['user'], 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $before = (array) DB::table('billing_payments')->find($payment);
+        $migration->up();
+        $this->assertEquals($before, (array) DB::table('billing_payments')->find($payment));
+        $this->assertDatabaseHas('billing_invoices', ['id' => $id]);
+        $this->assertDatabaseCount('billing_receipts', 0);
+        $this->assertSame(0, (int) DB::table('tenants')->where('id', $f['tenant'])->value('billing_receipt_sequence'));
+    }
+
     public function test_owned_snapshots_reconcile_and_survive_customer_and_catalog_changes(): void
     {
         $f = $this->salon(); $appointment = $this->appointment($f, discount: '5.00', rate: '7.50');
@@ -288,12 +367,16 @@ class SharedBillingTest extends TestCase
     public function test_branch_restrictions_and_stale_context_headers(): void
     {
         $f = $this->salon(); $a = $this->appointment($f); $id = $this->issue($a)->assertCreated()->json('data.id');
+        $payment = $this->postJson('/api/v1/billing/invoices/'.$id.'/payments',
+            ['amount' => '1.00', 'method' => 'cash', 'idempotency_key' => 'before-branch-restrict'])->assertOk()->json('data.payments.0.id');
         $branch = DB::table('branches')->insertGetId(['tenant_id' => $f['tenant'], 'name' => 'Only allowed', 'status' => 'active']);
         $member = DB::table('tenant_memberships')->where('tenant_id', $f['tenant'])->where('user_id', $f['user'])->first();
         DB::table('tenant_memberships')->where('id', $member->id)->update(['all_branches' => false]);
         DB::table('branch_memberships')->insert(['tenant_id' => $f['tenant'], 'membership_id' => $member->id, 'branch_id' => $branch]);
         $this->getJson('/api/v1/billing/invoices')->assertOk()->assertJsonCount(0, 'data.data');
         $this->getJson('/api/v1/billing/invoices/'.$id)->assertNotFound(); $this->issue($a)->assertNotFound();
+        $this->getJson('/api/v1/billing/invoices/'.$id.'/print')->assertNotFound();
+        $this->getJson('/api/v1/billing/payments/'.$payment.'/receipt')->assertNotFound();
         $this->postJson('/api/v1/billing/invoices/'.$id.'/payments', ['amount' => 1, 'method' => 'cash', 'idempotency_key' => 'branch'])->assertNotFound();
         $this->withHeader('X-Clinic-Context', '99999')->getJson('/api/v1/billing/invoices')->assertConflict();
     }

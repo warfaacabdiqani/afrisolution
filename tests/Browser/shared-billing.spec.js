@@ -34,9 +34,11 @@ for (const [business, customerLabel] of [['clinic', 'Patient'], ['beauty-salon',
                 payment = route.request().postDataJSON();
                 expect(route.request().headers()['x-clinic-context']).toBe('1');
                 invoice.paid = '45.00'; invoice.balance = '0.00'; invoice.status = 'paid';
-                invoice.payments = [{ id: 1, amount: '45.00', method: 'cash', reference: 'Received', paid_at: '2026-09-16T10:00:00Z' }];
+                invoice.payments = [{ id: 1, amount: '45.00', method: 'cash', reference: 'Received', paid_at: '2026-09-16T10:00:00Z', receipt: { id: 1, number: 'RCT-000001' } }];
                 return json({ data: invoice });
             }
+            if (url.pathname === '/api/v1/billing/invoices/1/print') return json({ data: invoice, document: { identity: { business_name: 'Test Business', branch_name: 'Main', customer_label: customerLabel }, historical_identity_available: true } });
+            if (url.pathname === '/api/v1/billing/payments/1/receipt') return json({ data: { id: 1, number: 'RCT-000001', invoice_id: 1, snapshot: { business_name: 'Test Business', branch_name: 'Main', customer_label: customerLabel, customer_name: 'Snapshot Customer', invoice_number: 'INV-000001', currency: 'USD', payment_amount: '45.00', payment_method: 'cash', payment_reference: 'Received', payment_at: '2026-09-16T10:00:00Z', invoice_total: '45.00', previously_paid: '0.00', balance_after: '0.00' } } });
             if (url.pathname === '/api/v1/billing/invoices/1') return json({ data: invoice, methods: ['cash'] });
             if (url.pathname === '/api/v1/billing/invoices') return json({ data: { data: [invoice], current_page: 1, last_page: 1 }, methods: ['cash'] });
             if (url.pathname.startsWith('/app/')) return route.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html><html><head><meta charset="utf-8">${(entry.css || []).map(css => `<link rel="stylesheet" href="/build/${css}">`).join('')}</head><body><div id="app"></div><script type="module" src="/build/${entry.file}"></script></body></html>` });
@@ -52,6 +54,18 @@ for (const [business, customerLabel] of [['clinic', 'Patient'], ['beauty-salon',
         await expect(page.getByText('Paid: 45.00 · Balance: 0.00', { exact: true })).toBeVisible();
         expect(payment.idempotency_key).toBeTruthy();
         expect(payment.amount).toBe('45.00');
+        await expect(page.getByRole('link', { name: /RCT-000001.*View Receipt/ })).toBeVisible();
+        await page.goto('/app/billing/invoices/1/print');
+        await expect(page.locator('.print-paper')).toContainText('Saved charge');
+        await expect(page.locator('.print-paper')).toContainText(customerLabel);
+        await page.emulateMedia({ media: 'print' });
+        await expect(page.locator('.clinic-sidebar')).toBeHidden();
+        await expect(page.locator('.clinic-topbar')).toBeHidden();
+        await expect(page.locator('.print-actions')).toBeHidden();
+        await page.emulateMedia({ media: 'screen' });
+        await page.goto('/app/billing/payments/1/receipt');
+        await expect(page.locator('.print-paper')).toContainText('RCT-000001');
+        await expect(page.locator('.print-paper')).toContainText('Balance after payment');
         expect(errors).toEqual([]);
     });
 }

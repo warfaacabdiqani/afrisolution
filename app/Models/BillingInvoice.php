@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 class BillingInvoice extends Model {
     use BelongsToTenant;
     protected $guarded = ['id', 'tenant_id'];
+    protected function casts(): array { return ['document_snapshot' => 'array']; }
     public function branch() { return $this->belongsTo(Branch::class); }
     public function patient() { return $this->belongsTo(Patient::class); }
     public function salonClient() { return $this->belongsTo(SalonClient::class); }

@@ -34,8 +34,35 @@ class BillingController extends Controller
     public function show(Request $request, int $id, BillingService $billing)
     {
         $context = app(ClinicAccessService::class)->authorize($request, 'billing');
-        $invoice = $billing->visible($context)->with(['branch', 'items', 'payments'])->findOrFail($id);
+        $invoice = $billing->visible($context)->with(['branch', 'items', 'payments.receipt', 'payments.recordedBy'])->findOrFail($id);
         return (new BillingInvoiceResource($invoice))->additional(['methods' => $this->methods($context)]);
+    }
+
+    public function invoicePrint(Request $request, int $id, BillingService $billing)
+    {
+        $context = app(ClinicAccessService::class)->authorize($request, 'billing');
+        $invoice = $billing->visible($context)->with(['branch', 'items', 'payments.receipt'])->findOrFail($id);
+        $identity = $invoice->document_snapshot;
+        return (new BillingInvoiceResource($invoice))->additional(['document' => [
+            'identity' => $identity ?? app(\App\Services\Billing\BillingDocumentSnapshot::class)->identity($context, $invoice->branch->name,
+                $invoice->salon_client_id ? 'salon_client' : 'patient'),
+            'historical_identity_available' => $identity !== null,
+        ]]);
+    }
+
+    public function receipt(Request $request, int $id, BillingService $billing)
+    {
+        $context = app(ClinicAccessService::class)->authorize($request, 'billing');
+        $payment = \App\Models\BillingPayment::whereHas('invoice', fn ($query) => $query->whereIn('branch_id', $context['branches']->pluck('id')))
+            ->with('receipt')->findOrFail($id);
+        abort_unless($payment->receipt, 404, 'No receipt was issued for this historical payment.');
+        return response()->json(['data' => [
+            'id' => $payment->receipt->id,
+            'number' => $payment->receipt->number,
+            'payment_id' => $payment->id,
+            'invoice_id' => $payment->invoice_id,
+            'snapshot' => $payment->receipt->snapshot,
+        ]]);
     }
 
     public function fromSalon(BillingSourceRequest $request, int $id, BillingService $billing)
