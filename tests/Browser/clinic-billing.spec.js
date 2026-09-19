@@ -68,7 +68,16 @@ test('completion exposes Create Invoice; issuance switches to View Invoice and p
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('button', { name: 'Create Invoice', exact: true })).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Complete Appointment', exact: true }).click();
-    await dialog.getByRole('button', { name: 'Confirm Complete Appointment', exact: true }).click();
+    const confirmation = page.getByRole('dialog', { name: 'Complete Appointment?' });
+    await expect(confirmation.getByRole('button', { name: 'Confirm Complete Appointment', exact: true })).toBeVisible();
+    const bounds = await confirmation.boundingBox();
+    const viewport = page.viewportSize();
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+    await confirmation.getByRole('button', { name: 'Keep Appointment' }).click();
+    await expect(confirmation).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Complete Appointment', exact: true }).click();
+    await confirmation.getByRole('button', { name: 'Confirm Complete Appointment', exact: true }).click();
     await expect(dialog.getByRole('button', { name: 'Create Invoice', exact: true })).toBeVisible();
     expect(state.creations).toBe(0);
     await dialog.getByRole('button', { name: 'Create Invoice', exact: true }).click();
@@ -94,3 +103,20 @@ for (const status of ['scheduled', 'cancelled', 'no_show']) {
         expect(state.creations).toBe(0); expect(state.errors).toEqual([]);
     });
 }
+
+test('status confirmation stays visible on a short mobile viewport and Escape returns focus', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 600 });
+    const state = await fixture(page, 'in_consultation');
+    await page.goto('/app/appointments/7?view=schedule');
+    const action = page.getByRole('button', { name: 'Complete Appointment', exact: true });
+    await action.click();
+    const confirmation = page.getByRole('dialog', { name: 'Complete Appointment?' });
+    await expect(confirmation).toBeVisible();
+    const bounds = await confirmation.boundingBox();
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(600);
+    await page.keyboard.press('Escape');
+    await expect(confirmation).toHaveCount(0);
+    await expect(action).toBeFocused();
+    expect(state.errors).toEqual([]);
+});
