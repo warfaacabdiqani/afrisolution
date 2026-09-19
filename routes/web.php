@@ -12,6 +12,9 @@ Route::view('/', 'app');
 // their normal responses, including JSON 404s for unknown API endpoints.
 Route::view('/app/{path?}', 'app')->where('path', '.*');
 
+// Audit logs are read-only; unsupported mutations are absent resources.
+Route::match(['PUT', 'DELETE'], '/api/v1/platform/audits/{id}', fn () => abort(404))->whereNumber('id');
+
 // Fallback to the SPA for any non-API route so the Vue router can render the
 // custom NotFoundView for unknown pages instead of Laravel's default page.
-Route::fallback(fn () => view('app'));
+Route::fallback(fn (\Illuminate\Http\Request $request) => $request->is('api/*') ? abort(404) : view('app'));

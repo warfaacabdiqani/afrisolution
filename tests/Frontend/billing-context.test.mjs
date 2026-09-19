@@ -58,6 +58,27 @@ test('patient profile IDs are customer filters, never invoice IDs, and changing 
     } finally { h.stop(); }
 });
 
+test('Salon Client history is server filtered and clears its filter across business switches', async () => {
+    const customer = vue.reactive({ customer_type: 'salon_client', customer_id: 17 });
+    const h = await harness(customer);
+    try {
+        const old = h.requests[0];
+        assert.equal(old.kind, 'list');
+        assert.equal(old.payload.customer_type, 'salon_client');
+        assert.equal(old.payload.customer_id, 17);
+        h.auth.user.active_tenant_id = 2;
+        assert.equal(old.config.signal.aborted, true);
+        assert.equal(h.state.data.value, null);
+        assert.equal(h.replacements.at(-1), '/app/billing/invoices');
+        h.context.data = { clinic: { id: 2 }, branch: { id: 22 } };
+        assert.equal(h.requests.length, 1, 'the old Client ID must not be sent to the next business');
+        old.resolve(detail('Salon A private name')); await flush();
+        assert.equal(h.state.data.value, null);
+        h.state.load();
+        assert.equal(h.requests.length, 1);
+    } finally { h.stop(); }
+});
+
 test('switching business clears detail, payment form and selection, and ignores stale responses', async () => {
     const h = await harness();
     try {
