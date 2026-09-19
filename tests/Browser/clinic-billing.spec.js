@@ -6,12 +6,12 @@ async function fixture(page, status = 'completed') {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     const manifest = JSON.parse(await readFile('public/build/manifest.json', 'utf8'));
     const entry = manifest['resources/js/app.js'];
-    const modules = [['billing', 'billing'], ['appointments', 'appointments'], ['patients', 'patient_management']].map(([key, feature]) => ({
+    const modules = [['dashboard', 'dashboard'], ['billing', 'billing'], ['appointments', 'appointments'], ['patients', 'patient_management']].map(([key, feature]) => ({
         key, label: key, icon: 'calendar', allowed: true, business_allowed: true, business_modules: [key], feature, permission: key + '.view',
     }));
     const context = { clinic: { id: 1, name: 'Clinic A', timezone: 'UTC' }, branch: { id: 1, name: 'Main' }, branches: [{ id: 1, name: 'Main' }],
-        business_type: { slug: 'clinic', name: 'Clinic' }, business_modules: { clinical: true, billing: true, appointments: true, patients: true },
-        labels: { customer: 'Patient' }, features: { billing: true, appointments: true, patient_management: true }, permissions: ['*'],
+        business_type: { slug: 'clinic', name: 'Clinic' }, business_modules: { clinical: true, dashboard: true, billing: true, appointments: true, patients: true },
+        labels: { customer: 'Patient' }, features: { dashboard: true, billing: true, appointments: true, patient_management: true }, permissions: ['*'],
         modules, operational: true, subscription: { status: 'active' }, role: 'owner', today: '2026-09-16', idle_timeout_minutes: 120 };
     const patient = { id: 17, first_name: 'Amina', last_name: 'Yusuf', full_name: 'Amina Yusuf', patient_number: 'PAT-17', gender: 'female',
         age: 30, status: 'active', allergies: [], conditions: [] };
@@ -32,6 +32,12 @@ async function fixture(page, status = 'completed') {
         }
         if (url.pathname === '/api/v1/session') return json({ data: { id: 1, name: 'Owner', active_tenant_id: 1 } });
         if (url.pathname === '/api/v1/clinic/context') return json({ data: context });
+        if (url.pathname === '/api/v1/clinic/dashboard') return json({ data: {
+            business: { id: 1, name: 'Clinic A', workspace_label: 'clinic' }, today: '2026-09-16',
+            widgets: [{ key: 'monthly_revenue', label: 'Monthly Revenue', icon: 'revenue', tone: 'mint',
+                format: 'currency', currency: 'USD', available: true, value: 5,
+                description: 'Payments received this month in this branch' }], sections: {}, quick_actions: [],
+        } });
         if (url.pathname === '/api/v1/public/settings') return json({ data: {} });
         if (url.pathname === '/api/v1/clinic/patients/17') return json({ data: patient });
         if (url.pathname === '/api/v1/clinic/appointments/7') return json({ data: appointment });
@@ -92,6 +98,18 @@ test('completion exposes Create Invoice; issuance switches to View Invoice and p
     expect(state.filters.at(-1)).toMatchObject({ customer_type: 'patient', customer_id: '17' });
     expect(state.detailIds).not.toContain('17');
     expect(state.creations).toBe(1); expect(state.errors).toEqual([]);
+});
+
+test('dashboard revenue links to the shared Billing ledger', async ({ page }) => {
+    const state = await fixture(page);
+    await page.goto('/app/dashboard');
+    const revenue = page.locator('[data-widget=monthly_revenue]');
+    await expect(revenue).toContainText('Monthly Revenue');
+    await expect(revenue).toContainText('5.00');
+    await revenue.getByRole('link', { name: 'View Billing' }).click();
+    await expect(page).toHaveURL(/\/app\/billing\/invoices$/);
+    await expect(page.getByRole('columnheader', { name: 'Invoice', exact: true })).toBeVisible();
+    expect(state.errors).toEqual([]);
 });
 
 for (const status of ['scheduled', 'cancelled', 'no_show']) {

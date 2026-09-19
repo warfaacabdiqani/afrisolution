@@ -2,13 +2,23 @@
 namespace App\Services;
 
 use App\Http\Resources\{AppointmentResource, PatientResource};
-use App\Models\{Doctor, Patient};
+use App\Models\{BillingPayment, Doctor, Patient};
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardProfileService
 {
+    private function monthlyRevenue(array $context, string $currency): float
+    {
+        $start = Carbon::parse($context['today'], $context['clinic']->timezone)->startOfMonth();
+        return (float) BillingPayment::whereHas('invoice', fn ($query) => $query
+            ->where('branch_id', $context['branch']->id)->where('currency', $currency))
+            ->where('paid_at', '>=', $start->copy()->utc())
+            ->where('paid_at', '<', $start->addMonth()->utc())
+            ->sum('amount');
+    }
+
     public function resolve(Request $request, array $context): array
     {
         $access = app(ClinicAccessService::class);
@@ -44,22 +54,24 @@ class DashboardProfileService
             $month = Carbon::parse($context['today'])->startOfMonth();
             $dates = (clone $appointments)->where('starts_at', '>=', $month->format('Y-m-d H:i:s'))->where('starts_at', '<', $month->copy()->addMonth()->format('Y-m-d H:i:s'))->selectRaw('DATE(starts_at) as date')->distinct()->pluck('date')->all();
         }
-        // There is no invoice/payment ledger yet. Never estimate revenue from appointments.
+        $currency = $profile === 'beauty-salon'
+            ? app(ClinicSettingsService::class)->get($context['clinic']->id, 'general.currency', 'USD')
+            : app(ClinicSettingsService::class)->get($context['clinic']->id, 'billing.currency', 'USD');
         $values = ['total_patients' => $patientCount, 'today_appointments' => $appointmentCount, 'active_doctors' => $doctors,
-            'monthly_revenue' => null, 'staff_count' => $staffCount, 'branch_count' => $context['branches']->count(), 'subscription' => $context['plan']['name'] ?? null];
+            'monthly_revenue' => in_array($profile, ['clinic', 'beauty-salon'], true) && $allowed('billing')
+                ? $this->monthlyRevenue($context, $currency) : null,
+            'staff_count' => $staffCount, 'branch_count' => $context['branches']->count(), 'subscription' => $context['plan']['name'] ?? null];
         if ($profile === 'beauty-salon') {
             $values['total_clients'] = $allowed('clients') ? \App\Models\SalonClient::where('branch_id',$context['branch']->id)->where('status','active')->count() : null;
             $values['active_stylists'] = $allowed('stylists') ? \App\Models\SalonStaffProfile::where('status','active')->whereHas('branches',fn($q)=>$q->where('branches.id',$context['branch']->id))->whereHas('user',fn($q)=>$q->where('status','active'))->count() : null;
             $values['today_appointments'] = $allowed('appointments') ? app(SalonBookingService::class)->visible($context)->where('branch_id',$context['branch']->id)->whereDate('starts_at',$context['today'])->count() : null;
-            $currency = app(ClinicSettingsService::class)->get($context['clinic']->id,'general.currency','USD');
-            $values['monthly_revenue'] = $allowed('billing') ? (float)\App\Models\BillingPayment::whereHas('invoice',fn($q)=>$q->where('branch_id',$context['branch']->id)->where('currency',$currency))->where('paid_at','>=',Carbon::parse($context['today'],$context['clinic']->timezone)->startOfMonth()->utc())->where('paid_at','<',Carbon::parse($context['today'],$context['clinic']->timezone)->startOfMonth()->addMonth()->utc())->sum('amount') : null;
         }
-        $widgets = collect($definition['widgets'])->filter(fn ($key) => $context['modules']->firstWhere('key', config('dashboard.widgets.'.$key.'.module'))['business_allowed'] ?? false)->map(function ($key) use ($values, $allowed, $context) {
+        $widgets = collect($definition['widgets'])->filter(fn ($key) => $context['modules']->firstWhere('key', config('dashboard.widgets.'.$key.'.module'))['business_allowed'] ?? false)->map(function ($key) use ($values, $allowed, $context, $currency) {
             $widget = config('dashboard.widgets.'.$key);
             $available = $allowed($widget['module']) && $values[$key] !== null;
             return ['key' => $key] + $widget + ['value' => $available ? $values[$key] : null, 'available' => $available,
-                'currency' => app(ClinicSettingsService::class)->get($context['clinic']->id,'general.currency',$context['plan']['currency'] ?? 'USD'),
-                'description' => $available ? ($key === 'staff_count' ? 'Active members in this location' : ($key === 'branch_count' ? 'Authorized locations' : 'Current summary')) : ($key === 'monthly_revenue' && $allowed('billing') ? 'Billing transactions are not implemented yet.' : 'Not available with your access')];
+                'currency' => $key === 'monthly_revenue' ? $currency : app(ClinicSettingsService::class)->get($context['clinic']->id,'general.currency',$context['plan']['currency'] ?? 'USD'),
+                'description' => $available ? ($key === 'monthly_revenue' ? 'Payments received this month in this branch' : ($key === 'staff_count' ? 'Active members in this location' : ($key === 'branch_count' ? 'Authorized locations' : 'Current summary'))) : 'Not available with your access'];
         })->values()->all();
         $sections = [];
         foreach ($definition['sections'] as $section) {
@@ -81,9 +93,9 @@ class DashboardProfileService
         ];
         // Preserve the established clinic API without advertising clinical metrics to other businesses.
         if (!empty($context['business_modules']['clinical'])) $result += [
-            'stats' => ['total_patients' => $patientCount, 'today_appointments' => $appointmentCount, 'active_doctors' => $doctors, 'monthly_revenue' => null],
+            'stats' => ['total_patients' => $patientCount, 'today_appointments' => $appointmentCount, 'active_doctors' => $doctors, 'monthly_revenue' => $values['monthly_revenue']],
             'staff_count' => $staffCount, 'today_appointments' => $todayAppointments, 'recent_patients' => $recentPatients, 'visit_types' => [], 'calendar' => $dates,
-            'availability' => ['patients' => $patientsAllowed, 'appointments' => $appointmentsAllowed, 'revenue' => false], 'today' => $context['today'],
+            'availability' => ['patients' => $patientsAllowed, 'appointments' => $appointmentsAllowed, 'revenue' => $values['monthly_revenue'] !== null], 'today' => $context['today'],
         ];
         return $result;
     }

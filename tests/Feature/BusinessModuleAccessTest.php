@@ -129,7 +129,8 @@ class BusinessModuleAccessTest extends TestCase
             $widgets = collect($data['widgets'])->keyBy('key');
             $this->assertSame(0, $widgets['total_patients']['value']);
             $this->assertSame(0, $widgets['today_appointments']['value']);
-            $this->assertNull($widgets['monthly_revenue']['value']);
+            $this->assertEquals(0, $widgets['monthly_revenue']['value']);
+            $this->assertTrue($widgets['monthly_revenue']['available']);
             $this->assertSame(['add_patient', 'book_appointment', 'create_prescription'], array_column($data['quick_actions'], 'key'));
             DB::table('tenant_memberships')->where('tenant_id', $tenant->id)->update(['permissions' => json_encode(['dashboard.view', 'patients.view'])]);
             $data = $this->getJson('/api/v1/clinic/dashboard')->assertOk()->json('data');

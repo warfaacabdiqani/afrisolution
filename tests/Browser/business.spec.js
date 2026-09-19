@@ -30,7 +30,11 @@ test('business navigation switches without logout and route denials explain the 
         await page.getByRole('button').filter({ hasText: 'Phase ' + slug }).click();
         await expect(page).toHaveURL(/app\/dashboard$/);
         await expect(page.locator('[data-widget]')).toHaveCount(4);
-        await expect(page.locator('[data-widget=monthly_revenue]')).toContainText('Unavailable');
+        if (slug === 'stadium') await expect(page.locator('[data-widget=monthly_revenue]')).toContainText('Unavailable');
+        else {
+            await expect(page.locator('[data-widget=monthly_revenue]')).not.toContainText('Unavailable');
+            await expect(page.locator('[data-widget=monthly_revenue]').getByRole('link', { name: 'View Billing' })).toBeVisible();
+        }
         await expect(page.locator('[data-widget=total_patients]')).toHaveCount(healthcare ? 1 : 0);
         await expect(page.getByRole('heading', { name: healthcare ? 'Clinic Information' : slug === 'beauty-salon' ? 'Salon Information' : 'Stadium Information', exact: true })).toBeVisible();
         if (!healthcare) {

@@ -67,6 +67,37 @@ class ClinicBillingTest extends TestCase
         $this->assertSame('clinic', $audit['business_type']); $this->assertArrayNotHasKey('notes', $audit);
     }
 
+    public function test_dashboard_revenue_uses_received_payments_in_the_active_branch(): void
+    {
+        $f = $this->fixture();
+        $dashboard = fn () => collect($this->getJson('/api/v1/clinic/dashboard')->assertOk()->json('data.widgets'))->keyBy('key')['monthly_revenue'];
+        $this->assertEquals(0, $dashboard()['value']);
+        $this->assertTrue($dashboard()['available']);
+        $invoice = $this->issue($f)->assertCreated()->json('data.id');
+        $this->assertEquals(0, $dashboard()['value']); // Invoiced is not received.
+        $this->postJson('/api/v1/billing/invoices/'.$invoice.'/payments', ['amount' => 5, 'method' => 'cash', 'idempotency_key' => 'dashboard-1'])->assertOk();
+        $this->assertEquals(5, $dashboard()['value']);
+
+        $otherBranch = DB::table('branches')->insertGetId(['tenant_id' => $f['tenant'], 'name' => 'Other', 'status' => 'active']);
+        $row = (array) DB::table('billing_invoices')->find($invoice);
+        unset($row['id']);
+        $row['branch_id'] = $otherBranch; $row['source_id'] = 98765; $row['number'] = 'OTHER-BRANCH';
+        $otherInvoice = DB::table('billing_invoices')->insertGetId($row);
+        DB::table('billing_payments')->insert(['tenant_id' => $f['tenant'], 'invoice_id' => $otherInvoice,
+            'amount' => 40, 'method' => 'cash', 'idempotency_key' => 'other-branch', 'recorded_by' => $f['user'],
+            'paid_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $this->assertEquals(5, $dashboard()['value']);
+        $this->postJson('/api/v1/clinic/branch', ['branch_id' => $otherBranch])->assertOk();
+        $this->assertEquals(40, $dashboard()['value']);
+        $this->postJson('/api/v1/clinic/branch', ['branch_id' => $f['branch']])->assertOk();
+        app(ClinicSettingsService::class)->set($f['tenant'], 'billing', ['currency' => 'EUR'], $f['user']);
+        $this->assertEquals(0, $dashboard()['value']);
+        $this->assertSame('EUR', $dashboard()['currency']);
+        $this->permissions($f, ['dashboard.view']);
+        $this->assertNull($dashboard()['value']);
+        $this->assertFalse($dashboard()['available']);
+    }
+
     public function test_only_completed_status_is_billable_and_completion_does_not_auto_invoice(): void
     {
         $f = $this->fixture();

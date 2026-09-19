@@ -9,4 +9,4 @@ const value = computed(() => {
     return props.widget.value;
 });
 </script>
-<template><section class="clinic-panel clinic-kpi" :data-widget="widget.key"><span class="clinic-kpi-icon" :class="widget.tone"><AppIcon :name="widget.icon" :size="29" /></span><div><h2>{{ widget.label }}</h2><strong>{{ value }}</strong><p>{{ widget.description }}</p></div></section></template>
+<template><section class="clinic-panel clinic-kpi" :data-widget="widget.key"><span class="clinic-kpi-icon" :class="widget.tone"><AppIcon :name="widget.icon" :size="29" /></span><div><h2>{{ widget.label }}</h2><strong>{{ value }}</strong><p>{{ widget.description }}</p><RouterLink v-if="widget.key==='monthly_revenue'&&widget.available" class="text-emerald-700 text-sm font-semibold" to="/app/billing/invoices">View Billing</RouterLink></div></section></template>
