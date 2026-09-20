@@ -66,7 +66,7 @@ class SystemSettingsController extends Controller
     public function testEmail(Request $request, SystemSettingsService $settings)
     {
         abort_unless($request->user()->hasPlatformPermission('settings.update'),403); $data=$request->validate(['email'=>['required','email']]); $email=array_replace(self::DEFAULTS['email'],$settings->section('email',false));
-        config(['mail.default'=>$email['mailer'],'mail.mailers.smtp.host'=>$email['smtp_host'],'mail.mailers.smtp.port'=>$email['smtp_port'],'mail.mailers.smtp.username'=>$email['smtp_username'],'mail.mailers.smtp.password'=>$email['smtp_password'],'mail.mailers.smtp.scheme'=>$email['encryption'],'mail.from.address'=>$email['from_email'],'mail.from.name'=>$email['from_name']]);
+        app(\App\Services\PlatformMailConfigurator::class)->apply();
         Mail::raw('Your Afri Clinic email configuration is working.',fn($message)=>$message->to($data['email'])->subject('Email configuration test'));
         return response()->json(['message'=>'Email sent successfully.']);
     }

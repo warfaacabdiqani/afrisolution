@@ -17,7 +17,7 @@ async function submit() {
     busy.value = true; error.value = null;
     try {
         await auth.login(form);
-        await router.replace(auth.user.is_platform_admin ? '/app/admin' : auth.user.active_tenant_id ? '/app/dashboard' : '/app/clinics');
+        await router.replace(!auth.user.email_verified ? '/app/verify-email' : auth.user.is_platform_admin ? '/app/admin' : auth.user.active_tenant_id ? '/app/dashboard' : '/app/clinics');
     } catch (e) { error.value = e; }
     finally { form.password = ''; showPassword.value = false; busy.value = false; }
 }

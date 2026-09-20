@@ -4,6 +4,7 @@ use App\Http\Middleware\PlatformAdmin;
 use App\Http\Middleware\PlatformPermission;
 use App\Http\Middleware\CheckPlatformAvailability;
 use App\Http\Middleware\ResolveTenant;
+use App\Http\Middleware\EnsureEmailVerifiedForApi;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.permission' => PlatformPermission::class,
             'platform.available' => CheckPlatformAvailability::class,
             'tenant' => ResolveTenant::class,
+            'email.verified' => EnsureEmailVerifiedForApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

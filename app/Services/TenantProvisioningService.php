@@ -61,6 +61,7 @@ class TenantProvisioningService
             }
             if ($data['role'] === 'doctor') $this->enforceDoctorLimit($tenant, $sub);
             $user = User::create(collect($data)->only(['name', 'email', 'password'])->all());
+            $user->markEmailAsVerified();
             $membership = DB::table('tenant_memberships')->insertGetId(['tenant_id' => $tenant->id, 'user_id' => $user->id, 'role' => $data['role'], 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
             $this->saveAccess($tenant, $membership, $data);
             app(PlatformService::class)->audit($actor, 'member.created', 'tenant', $tenant->id);

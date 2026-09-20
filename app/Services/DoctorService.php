@@ -86,6 +86,7 @@ class DoctorService
                     $permissions = $data['account_permissions'] ?? config('clinic.roles.doctor');
                     foreach ($permissions as $permission) abort_unless(app(ClinicAccessService::class)->can($context['permissions'], $permission), 403, 'You cannot grant permissions you do not hold.');
                     $user = User::create(['name' => $doctor->full_name, 'email' => $data['account_email'], 'password' => $data['password']]);
+                    $user->markEmailAsVerified();
                     $membership = DB::table('tenant_memberships')->insertGetId(['tenant_id' => $tenant->id, 'user_id' => $user->id, 'role' => 'doctor', 'status' => 'active', 'permissions' => json_encode($permissions), 'all_branches' => false, 'created_at' => now(), 'updated_at' => now()]);
                     foreach ($branchIds as $branch) DB::table('branch_memberships')->insert(['tenant_id' => $tenant->id, 'membership_id' => $membership, 'branch_id' => $branch]);
                     $linkUser = $user->id;

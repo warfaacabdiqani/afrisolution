@@ -53,6 +53,7 @@ class PlatformService
             $owner = isset($data['owner_user_id'])
                 ? User::findOrFail($data['owner_user_id'])
                 : User::create(['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password']]);
+            if (!isset($data['owner_user_id'])) $owner->markEmailAsVerified();
             // Explicit platform provisioning boundary: all ownership is assigned from the newly created tenant.
             DB::table('tenant_memberships')->insert(['tenant_id' => $tenant->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
             DB::table('branches')->insert(['tenant_id' => $tenant->id, 'name' => $locationName, 'created_at' => now(), 'updated_at' => now()]);
@@ -127,6 +128,7 @@ class PlatformService
                 if (($data['status']==='inactive'||$removesSuper) && $activeSupers<=1) throw ValidationException::withMessages(['role_ids'=>'The last active Super Administrator cannot be disabled or removed from that role.']);
             }
             $user->fill(collect($data)->only(['name','email','password'])->filter(fn($value)=>$value!==null)->all());
+            if (!$user->exists) $user->email_verified_at = now();
             $user->is_platform_admin=true; $user->status=$data['status']; $user->save();
             $user->platformRoles()->sync($data['role_ids']);
             $this->audit($actor,$user->wasRecentlyCreated?'admin.created':'admin.updated','user',$user->id);

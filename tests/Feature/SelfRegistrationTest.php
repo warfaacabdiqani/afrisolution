@@ -8,6 +8,9 @@ use App\Models\PlatformRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
+use App\Notifications\VerifyAfrisoEmail;
 use Tests\TestCase;
 
 class SelfRegistrationTest extends TestCase
@@ -19,6 +22,7 @@ class SelfRegistrationTest extends TestCase
         parent::setUp();
         $this->seed(\Database\Seeders\BusinessTypeSeeder::class);
         $this->withHeader('Origin', 'http://localhost');
+        Notification::fake();
     }
 
     private function plan(string $name, int $days): Plan
@@ -57,6 +61,13 @@ class SelfRegistrationTest extends TestCase
             $this->assertSame('trial', $subscription->status);
             $this->assertTrue(now()->addDays(20)->lt($subscription->trial_ends_at));
             $this->getJson('/api/v1/session')->assertJsonPath('data.active_tenant_id', $id);
+            $user = User::where('email', $email)->firstOrFail();
+            $this->assertFalse($user->hasVerifiedEmail());
+            Notification::assertSentTo($user, VerifyAfrisoEmail::class);
+            $this->getJson('/api/v1/clinic/context')->assertForbidden()->assertJsonPath('code', 'EMAIL_VERIFICATION_REQUIRED');
+            $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), ['id' => $user->id, 'hash' => sha1($email)], absolute: false);
+            $this->get($url)->assertRedirect('/app/verify-email?verified=1');
+            $this->assertTrue($user->fresh()->hasVerifiedEmail());
             $this->getJson('/api/v1/clinic/context')->assertOk()->assertJsonPath('data.business_type.slug', $slug)->assertJsonPath('data.role', 'owner');
             $this->getJson('/api/v1/clinic/dashboard')->assertOk();
             $this->postJson('/register', $this->payload($type, $plan, $email))->assertUnprocessable();

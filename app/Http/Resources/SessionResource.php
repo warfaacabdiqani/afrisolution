@@ -15,7 +15,7 @@ class SessionResource extends JsonResource
             ->select('tenants.id', 'tenants.name', 'tenant_memberships.role')->orderBy('tenants.name')->get();
         $selected = $request->session()->get('tenant_id');
 
-        return ['id' => $this->id, 'name' => $this->name, 'email' => $this->email, 'is_platform_admin' => (bool) $this->is_platform_admin,
+        return ['id' => $this->id, 'name' => $this->name, 'email' => $this->email, 'email_verified' => $this->hasVerifiedEmail(), 'is_platform_admin' => (bool) $this->is_platform_admin,
             'platform_permissions' => $this->is_platform_admin && $this->status === 'active'
                 ? DB::table('platform_permissions as p')->join('platform_permission_role as pr', 'pr.platform_permission_id', '=', 'p.id')
                     ->join('platform_role_user as ru', 'ru.platform_role_id', '=', 'pr.platform_role_id')

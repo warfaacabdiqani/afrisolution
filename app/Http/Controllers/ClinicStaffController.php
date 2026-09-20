@@ -335,6 +335,7 @@ class ClinicStaffController extends Controller
             'email' => $data['email'],
             'password' => $data['password'] ?? Str::random(24),
         ]);
+        $user->markEmailAsVerified();
 
         $membershipId = DB::table('tenant_memberships')->insertGetId([
             'tenant_id' => $context['clinic']->id,

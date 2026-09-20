@@ -30,6 +30,7 @@ class CreatePlatformAdmin extends Command
         DB::transaction(function () use ($data) {
             $user = new User($data);
             $user->is_platform_admin = true;
+            $user->email_verified_at = now();
             $user->save();
             $user->platformRoles()->sync([PlatformRole::where('slug','super-administrator')->value('id')]);
             app(PlatformService::class)->audit($user->id, 'admin.created', 'user', $user->id);

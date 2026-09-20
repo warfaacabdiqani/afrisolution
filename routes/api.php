@@ -14,9 +14,11 @@ Route::get('v1/public/registration', [\App\Http\Controllers\RegistrationControll
 Route::get('v1/public/whatsapp/webhook', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify'])->middleware('throttle:60,1');
 Route::post('v1/public/whatsapp/webhook', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive'])->middleware('throttle:120,1');
 
-Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
+Route::middleware(['auth:sanctum', 'email.verified'])->prefix('v1')->group(function () {
     Route::get('clinic/context', [\App\Http\Controllers\ClinicDashboardController::class, 'context'])->middleware('platform.available');
     Route::get('session', [AuthController::class, 'session']);
+    Route::post('email/verification/resend', [\App\Http\Controllers\EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:6,1');
     Route::post('session/clinic', [AuthController::class, 'select']);
     Route::prefix('whatsapp')->middleware(['platform.available', 'tenant'])->group(function () {
         Route::get('connection', [\App\Http\Controllers\WhatsAppConnectionController::class, 'show']);

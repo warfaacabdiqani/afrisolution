@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/register', [\App\Http\Controllers\RegistrationController::class, 'store'])->middleware('throttle:login');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::get('/email/verify/{id}/{hash}', [\App\Http\Controllers\EmailVerificationController::class, 'verify'])
+    ->middleware(['signed:relative', 'throttle:6,1'])->whereNumber('id')->name('verification.verify');
 
 Route::view('/', 'app');
 

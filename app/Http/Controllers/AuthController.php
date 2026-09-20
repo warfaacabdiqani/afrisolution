@@ -19,7 +19,7 @@ class AuthController extends Controller
 
     public function session(Request $request)
     {
-        return new SessionResource($request->user());
+        return response()->json(['data' => (new SessionResource($request->user()))->resolve($request)]);
     }
 
     public function select(SelectTenantRequest $request, SessionService $service)

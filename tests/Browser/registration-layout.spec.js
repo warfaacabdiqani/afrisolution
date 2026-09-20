@@ -7,7 +7,7 @@ async function fixture(page, failRegistration = false) {
     const entry = manifest['resources/js/app.js'];
     const stylesheet = manifest['resources/css/app.css'].file;
     let registered = false;
-    await page.route('https://registration.test/**', async route => {
+    await page.route('http://127.0.0.1:8011/**', async route => {
         const url = new URL(route.request().url());
         if (url.pathname.startsWith('/build/') || url.pathname.startsWith('/images/')) {
             const file = path.resolve('public', '.' + url.pathname);
@@ -19,12 +19,12 @@ async function fixture(page, failRegistration = false) {
             enabled: true, business_types: [{ id: 1, name: 'Healthcare / Clinic' }, { id: 2, name: 'Dental Clinic' }, { id: 3, name: 'Beauty Salon' }, { id: 4, name: 'Stadium / Sports Facility' }],
             plans: [{ id: 1, name: 'Starter', currency: 'USD', price: '10.00', billing_period: 'monthly', trial_days: 14 }, { id: 2, name: 'Pro', currency: 'USD', price: '25.00', billing_period: 'monthly', trial_days: 14 }],
         } } });
-        if (url.pathname === '/api/v1/session') return route.fulfill({ status: registered ? 200 : 401, json: registered ? { data: { id: 1, active_tenant_id: 1 } } : {} });
+        if (url.pathname === '/api/v1/session') return route.fulfill({ status: registered ? 200 : 401, json: registered ? { data: { id: 1, email: 'owner@example.test', email_verified: false, active_tenant_id: 1 } } : {} });
         if (url.pathname === '/sanctum/csrf-cookie') return route.fulfill({ status: 204 });
         if (url.pathname === '/register') {
             if (failRegistration) return route.fulfill({ status: 422, json: { errors: { name: ['Please enter a different business name.'] } } });
             registered = true;
-            return route.fulfill({ status: 201, json: { data: { business_name: 'Afriso', plan: 'Pro', trial_ends_at: '2026-10-04T00:00:00Z', tenant_id: 1 } } });
+            return route.fulfill({ status: 201, json: { data: { business_name: 'Afriso', plan: 'Pro', trial_ends_at: '2026-10-04T00:00:00Z', tenant_id: 1, email: 'owner@example.test', verification_email_sent: true } } });
         }
         if (url.pathname.startsWith('/app/')) return route.fulfill({ contentType: 'text/html; charset=utf-8', body:
             `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/build/${stylesheet}">${(entry.css || []).map(css => `<link rel="stylesheet" href="/build/${css}">`).join('')}</head><body><div id="app"></div><script type="module" src="/build/${entry.file}"></script></body></html>` });
@@ -108,6 +108,7 @@ for (const [width, height] of [[1920, 1080], [1920, 900], [1920, 820], [1920, 72
         await page.getByRole('button', { name: 'Start Free Trial' }).click();
         await expect(page.getByRole('heading', { name: 'Your free trial has started' })).toBeVisible();
         await assertDesktopFits();
-        await expect(page.getByRole('button', { name: 'Go to Dashboard' })).toBeVisible();
+        await expect(page.getByText('Email verification required')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Verify Email' })).toBeVisible();
     });
 }

@@ -4,6 +4,7 @@ import NotFoundView from '../views/NotFoundView.vue';
 import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
+import VerifyEmailView from '../views/VerifyEmailView.vue';
 import AdminLayout from '../layouts/AdminLayout.vue';
 import DashboardPage from '../pages/admin/DashboardPage.vue';
 import AdminSimplePage from '../pages/admin/AdminSimplePage.vue';
@@ -78,6 +79,7 @@ const router = createRouter({
         { path: '/app/forbidden', name: 'forbidden', component: () => import('../views/ForbiddenView.vue'), meta: { auth: true } },
         { path: '/app/login', name: 'login', component: LoginView },
         { path: '/app/register', name: 'register', component: RegisterView },
+        { path: '/app/verify-email', name: 'verify-email', component: VerifyEmailView },
         {
             path: '/app/admin',
             component: AdminLayout,
@@ -213,6 +215,7 @@ const router = createRouter({
 router.beforeEach(async (to, from) => {
     const auth = useAuthStore();
     if (!auth.loaded) await auth.restore();
+    if (auth.user && !auth.user.email_verified && to.name !== 'verify-email') return { name: 'verify-email' };
     if (to.meta.auth && !auth.user) return { name: 'login' };
     if (to.meta.platform && !auth.user?.is_platform_admin) return { name: 'clinics' };
     if (to.meta.platformPermission && !auth.user?.platform_permissions?.includes(to.meta.platformPermission)) return { name: 'forbidden' };

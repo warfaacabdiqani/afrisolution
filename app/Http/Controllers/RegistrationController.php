@@ -48,12 +48,19 @@ class RegistrationController extends Controller
         $request->session()->regenerate();
         $request->session()->put('tenant_id', $tenant->id);
 
+        $emailSent = true;
+        try { $user->sendEmailVerificationNotification(); }
+        catch (\Throwable) { $emailSent = false; }
+
         return response()->json(['data' => [
             'business_name' => $tenant->name,
             'business_type' => $tenant->businessType->name,
             'plan' => $plan->name,
             'trial_ends_at' => $subscription->trial_ends_at,
             'tenant_id' => $tenant->id,
+            'email' => $user->email,
+            'email_verification_required' => true,
+            'verification_email_sent' => $emailSent,
         ]], 201);
     }
 }
