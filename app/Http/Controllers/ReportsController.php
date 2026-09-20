@@ -390,7 +390,7 @@ class ReportsController extends Controller
                 $label = Carbon::parse($date)->toDateString();
             }
 
-            $dates->has($label) ? $dates[$label]++ : $dates->put($label, 1);
+            $dates->put($label, $dates->get($label, 0) + 1);
         }
 
         return $dates->sortKeys()->map(fn (int $count, string $label) => ['label' => $label, 'value' => $count])->values()->all();
@@ -458,9 +458,9 @@ class ReportsController extends Controller
         return $series->sortKeys()->map(fn ($value, $label) => ['label' => $label, 'value' => round((float) $value, 2)])->values()->all();
     }
 
-    private function chartItems(array $items): array
+    private function chartItems($items): array
     {
-        return $items;
+        return collect($items)->values()->all();
     }
 
     private function inRange($date, array $state): bool

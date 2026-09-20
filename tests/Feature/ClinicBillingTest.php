@@ -98,6 +98,20 @@ class ClinicBillingTest extends TestCase
             ->assertJsonPath('data.table.0.status', 'completed');
     }
 
+    public function test_report_endpoints_with_appointments_and_doctors_return_data(): void
+    {
+        $f = $this->fixture();
+        $plan = Plan::findOrFail($f['plan']);
+        $plan->update(['features' => array_replace($plan->features, ['basic_reports' => true])]);
+        $this->anotherAppointment($f);
+
+        foreach (['overview', 'patients', 'appointments', 'clinical', 'doctors', 'prescriptions', 'branches', 'financial'] as $report) {
+            $this->getJson('/api/v1/clinic/reports/'.$report)->assertOk()->assertJsonStructure(['data' => ['table', 'charts']]);
+        }
+        $this->getJson('/api/v1/clinic/reports/appointments')->assertJsonPath('data.charts.0.items.0.value', 2);
+        $this->getJson('/api/v1/clinic/reports/doctors')->assertJsonPath('data.table.0.doctor', 'Ahmed Hassan');
+    }
+
     public function test_dashboard_revenue_uses_received_payments_in_the_active_branch(): void
     {
         $f = $this->fixture();
