@@ -2,6 +2,7 @@
 
 return [
     'billing_permissions' => ['billing.view', 'billing.create', 'billing.payments'],
+    'whatsapp_permissions' => ['whatsapp.view', 'whatsapp.manage'],
     'salon_permissions' => ['appointments.start_service','appointments.override_conflict','appointments.discount','clients.view','clients.create','clients.update','clients.archive','salon_staff.view','salon_staff.manage','services.view','services.create','services.update','services.archive','service_categories.manage','clinic_settings.salon.update'],
     'settings_permissions' => ['clinic_settings.view','clinic_settings.update', ...array_map(fn($section)=>'clinic_settings.'.$section.'.'.($section==='branches'?'manage':'update'), ['general','branding','branches','patients','appointments','clinical','pharmacy','billing','notifications','documents','security']), 'clinic_settings.subscription.view'],
     'prescription_permissions' => ['prescriptions.view','prescriptions.create','prescriptions.update','prescriptions.cancel','prescriptions.print','prescriptions.dispense','prescriptions.view_all_doctors','prescriptions.medications.manage'],

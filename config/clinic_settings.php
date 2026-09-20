@@ -62,7 +62,8 @@ return [
         'partial_payments'=>$bool('Allow Partial Payments',true),'refunds'=>$bool('Allow Refunds'),
         'payment_methods'=>$f('Enabled Payment Methods','multiselect',['cash'],'required|array|min:1',['cash','card','mobile_money','bank_transfer']),
     ]],
-    'notifications'=>['label'=>'Notifications','feature'=>['email_notifications','sms_notifications','whatsapp_notifications'],'notice'=>'Provider status: Not configured. These are notification preferences; no email, SMS or WhatsApp delivery is simulated.', 'fields'=>[
+    'integrations'=>['label'=>'Integrations','feature'=>'whatsapp_notifications','fields'=>[]],
+    'notifications'=>['label'=>'Notifications','feature'=>['email_notifications','sms_notifications','whatsapp_notifications'],'notice'=>'These are notification preferences. WhatsApp connection status is shown in Integrations; no message delivery is configured yet.', 'fields'=>[
         'email_enabled'=>$bool('Email Notifications'),'appointment_created'=>$bool('Appointment Created',true),'appointment_reminder'=>$bool('Appointment Reminder',true),'appointment_cancelled'=>$bool('Appointment Cancelled',true),
         'payment_receipt'=>$bool('Payment Receipt',true),'low_stock'=>$bool('Low Stock',true),'medicine_expiry'=>$bool('Medicine Expiry',true),'subscription_warning'=>$bool('Subscription Warning',true),
         'sms_enabled'=>$bool('SMS Notifications'),'whatsapp_enabled'=>$bool('WhatsApp Notifications'),

@@ -11,6 +11,7 @@ import BrandingSettings from '../../components/settings/BrandingSettings.vue';
 import BranchSettings from '../../components/settings/BranchSettings.vue';
 import SubscriptionSettings from '../../components/settings/SubscriptionSettings.vue';
 import DocumentPreviews from '../../components/settings/DocumentPreviews.vue';
+import WhatsAppSettings from '../../components/settings/WhatsAppSettings.vue';
 import FormErrors from '../../components/ui/FormErrors.vue';
 import '../../../css/clinic-settings.css';
 const { settingsLabel } = useBusinessContext();
@@ -41,6 +42,7 @@ onUnmounted(() => { if(store.beforeExit === guard) store.beforeExit = null; wind
 <BrandingSettings v-if="section === 'branding'" :values="definition.values" :can-update="definition.can_update" @dirty="childDirty = $event" @saved="saved" />
 <BranchSettings v-else-if="section === 'branches'" :summary="store.data.summary" :timezones="store.data.timezones" :can-update="definition.can_update" @dirty="childDirty = $event" @saved="saved" />
 <SubscriptionSettings v-else-if="section === 'subscription'" :summary="store.data.summary" />
+<WhatsAppSettings v-else-if="section === 'integrations'" />
 <form v-else @submit.prevent="save"><SettingFields :fields="definition.fields" :model="form" :timezones="store.data.timezones" :branches="store.data.branches" :disabled="!definition.can_update || saving" />
 <div v-if="section === 'patients'" class="cs-number-preview">Patient number preview <strong>{{ form.number_prefix }}{{ '1'.padStart(Math.min(Number(form.number_length) || 6,12),'0') }}</strong><small>Only future patient numbers use these preferences.</small></div>
 <div v-if="section === 'billing'" class="cs-number-preview">Invoice: <strong>{{ form.invoice_prefix }}{{ '1'.padStart(Math.min(Number(form.number_length) || 6,12),'0') }}</strong> Receipt: <strong>{{ form.receipt_prefix }}{{ '1'.padStart(Math.min(Number(form.number_length) || 6,12),'0') }}</strong><small>Existing document numbers are never changed. Configure footers in Documents.</small></div>

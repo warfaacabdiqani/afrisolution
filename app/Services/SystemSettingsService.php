@@ -10,7 +10,7 @@ class SystemSettingsService
 {
     private const CACHE_KEY = 'system-settings.all';
     public const SECRET_MASK = '••••••••••';
-    private const SECRETS = ['email.smtp_password','notifications.sms_secret','notifications.whatsapp_secret','backup.s3_secret'];
+    private const SECRETS = ['email.smtp_password','notifications.sms_secret','notifications.whatsapp_secret','notifications.whatsapp_verify_token','backup.s3_secret'];
 
     public function all(): array { return Cache::rememberForever(self::CACHE_KEY, fn () => SystemSetting::all()->keyBy('key')->map(fn ($row) => $this->decode($row))->all()); }
     public function get(string $key, mixed $default = null): mixed { return $this->all()[$key] ?? $default; }

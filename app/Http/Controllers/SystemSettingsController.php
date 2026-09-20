@@ -19,7 +19,7 @@ class SystemSettingsController extends Controller
         'branding'=>['display_name'=>'Afri Clinic','footer_text'=>'Healthcare SaaS','logo'=>null,'small_logo'=>null,'favicon'=>null,'login_logo'=>null],
         'localization'=>['timezone'=>'Africa/Nairobi','currency'=>'USD','currency_symbol'=>'$','date_format'=>'DD/MM/YYYY','time_format'=>'12','language'=>'en'],
         'email'=>['mailer'=>'log','smtp_host'=>null,'smtp_port'=>587,'smtp_username'=>null,'smtp_password'=>null,'encryption'=>'tls','from_email'=>'hello@example.com','from_name'=>'Afri Clinic'],
-        'notifications'=>['email_enabled'=>true,'appointment_enabled'=>true,'subscription_enabled'=>true,'trial_expiry_enabled'=>true,'security_enabled'=>true,'sms_enabled'=>false,'sms_provider'=>null,'sms_sender_id'=>null,'sms_secret'=>null,'whatsapp_enabled'=>false,'whatsapp_provider'=>null,'whatsapp_secret'=>null],
+        'notifications'=>['email_enabled'=>true,'appointment_enabled'=>true,'subscription_enabled'=>true,'trial_expiry_enabled'=>true,'security_enabled'=>true,'sms_enabled'=>false,'sms_provider'=>null,'sms_sender_id'=>null,'sms_secret'=>null,'whatsapp_enabled'=>false,'whatsapp_provider'=>null,'whatsapp_secret'=>null,'whatsapp_app_id'=>null,'whatsapp_verify_token'=>null],
         'security'=>['minimum_password_length'=>12,'require_uppercase'=>true,'require_lowercase'=>true,'require_number'=>true,'require_special'=>false,'session_lifetime'=>120,'login_attempt_limit'=>5,'lockout_duration'=>15,'admin_2fa_required'=>false,'security_notifications'=>true],
         'backup'=>['storage_driver'=>'local','s3_key'=>null,'s3_secret'=>null,'s3_region'=>null,'s3_bucket'=>null,'s3_endpoint'=>null,'automatic_backups'=>false,'backup_frequency'=>'disabled','backup_retention'=>30],
     ];

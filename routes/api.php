@@ -11,12 +11,20 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('v1/public/settings', [SystemSettingsController::class, 'publicSettings']);
 Route::get('v1/public/registration', [\App\Http\Controllers\RegistrationController::class, 'options']);
+Route::get('v1/public/whatsapp/webhook', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify'])->middleware('throttle:60,1');
+Route::post('v1/public/whatsapp/webhook', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive'])->middleware('throttle:120,1');
 
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('clinic/context', [\App\Http\Controllers\ClinicDashboardController::class, 'context'])->middleware('platform.available');
     Route::get('session', [AuthController::class, 'session']);
     Route::post('session/clinic', [AuthController::class, 'select']);
+    Route::prefix('whatsapp')->middleware(['platform.available', 'tenant'])->group(function () {
+        Route::get('connection', [\App\Http\Controllers\WhatsAppConnectionController::class, 'show']);
+        Route::put('connection', [\App\Http\Controllers\WhatsAppConnectionController::class, 'update']);
+        Route::post('connection/disable', [\App\Http\Controllers\WhatsAppConnectionController::class, 'disable']);
+    });
     Route::prefix('platform')->middleware('platform')->group(function () {
+        Route::get('whatsapp/connections', [\App\Http\Controllers\PlatformWhatsAppController::class, 'index'])->middleware('platform.permission:settings.view');
         Route::prefix('support-tickets')->middleware('platform.permission:support_tickets.view')->group(function () {
             Route::get('/', [\App\Http\Controllers\PlatformSupportTicketController::class, 'index']);
             Route::get('stats', [\App\Http\Controllers\PlatformSupportTicketController::class, 'stats']);
