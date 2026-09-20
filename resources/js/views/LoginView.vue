@@ -56,4 +56,19 @@ async function submit() {
 @media(min-width:1600px){.login-story{padding:75px 7%}.login-message{margin-top:85px}.login-message ul{gap:25px}.login-form-side{padding:70px 9%}.login-card{padding:52px 36px}}
 @media(max-width:1150px){.login-page{grid-template-columns:1.1fr 1fr}.login-story{padding:45px 7%}.login-photo{width:100%;opacity:.3}.login-wash{background:linear-gradient(90deg,#f3fbfb,#f3fbfb8c)}.login-note{display:none}.login-message{margin-top:50px}.login-form-side{padding:40px 7%}.login-card{padding:35px 25px}}
 @media(max-width:760px){.login-page{display:flex;flex-direction:column}.login-story{min-height:0;padding:28px 25px;border-radius:0}.login-brand strong{font-size:24px}.login-brand small{font-size:13px}.login-brand-icon{padding:10px}.login-message{margin-top:25px}.login-message h2{font-size:29px}.login-message h2 br{display:none}.login-message h2 br::after{content:' '}.login-message>p{font-size:14px;margin-top:12px}.login-message ul,.login-tagline,.login-message .login-tagline{display:none}.login-photo{width:45%;object-position:50% 25%;opacity:.15}.login-form-side{padding:24px;flex:1}.login-card{max-width:500px;padding:30px 24px}.login-home{margin-bottom:18px}.login-card h1{font-size:28px}.login-card form{margin-top:20px}.desktop-break{display:none}}
+@media (max-height:850px) and (min-width:761px){
+    .login-story{min-height:0;padding-top:28px;padding-bottom:28px}
+    .login-message{margin-top:32px}
+    .login-message>p{margin-top:12px}
+    .login-message ul{gap:12px;margin-top:18px}
+    .login-message .login-tagline{margin-top:18px}
+    .login-note{bottom:3%;padding:15px 20px}
+    .login-form-side{padding-top:24px;padding-bottom:24px}
+    .login-home{margin-bottom:16px}
+    .login-card{padding-top:27px;padding-bottom:27px}
+    .login-card form{margin-top:18px}
+    .login-card label{margin-top:17px}
+    .login-recovery{margin:12px 0 18px}
+    .login-footer{margin-top:13px}
+}
 </style>

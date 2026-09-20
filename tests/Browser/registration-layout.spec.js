@@ -52,7 +52,21 @@ test('registration keeps validation errors on the details step and sign-in remai
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 });
 
-for (const [width, height] of [[1920, 1080], [1600, 900], [1366, 768], [820, 900], [390, 844]]) {
+for (const [width, height] of [[1920, 900], [1600, 900], [1536, 730], [1366, 768]]) {
+    test(`login fits the desktop viewport at ${width}×${height}`, async ({ page }) => {
+        await page.setViewportSize({ width, height });
+        await fixture(page);
+        await page.goto('/app/login');
+        await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+        const layout = await page.evaluate(() => ({ overflow: document.documentElement.scrollHeight - innerHeight,
+            page: document.querySelector('.login-page').getBoundingClientRect().height,
+            story: document.querySelector('.login-story').getBoundingClientRect().height,
+            form: document.querySelector('.login-form-side').getBoundingClientRect().height }));
+        expect(layout.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(2);
+    });
+}
+
+for (const [width, height] of [[1920, 1080], [1920, 900], [1920, 820], [1920, 720], [1600, 900], [1600, 800], [1536, 730], [1440, 700], [1366, 768], [1366, 650], [1280, 720], [1280, 640], [1280, 600], [1024, 768], [1024, 650], [820, 900], [390, 844]]) {
     test(`registration steps remain usable at ${width}×${height}`, async ({ page }) => {
         await page.setViewportSize({ width, height });
         await fixture(page);
@@ -64,7 +78,16 @@ for (const [width, height] of [[1920, 1080], [1600, 900], [1366, 768], [820, 900
         await page.getByPlaceholder('Create a strong password').fill('SecurePass12345');
         await page.getByPlaceholder('Confirm your password').fill('SecurePass12345');
         const assertDesktopFits = async () => {
-            if (width >= 1366) expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(2);
+            if (width >= 1024) {
+                const layout = await page.evaluate(() => ({ overflow: document.documentElement.scrollHeight - innerHeight,
+                    story: document.querySelector('.registration-story').getBoundingClientRect().height,
+                    main: document.querySelector('.registration-main').getBoundingClientRect().height,
+                    card: document.querySelector('.registration-card').getBoundingClientRect().height,
+                    top: document.querySelector('.registration-top').getBoundingClientRect().height,
+                    message: document.querySelector('.registration-message').getBoundingClientRect().height,
+                    benefits: document.querySelector('.registration-benefits').getBoundingClientRect().height }));
+                expect(layout.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(2);
+            }
         };
         await assertDesktopFits();
         await page.getByRole('button', { name: 'Continue' }).click();
