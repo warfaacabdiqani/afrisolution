@@ -22,6 +22,11 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('connection', [\App\Http\Controllers\WhatsAppConnectionController::class, 'show']);
         Route::put('connection', [\App\Http\Controllers\WhatsAppConnectionController::class, 'update']);
         Route::post('connection/disable', [\App\Http\Controllers\WhatsAppConnectionController::class, 'disable']);
+        Route::get('templates', [\App\Http\Controllers\WhatsAppTemplateController::class, 'index']);
+        Route::post('templates/sync', [\App\Http\Controllers\WhatsAppTemplateController::class, 'sync']);
+        Route::get('messages', [\App\Http\Controllers\WhatsAppMessageController::class, 'index']);
+        Route::post('messages', [\App\Http\Controllers\WhatsAppMessageController::class, 'store']);
+        Route::get('messages/{id}', [\App\Http\Controllers\WhatsAppMessageController::class, 'show'])->whereNumber('id');
     });
     Route::prefix('platform')->middleware('platform')->group(function () {
         Route::get('whatsapp/connections', [\App\Http\Controllers\PlatformWhatsAppController::class, 'index'])->middleware('platform.permission:settings.view');
