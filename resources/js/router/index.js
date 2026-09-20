@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
 import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
+import RegisterView from '../views/RegisterView.vue';
 import AdminLayout from '../layouts/AdminLayout.vue';
 import DashboardPage from '../pages/admin/DashboardPage.vue';
 import AdminSimplePage from '../pages/admin/AdminSimplePage.vue';
@@ -76,6 +77,7 @@ const router = createRouter({
         { path: '/', name: 'home', component: HomeView },
         { path: '/app/forbidden', name: 'forbidden', component: () => import('../views/ForbiddenView.vue'), meta: { auth: true } },
         { path: '/app/login', name: 'login', component: LoginView },
+        { path: '/app/register', name: 'register', component: RegisterView },
         {
             path: '/app/admin',
             component: AdminLayout,

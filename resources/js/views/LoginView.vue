@@ -46,6 +46,7 @@ async function submit() {
                     <button class="login-submit" :disabled="busy">{{ busy ? 'Signing in…' : 'Sign in' }} <AppIcon v-if="!busy" name="chevronRight" :size="21" /></button>
                 </form>
             </div>
+            <p class="login-footer">New to {{ settings.name }}? <RouterLink to="/app/register">Create an account and start a free trial</RouterLink></p>
             <p class="login-footer">{{ settings.name }} · {{ settings.footer }}</p>
         </section>
     </div>

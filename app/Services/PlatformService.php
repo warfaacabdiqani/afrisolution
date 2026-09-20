@@ -50,7 +50,9 @@ class PlatformService
             $slug = $codes->generate($businessType);
 
             $tenant = Tenant::create(collect($data)->only(['name', 'timezone'])->all() + ['slug' => $slug, 'business_type_id' => $businessTypeId]);
-            $owner = User::create(['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password']]);
+            $owner = isset($data['owner_user_id'])
+                ? User::findOrFail($data['owner_user_id'])
+                : User::create(['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password']]);
             // Explicit platform provisioning boundary: all ownership is assigned from the newly created tenant.
             DB::table('tenant_memberships')->insert(['tenant_id' => $tenant->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
             DB::table('branches')->insert(['tenant_id' => $tenant->id, 'name' => $locationName, 'created_at' => now(), 'updated_at' => now()]);

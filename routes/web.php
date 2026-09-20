@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/register', [\App\Http\Controllers\RegistrationController::class, 'store'])->middleware('throttle:login');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::view('/', 'app');

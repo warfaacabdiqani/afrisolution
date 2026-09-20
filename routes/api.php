@@ -10,6 +10,7 @@ use App\Http\Controllers\SystemSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('v1/public/settings', [SystemSettingsController::class, 'publicSettings']);
+Route::get('v1/public/registration', [\App\Http\Controllers\RegistrationController::class, 'options']);
 
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('clinic/context', [\App\Http\Controllers\ClinicDashboardController::class, 'context'])->middleware('platform.available');
