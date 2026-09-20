@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useClinicContextStore } from '../../stores/clinicContext';
 import { reportService } from '../../services/reports';
 import FormErrors from '../../components/ui/FormErrors.vue';
+import ReportDocument from '../../components/reports/ReportDocument.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -12,6 +13,8 @@ const busy = ref(false);
 const error = ref(null);
 const reportData = ref(null);
 const generatedAt = ref(new Date().toLocaleString());
+const appliedFilters = ref(null);
+let generation = 0;
 
 const reportType = computed(() => route.params.type || 'patients');
 const reportMeta = computed(() => {
@@ -62,8 +65,21 @@ const filters = ref({
 
 const rows = computed(() => reportData.value?.table || []);
 const metrics = computed(() => reportData.value?.metrics || []);
-const charts = computed(() => reportData.value?.charts || []);
-const note = computed(() => reportData.value?.message || null);
+const dedicatedBreakdowns = new Set(['patient_demographics', 'consultation_summary', 'diagnosis_report', 'follow_up_report', 'doctor_activity']);
+const breakdowns = computed(() => dedicatedBreakdowns.has(reportType.value) && !rows.value.length ? (reportData.value?.charts || []) : []);
+const summary = computed(() => {
+    const preferred = reportType.value === 'patients' ? ['Total Patients', 'Active Patients', 'Archived Patients']
+        : reportType.value === 'new_registrations' ? ['New Patients']
+        : reportMeta.value.service === 'appointments' ? ['Total Appointments', 'Completed', 'Cancelled', 'No Shows'] : [];
+    const selected = preferred.length ? preferred.map(label => metrics.value.find(metric => metric.label === label)).filter(Boolean) : metrics.value.slice(0, 4);
+    const names = { 'Total Patients': ['patient', 'patients'], 'Active Patients': ['active', 'active'],
+        'Archived Patients': ['archived', 'archived'], 'New Patients': ['new patient registered during this period', 'new patients registered during this period'],
+        'Total Appointments': ['appointment', 'appointments'], 'Completed': ['completed', 'completed'],
+        'Cancelled': ['cancelled', 'cancelled'], 'No Shows': ['no-show', 'no-shows'] };
+    return selected.map(metric => ({ label: names[metric.label]?.[Number(metric.value) === 1 ? 0 : 1] || metric.label.toLowerCase(), value: metric.value }));
+});
+const branchName = computed(() => (context.data?.branches || []).find(branch => String(branch.id) === String(appliedFilters.value?.branch_id))?.name || context.data?.branch?.name || 'Current branch');
+const period = computed(() => [appliedFilters.value?.from, appliedFilters.value?.to].filter(Boolean).join(' â€“ '));
 
 function initializeFilters() {
     const now = new Date();
@@ -85,8 +101,10 @@ function sanitizeParams() {
 }
 
 async function generateReport() {
+    const token = ++generation;
     busy.value = true;
     error.value = null;
+    reportData.value = null;
     try {
         const reportFn = reportService[reportMeta.value.service];
         if (!reportFn) {
@@ -94,12 +112,14 @@ async function generateReport() {
         }
 
         const { data: response } = await reportFn(sanitizeParams());
+        if (token !== generation) return;
         reportData.value = response.data;
+        appliedFilters.value = { ...filters.value };
         generatedAt.value = new Date().toLocaleString();
     } catch (e) {
-        error.value = e;
+        if (token === generation) error.value = e;
     } finally {
-        busy.value = false;
+        if (token === generation) busy.value = false;
     }
 }
 
@@ -134,158 +154,30 @@ onMounted(() => {
     initializeFilters();
     generateReport();
 });
+watch(reportType, () => { generation++; reportData.value = null; initializeFilters(); generateReport(); });
+onUnmounted(() => { generation++; });
 </script>
 
 <template>
     <div class="report-page">
-        <div class="patient-page-header no-print">
-            <div>
-                <p class="patient-breadcrumb">
-                    <RouterLink to="/app/dashboard">Dashboard</RouterLink>
-                    <span>/</span>
-                    <RouterLink to="/app/reports">Reports</RouterLink>
-                    <span>/</span>
-                    <span>{{ reportMeta.label }}</span>
-                </p>
-                <h1>{{ reportMeta.label }}</h1>
-                <p>Generate, preview and print a clinic report from live data.</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <button class="btn-secondary" type="button" @click="router.back()">Back</button>
-                <button class="btn-primary" type="button" @click="generateReport">Generate</button>
-            </div>
-        </div>
-
-        <section class="clinic-panel p-5 no-print">
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                <label class="field">
-                    <span>Date From</span>
-                    <input v-model="filters.from" type="date" />
-                </label>
-                <label class="field">
-                    <span>Date To</span>
-                    <input v-model="filters.to" type="date" />
-                </label>
-                <label class="field">
-                    <span>Branch</span>
-                    <select v-model="filters.branch_id">
-                        <option :value="String(context.data?.branch?.id || '')">{{ context.data?.branch?.name || 'Current branch' }}</option>
-                        <option v-for="branch in context.data?.branches || []" :key="branch.id" :value="String(branch.id)">{{ branch.name }}</option>
-                    </select>
-                </label>
-                <label class="field">
-                    <span>Doctor</span>
-                    <input v-model="filters.doctor_id" type="number" min="1" placeholder="Doctor ID" />
-                </label>
-                <label class="field">
-                    <span>Patient</span>
-                    <input v-model="filters.patient_id" type="number" min="1" placeholder="Patient ID" />
-                </label>
-            </div>
-
-            <div class="mt-4 flex flex-wrap items-center gap-3">
-                <label v-if="reportMeta.filters.includes('status')" class="field min-w-[180px]">
-                    <span>Status</span>
-                    <select v-model="filters.status">
-                        <option value="">All statuses</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="no_show">No Show</option>
-                        <option value="active">Active</option>
-                        <option value="draft">Draft</option>
-                    </select>
-                </label>
-                <button class="btn-secondary" type="button" @click="resetFilters">Reset</button>
-                <button class="btn-primary" type="button" @click="generateReport">Generate</button>
-            </div>
-        </section>
-
-        <FormErrors :error="error" />
-
-        <div v-if="busy" class="clinic-skeleton-grid mt-6" role="status">
-            <div v-for="n in 4" :key="n" class="clinic-skeleton"></div>
-        </div>
-
-        <div v-else-if="reportData" class="mt-6">
-            <section class="report-document clinic-panel p-8">
-                <div class="report-header mb-6 border-b border-slate-200 pb-5">
-                    <div class="flex items-start justify-between gap-6">
-                        <div>
-                            <div class="mb-2 flex items-center gap-3">
-                                <div class="clinic-logo report-logo">AC</div>
-                                <div>
-                                    <h2 class="text-2xl font-bold text-slate-800">{{ context.data?.clinic?.name || 'Afri Clinic' }}</h2>
-                                    <p class="text-sm text-slate-500">{{ context.data?.branch?.name || 'Main Branch' }}</p>
-                                </div>
-                            </div>
-                            <div class="mt-3 text-sm text-slate-500">
-                                <p>{{ context.data?.clinic?.address || 'Clinic address' }}</p>
-                                <p>{{ context.data?.clinic?.phone || 'Clinic phone' }} • {{ context.data?.clinic?.email || 'Clinic email' }}</p>
-                            </div>
-                        </div>
-                        <div class="text-right text-sm text-slate-500">
-                            <p class="font-semibold text-slate-700">{{ reportMeta.label }}</p>
-                            <p>{{ filters.from || '—' }} to {{ filters.to || '—' }}</p>
-                            <p>Generated: {{ generatedAt }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div v-for="metric in metrics" :key="metric.label" class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{{ metric.label }}</p>
-                        <p class="mt-2 text-2xl font-bold text-slate-800">{{ metric.value }}</p>
-                    </div>
-                </div>
-
-                <div v-if="charts.length" class="mb-6 grid gap-4 md:grid-cols-2">
-                    <div v-for="chart in charts" :key="chart.title" class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">{{ chart.title }}</h3>
-                        <div class="space-y-2">
-                            <div v-for="item in chart.items" :key="item.label" class="flex items-center justify-between rounded-lg bg-white px-3 py-2">
-                                <span>{{ item.label }}</span>
-                                <strong>{{ item.value }}</strong>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="rows.length" class="report-table-wrap overflow-x-auto">
-                    <table class="appointment-list report-table">
-                        <thead>
-                            <tr>
-                                <th v-for="(key, index) in Object.keys(rows[0])" :key="`${key}-${index}`">{{ key }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(row, index) in rows" :key="`${index}-${Object.values(row).join('-')}`">
-                                <td v-for="(value, keyIndex) in Object.values(row)" :key="`${index}-${keyIndex}`">{{ value ?? '—' }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div v-else class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
-                    No rows returned for this report.
-                </div>
-
-                <div v-if="note" class="mt-6 rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
-                    {{ note }}
-                </div>
-
-                <div class="mt-6 border-t border-slate-200 pt-4 text-sm text-slate-500">
-                    <div class="flex items-center justify-between gap-4">
-                        <span>Generated by: {{ context.data?.user?.name || 'System' }}</span>
-                        <span>Page 1 of 1</span>
-                    </div>
-                </div>
-            </section>
-
-            <div class="no-print mt-6 flex flex-wrap items-center gap-3">
-                <button class="btn-secondary" type="button" @click="router.back()">Back</button>
-                <button class="btn-secondary" type="button" @click="printReport">Print</button>
-                <button class="btn-secondary" type="button" @click="exportCsv">Export Excel</button>
-            </div>
-        </div>
+        <header class="patient-page-header no-print">
+            <div><p class="patient-breadcrumb"><RouterLink to="/app/reports">Reports</RouterLink><span>/</span>{{ reportMeta.label }}</p><h1>{{ reportMeta.label }}</h1><p>Preview and print records for the selected filters.</p></div>
+            <div class="flex gap-2"><button class="btn-secondary" type="button" @click="router.back()">Back</button><button class="btn" type="button" :disabled="busy" @click="generateReport">Generate</button></div>
+        </header>
+        <form class="clinic-panel report-filter-form no-print" @submit.prevent="generateReport">
+            <label class="field">Date From<input v-model="filters.from" type="date"></label>
+            <label class="field">Date To<input v-model="filters.to" type="date" :min="filters.from"></label>
+            <label class="field">Branch<select v-model="filters.branch_id"><option v-for="branch in context.data?.branches || []" :key="branch.id" :value="String(branch.id)">{{ branch.name }}</option></select></label>
+            <label v-if="reportMeta.filters.includes('doctor')" class="field">Doctor ID<input v-model="filters.doctor_id" type="number" min="1"></label>
+            <label v-if="reportMeta.filters.includes('patient')" class="field">Patient ID<input v-model="filters.patient_id" type="number" min="1"></label>
+            <label v-if="reportMeta.filters.includes('status')" class="field">Status<select v-model="filters.status"><option value="">All statuses</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="no_show">No Show</option><option value="active">Active</option><option value="draft">Draft</option></select></label>
+            <div class="report-filter-actions"><button class="btn-secondary" type="button" @click="resetFilters">Reset</button><button class="btn" type="submit" :disabled="busy">Generate</button></div>
+        </form>
+        <FormErrors :error="error"/><p v-if="busy" role="status">Loading report…</p>
+        <ReportDocument v-else-if="reportData" :title="reportMeta.label" :business-name="context.data?.clinic?.name || 'Business'" :branch-name="branchName" :period="period" :generated-at="generatedAt" :summary="summary" :rows="rows" :breakdowns="breakdowns" :message="reportData.message || ''"/>
+        <div v-if="reportData" class="no-print report-bottom-actions"><button class="btn-secondary" type="button" @click="printReport">Print</button><button class="btn-secondary" type="button" :disabled="!rows.length" @click="exportCsv">Export Excel</button></div>
     </div>
 </template>
+<style scoped>
+.report-page{max-width:1280px;margin:auto}.report-filter-form{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding:16px;margin-bottom:18px}.report-filter-form .field{min-width:150px;flex:1 1 150px}.report-filter-actions,.report-bottom-actions{display:flex;align-items:center;gap:8px}.report-bottom-actions{margin-top:14px}@media(max-width:600px){.report-filter-form .field{flex:1 1 100%}.report-filter-actions{width:100%}}
+</style>

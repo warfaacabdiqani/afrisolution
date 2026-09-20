@@ -89,7 +89,13 @@ class ClinicBillingTest extends TestCase
         $plan = Plan::findOrFail($f['plan']); $features = $plan->features; $features['basic_reports'] = true; $plan->update(['features' => $features]);
         $this->getJson('/api/v1/clinic/reports/overview')->assertOk()
             ->assertJsonPath('data.metrics.3.label', 'Estimated Consultation Fees');
-        $this->getJson('/api/v1/clinic/reports/appointments')->assertOk();
+        $this->getJson('/api/v1/clinic/reports/patients')->assertOk()
+            ->assertJsonPath('data.table.0.patient_number', 'PAT-1')
+            ->assertJsonPath('data.table.0.name', 'Amina Yusuf');
+        $this->getJson('/api/v1/clinic/reports/appointments')->assertOk()
+            ->assertJsonPath('data.table.0.patient', 'Amina Yusuf')
+            ->assertJsonPath('data.table.0.doctor', 'Ahmed Hassan')
+            ->assertJsonPath('data.table.0.status', 'completed');
     }
 
     public function test_dashboard_revenue_uses_received_payments_in_the_active_branch(): void

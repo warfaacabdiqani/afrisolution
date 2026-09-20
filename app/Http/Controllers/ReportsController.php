@@ -64,7 +64,7 @@ class ReportsController extends Controller
         $state = $this->resolveState($request, $context);
 
         $patients = $this->patientScope($state)->with(['registrationBranch'])->get();
-        $recent = $patients->sortByDesc('registered_at')->take(10)->values();
+        $recent = $patients->sortByDesc('registered_at')->values();
 
         return response()->json(['data' => [
             'metrics' => [
@@ -84,6 +84,7 @@ class ReportsController extends Controller
                 'name' => $patient->full_name,
                 'gender' => $patient->gender,
                 'age' => $patient->age,
+                'phone' => $patient->phone,
                 'registered_at' => $patient->registered_at?->toDateString(),
                 'branch' => $patient->registrationBranch?->name ?? '—',
             ])->all(),
@@ -114,7 +115,14 @@ class ReportsController extends Controller
                 ['title' => 'Appointments by Visit Type', 'type' => 'bar', 'items' => $this->chartItems($this->seriesCounts($appointments, 'appointment_type_id', fn ($appointment) => $appointment->type?->name ?? 'General'))],
                 ['title' => 'Appointments by Branch', 'type' => 'bar', 'items' => $this->chartItems($this->seriesCounts($appointments, 'branch_id', fn ($appointment) => $appointment->branch?->name ?? 'Unknown'))],
             ],
-            'table' => [],
+            'table' => $appointments->sortBy('starts_at')->values()->map(fn (Appointment $appointment) => [
+                'date' => Carbon::parse($appointment->starts_at)->setTimezone($context['clinic']->timezone)->toDateString(),
+                'time' => Carbon::parse($appointment->starts_at)->setTimezone($context['clinic']->timezone)->format('H:i'),
+                'patient' => $appointment->patient?->full_name ?? '—',
+                'doctor' => $appointment->doctor?->full_name ?? '—',
+                'visit_type' => $appointment->type?->name ?? 'General',
+                'status' => $appointment->status,
+            ])->all(),
             'message' => null,
         ]]);
     }
