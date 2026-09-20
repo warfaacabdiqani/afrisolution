@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
-class WhatsAppTemplate extends Model
+class PlatformWhatsAppTemplate extends Model
 {
-    use BelongsToTenant;
-
-    protected $table = 'whatsapp_templates';
-    protected $guarded = ['id', 'tenant_id'];
+    protected $table = 'platform_whatsapp_templates';
+    protected $guarded = ['id'];
     protected $casts = ['components' => 'array', 'is_available' => 'boolean', 'last_synced_at' => 'datetime'];
 
     public function parameterSchema(): ?array

@@ -1,11 +1,13 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import api from '../../services/api';
 import { useClinicContextStore } from '../../stores/clinicContext';
 import FormErrors from '../ui/FormErrors.vue';
 
 const context = useClinicContextStore();
-const section = ref('connection');
+const props = defineProps({ initialSection: { type: String, default: 'connection' }, connectionOnly: { type: Boolean, default: false }, hideNav: { type: Boolean, default: false } });
+const section = ref(props.initialSection);
+watch(() => props.initialSection, async (next) => { await selectSection(next); });
 const state = ref(null), templates = ref([]), history = ref(null), detail = ref(null);
 const error = ref(null), busy = ref(false), notice = ref('');
 const form = reactive({ business_account_id: '', phone_number_id: '', display_phone_number: '', display_name: '', access_token: '' });
@@ -76,13 +78,13 @@ async function showMessage(id) {
     try { detail.value = (await api.get(`/v1/whatsapp/messages/${id}`, options())).data.data; }
     catch (e) { error.value = e; }
 }
-onMounted(loadConnection);
+onMounted(async () => { await loadConnection(); if (section.value === 'templates' || section.value === 'send') await loadTemplates(); if (section.value === 'history') await loadHistory(); });
 </script>
 
 <template>
     <div>
-        <nav class="flex flex-wrap gap-2 border-b border-slate-200 pb-4" aria-label="WhatsApp integration sections">
-            <button v-for="item in [['connection','Connection'],['templates','Templates'],['send','Send Test Message'],['history','Message History']]" :key="item[0]" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold" :class="section === item[0] ? 'bg-teal-700 text-white' : 'border border-slate-200 text-slate-700'" @click="selectSection(item[0])">{{ item[1] }}</button>
+        <nav v-if="!connectionOnly && !hideNav" class="flex flex-wrap gap-2 border-b border-slate-200 pb-4" aria-label="WhatsApp integration sections">
+            <button v-for="item in [['templates','Templates'],['send','Send Test Message'],['history','Message History']]" :key="item[0]" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold" :class="section === item[0] ? 'bg-teal-700 text-white' : 'border border-slate-200 text-slate-700'" @click="selectSection(item[0])">{{ item[1] }}</button>
         </nav>
         <FormErrors :error="error" />
         <p v-if="notice" role="status" class="cs-success mt-4">{{ notice }}</p>
@@ -109,10 +111,10 @@ onMounted(loadConnection);
                 <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-lg font-semibold">WhatsApp Templates</h3><p class="cs-hint">Meta controls template approval.</p></div><button v-if="context.can('whatsapp.manage') && connected" type="button" class="btn" :disabled="busy" @click="syncTemplates">{{ busy ? 'Synchronizing...' : 'Sync Templates' }}</button></div>
                 <p v-if="!connected" class="cs-notice mt-4">Connect WhatsApp before synchronizing templates or sending messages.</p>
                 <p v-else-if="!templates.length" class="cs-notice mt-4">No WhatsApp templates have been synchronized yet.</p>
-                <div v-else class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th class="p-2">Name</th><th class="p-2">Language</th><th class="p-2">Category</th><th class="p-2">Status</th></tr></thead><tbody><tr v-for="item in templates" :key="item.id" class="border-t border-slate-200"><td class="p-2">{{ item.name }}</td><td class="p-2">{{ item.language }}</td><td class="p-2">{{ item.category || '—' }}</td><td class="p-2">{{ item.is_available ? item.status : 'Unavailable' }}</td></tr></tbody></table></div>
+                <div v-else class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th class="p-2">Template</th><th class="p-2">Language</th><th class="p-2">Category</th><th class="p-2">Status</th><th class="p-2">Last Synced</th></tr></thead><tbody><tr v-for="item in templates" :key="item.id" class="border-t border-slate-200"><td class="p-2">{{ item.name }}</td><td class="p-2">{{ item.language }}</td><td class="p-2">{{ item.category || '—' }}</td><td class="p-2">{{ item.is_available ? item.status : 'Unavailable' }}</td><td class="p-2">{{ item.last_synced_at ? new Date(item.last_synced_at).toLocaleString() : '—' }}</td></tr></tbody></table></div>
             </section>
             <section v-else-if="section === 'send'" class="mt-5">
-                <h3 class="text-lg font-semibold">Send Test Message</h3><p class="cs-hint">Send one approved Meta template to an international number. This is not a chat.</p>
+                <button v-if="hideNav" class="btn-secondary mb-4" type="button" @click="selectSection('history')">Back to Messages</button><h3 class="text-lg font-semibold">Send Message</h3><p class="cs-hint">Send one approved Meta template to an international number. This is not a chat.</p>
                 <p v-if="!connected" class="cs-notice mt-4">Connect WhatsApp before synchronizing templates or sending messages.</p>
                 <p v-else-if="!context.can('whatsapp.send')" class="cs-notice mt-4">You do not have permission to send WhatsApp messages.</p>
                 <p v-else-if="!templates.some(item => item.sendable)" class="cs-notice mt-4">Sync an approved, supported template before sending.</p>
@@ -124,10 +126,10 @@ onMounted(loadConnection);
                 </form>
             </section>
             <section v-else class="mt-5">
-                <h3 class="text-lg font-semibold">Message History</h3>
+                <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-lg font-semibold">WhatsApp Messages</h3><p class="cs-hint">Track WhatsApp messages sent from your business.</p></div><button v-if="hideNav && context.can('whatsapp.send') && connected" class="btn" type="button" @click="selectSection('send')">Send Message</button></div>
                 <form class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="loadHistory(1)"><label class="field">Status<select v-model="filters.status"><option value="">All statuses</option><option v-for="value in ['queued','sent','delivered','read','failed']" :key="value" :value="value">{{ value }}</option></select></label><label class="field">Recipient<input v-model.trim="filters.recipient" placeholder="Search number"></label><label class="field">From<input v-model="filters.date_from" type="date"></label><label class="field">To<input v-model="filters.date_to" type="date"></label><button class="btn sm:col-span-2">Apply filters</button></form>
                 <p v-if="history && !history.data.length" class="cs-notice mt-4">No WhatsApp messages match these filters.</p>
-                <div v-else-if="history" class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th class="p-2">Recipient</th><th class="p-2">Template</th><th class="p-2">Status</th><th class="p-2">Requested</th><th class="p-2"></th></tr></thead><tbody><tr v-for="item in history.data" :key="item.id" class="border-t border-slate-200"><td class="p-2">{{ item.recipient }}</td><td class="p-2">{{ item.template_name }}</td><td class="p-2">{{ item.status }}</td><td class="p-2">{{ item.requested_at ? new Date(item.requested_at).toLocaleString() : '—' }}</td><td class="p-2"><button class="text-teal-700 underline" type="button" @click="showMessage(item.id)">Details</button></td></tr></tbody></table></div>
+                <div v-else-if="history" class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr><th class="p-2">Recipient</th><th class="p-2">Template</th><th class="p-2">Status</th><th class="p-2">Sent</th><th class="p-2">Delivered</th><th class="p-2">Read</th><th class="p-2"></th></tr></thead><tbody><tr v-for="item in history.data" :key="item.id" class="border-t border-slate-200"><td class="p-2">{{ item.recipient }}</td><td class="p-2">{{ item.template_name }}</td><td class="p-2 capitalize">{{ item.status }}</td><td class="p-2">{{ item.sent_at ? new Date(item.sent_at).toLocaleString() : '—' }}</td><td class="p-2">{{ item.delivered_at ? new Date(item.delivered_at).toLocaleString() : '—' }}</td><td class="p-2">{{ item.read_at ? new Date(item.read_at).toLocaleString() : '—' }}</td><td class="p-2"><button class="text-teal-700 underline" type="button" @click="showMessage(item.id)">Details</button></td></tr></tbody></table></div>
                 <div v-if="history?.last_page > 1" class="mt-3 flex items-center gap-3"><button class="btn-secondary" type="button" :disabled="history.current_page <= 1" @click="loadHistory(history.current_page-1)">Previous</button><span>Page {{ history.current_page }} of {{ history.last_page }}</span><button class="btn-secondary" type="button" :disabled="history.current_page >= history.last_page" @click="loadHistory(history.current_page+1)">Next</button></div>
                 <div v-if="detail" class="mt-5 rounded-xl border border-slate-200 p-4"><div class="flex justify-between"><h4 class="font-semibold">Message details</h4><button type="button" class="text-teal-700" @click="detail = null">Close</button></div><dl class="mt-3 grid gap-2 sm:grid-cols-2"><div v-for="field in [['Recipient','recipient'],['Template','template_name'],['Language','template_language'],['Status','status'],['Requested','requested_at'],['Sent','sent_at'],['Delivered','delivered_at'],['Read','read_at'],['Failed','failed_at'],['Failure code','failure_code']]" :key="field[1]"><dt class="text-sm text-slate-500">{{ field[0] }}</dt><dd>{{ detail[field[1]] || '—' }}</dd></div></dl></div>
             </section>

@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Jobs\ProcessWhatsAppWebhookEvent;
+use App\Jobs\{ProcessWhatsAppWebhookEvent, ProcessPlatformWhatsAppWebhookEvent};
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +18,27 @@ class WhatsAppWebhookService
                 if (!is_array($value)) continue;
                 $phoneId = is_array($value['metadata'] ?? null) ? ($value['metadata']['phone_number_id'] ?? null) : null;
                 if (!is_string($phoneId) || $phoneId === '') continue;
+                $platformConnection = DB::table('platform_whatsapp_connections')->where('phone_number_id', $phoneId)->where('status', 'configured')->first(['id']);
+                if ($platformConnection) {
+                    foreach (is_array($value['statuses'] ?? null) ? $value['statuses'] : [] as $status) {
+                        if (!is_array($status) || !is_string($status['id'] ?? null) || !is_string($status['status'] ?? null)) continue;
+                        $state = strtolower($status['status']);
+                        if (!in_array($state, ['sent', 'delivered', 'read', 'failed'], true)) continue;
+                        $providerId = substr($status['id'], 0, 200);
+                        $timestamp = filter_var($status['timestamp'] ?? null, FILTER_VALIDATE_INT);
+                        $when = $timestamp && $timestamp >= 946684800 && $timestamp <= 4102444800 ? Carbon::createFromTimestampUTC($timestamp) : null;
+                        $rawCode = (string) ($status['errors'][0]['code'] ?? 'META_FAILED');
+                        $code = preg_match('/^[A-Za-z0-9_.-]{1,90}$/', $rawCode) ? $rawCode : 'META_FAILED';
+                        $key = hash('sha256', implode('|', ['platform', $phoneId, $providerId, $state]));
+                        $created = DB::table('platform_whatsapp_webhook_events')->insertOrIgnore([
+                            'platform_whatsapp_connection_id' => $platformConnection->id, 'event_key' => $key,
+                            'provider_event_id' => $providerId, 'event_status' => $state, 'provider_timestamp' => $when,
+                            'failure_code' => $state === 'failed' ? $code : null, 'created_at' => now(), 'updated_at' => now(),
+                        ]);
+                        if ($created) ProcessPlatformWhatsAppWebhookEvent::dispatch($key)->afterCommit();
+                    }
+                    continue;
+                }
                 $connection = DB::table('whatsapp_connections')->where('phone_number_id', $phoneId)->where('status', '!=', 'disabled')->first(['id', 'tenant_id']);
                 if (!$connection) continue;
                 $events = [];

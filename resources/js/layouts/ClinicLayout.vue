@@ -17,7 +17,7 @@ const navigationSections = computed(() => {
     const lookup = new Map((clinic.data?.modules || []).filter(module => module.allowed).map(module => [module.key, module]));
     const profile = clinic.navigationProfileKey ? clinic.businessProfile?.navigation_profile : [];
     if (Array.isArray(profile) && profile.length) {
-        return profile.map((section) => ({
+        const sections = profile.map((section) => ({
             label: section.label,
             items: (section.items || []).map((key) => lookup.get(key)).filter(Boolean).map((module) => ({
                 key: module.key,
@@ -26,6 +26,16 @@ const navigationSections = computed(() => {
                 icon: module.icon,
             })),
         })).filter(section => section.items.length);
+        if (clinic.data?.features?.whatsapp_notifications && clinic.hasBusinessModule('settings') && clinic.can('whatsapp.view')) {
+            const administration = sections.findIndex(section => section.label.toLowerCase() === 'administration');
+            sections.splice(administration < 0 ? sections.length : administration, 0, {
+                label: 'Communications', items: [{ key: 'whatsapp', label: 'WhatsApp', icon: 'support', children: [
+                    { key: 'messages', label: 'Messages', to: '/app/whatsapp/messages' },
+                    { key: 'templates', label: 'Templates', to: '/app/whatsapp/templates' },
+                ] }],
+            });
+        }
+        return sections;
     }
     return [{
         label: '',
@@ -79,7 +89,11 @@ async function logout() {
             <nav class="clinic-navigation" aria-label="Business navigation">
                 <template v-for="(section, sectionIndex) in navigationSections" :key="section.label || sectionIndex">
                     <p v-if="section.label" class="clinic-nav-label">{{ section.label }}</p>
-                    <RouterLink v-for="item in section.items" :key="item.key" :to="item.to" :class="{ selected: route.path.split('/')[2] === item.key }" @click="drawer = false"><AppIcon :name="item.icon" />{{ item.label }}</RouterLink>
+                    <template v-for="item in section.items" :key="item.key">
+                        <div v-if="item.children" class="clinic-nav-label" style="margin-top: 8px; display: flex; align-items: center; gap: 10px"><AppIcon :name="item.icon" />{{ item.label }}</div>
+                        <template v-if="item.children"><RouterLink v-for="child in item.children" :key="child.key" :to="child.to" :class="{ selected: route.path === child.to }" style="padding-left: 42px" @click="drawer = false">{{ child.label }}</RouterLink></template>
+                        <RouterLink v-else :to="item.to" :class="{ selected: route.path.split('/')[2] === item.key }" @click="drawer = false"><AppIcon :name="item.icon" />{{ item.label }}</RouterLink>
+                    </template>
                 </template>
             </nav>
             <div class="clinic-sidebar-bottom">

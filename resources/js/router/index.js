@@ -84,6 +84,7 @@ const router = createRouter({
             meta: { auth: true, platform: true, adminLayout: true },
             children: [
                 { path: 'support-tickets', name: 'admin.support', component: () => import('../pages/admin/support/Index.vue'), meta: { title: 'Support Tickets', platformPermission: 'support_tickets.view' } },
+                { path: 'whatsapp', name: 'admin.whatsapp', component: () => import('../pages/admin/whatsapp/Index.vue'), meta: { title: 'WhatsApp', platformPermission: 'platform_whatsapp.view' } },
                 { path: 'support-tickets/:id', name: 'admin.support.show', component: () => import('../pages/admin/support/Show.vue'), meta: { title: 'Support Ticket', platformPermission: 'support_tickets.view' } },
                 { path: '', name: 'admin.dashboard', component: DashboardPage, meta: { title: 'Dashboard' } },
                 { path: 'clinics', name: 'admin.clinics', component: ClinicsIndex, meta: { title: 'Businesses / Tenants' } },
@@ -135,6 +136,8 @@ const router = createRouter({
             { path: 'support/tickets/:id', component: SupportTicketShow, meta: { title: 'Support Ticket', clinicModule: 'support' } },
             { path: 'settings', redirect: '/app/settings/general', meta: { clinicModule: 'settings' } },
             { path: 'settings/:section', component: () => import('../pages/settings/Index.vue'), meta: { clinicModule: 'settings', clinicSettings: true } },
+            { path: 'whatsapp/messages', component: () => import('../pages/whatsapp/Index.vue'), props: { section: 'history' }, meta: { clinicModule: 'settings', whatsapp: true, permission: 'whatsapp.view', feature: 'whatsapp_notifications' } },
+            { path: 'whatsapp/templates', component: () => import('../pages/whatsapp/Index.vue'), props: { section: 'templates' }, meta: { clinicModule: 'settings', whatsapp: true, permission: 'whatsapp.view', feature: 'whatsapp_notifications' } },
             { path: 'prescriptions', component: () => import('../pages/prescriptions/Index.vue'), meta: { clinicModule: 'prescriptions' } },
             { path: 'prescriptions/create', component: () => import('../pages/prescriptions/FormPage.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.create' } },
             { path: 'prescriptions/:id/edit', component: () => import('../pages/prescriptions/FormPage.vue'), meta: { clinicModule: 'prescriptions', permission: 'prescriptions.update' } },

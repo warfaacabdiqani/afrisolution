@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\{WhatsAppConnection, WhatsAppTemplate};
+use App\Models\{WhatsAppConnection, WhatsAppTemplate, PlatformWhatsAppConnection, PlatformWhatsAppTemplate};
 use Illuminate\Http\Client\{ConnectionException, Response};
 use Illuminate\Support\Facades\Http;
 
@@ -15,7 +15,7 @@ class MetaWhatsAppClient
         return 'https://graph.facebook.com/'.$version;
     }
 
-    private function request(WhatsAppConnection $connection)
+    private function request(WhatsAppConnection|PlatformWhatsAppConnection $connection)
     {
         return Http::baseUrl($this->baseUrl())->withToken($connection->access_token)->acceptJson()->timeout(15);
     }
@@ -32,7 +32,7 @@ class MetaWhatsAppClient
         throw new MetaWhatsAppException($code, $response->status() === 429 || $response->serverError());
     }
 
-    public function templates(WhatsAppConnection $connection): array
+    public function templates(WhatsAppConnection|PlatformWhatsAppConnection $connection): array
     {
         $rows = []; $cursor = null;
         try {
@@ -53,7 +53,7 @@ class MetaWhatsAppClient
         throw new MetaWhatsAppException('META_PAGE_LIMIT', true);
     }
 
-    public function sendTemplate(WhatsAppConnection $connection, WhatsAppTemplate $template, string $recipient, array $parameters): string
+    public function sendTemplate(WhatsAppConnection|PlatformWhatsAppConnection $connection, WhatsAppTemplate|PlatformWhatsAppTemplate $template, string $recipient, array $parameters): string
     {
         $components = [];
         foreach (['header', 'body'] as $kind) {

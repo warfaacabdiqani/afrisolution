@@ -20,10 +20,11 @@ const links = [
     ['admin.users', 'Users', 'members'],
     ['admin.roles', 'Roles & Permissions', 'roles'],
     ['admin.support', 'Support Tickets', 'support'],
+    ['admin.whatsapp', 'WhatsApp', 'support'],
     ['admin.audit', 'Audit Log', 'audit'],
     ['admin.settings', 'System Settings', 'settings'],
 ];
-const visibleLinks = computed(() => links.filter(([name]) => name !== 'admin.support' || auth.user?.platform_permissions?.includes('support_tickets.view')));
+const visibleLinks = computed(() => links.filter(([name]) => (name !== 'admin.support' || auth.user?.platform_permissions?.includes('support_tickets.view')) && (name !== 'admin.whatsapp' || auth.user?.platform_permissions?.includes('platform_whatsapp.view'))));
 const title = computed(() => route.meta.title || 'Platform administration');
 
 async function logout() {

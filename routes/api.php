@@ -29,6 +29,15 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::get('messages/{id}', [\App\Http\Controllers\WhatsAppMessageController::class, 'show'])->whereNumber('id');
     });
     Route::prefix('platform')->middleware('platform')->group(function () {
+        Route::prefix('whatsapp')->group(function () {
+            Route::get('connection', [\App\Http\Controllers\PlatformWhatsAppOperationsController::class, 'connection'])->middleware('platform.permission:platform_whatsapp.view');
+            Route::put('connection', [\App\Http\Controllers\PlatformWhatsAppOperationsController::class, 'saveConnection'])->middleware('platform.permission:platform_whatsapp.manage');
+            Route::get('templates', [\App\Http\Controllers\PlatformWhatsAppOperationsController::class, 'templates'])->middleware('platform.permission:platform_whatsapp.view');
+            Route::post('templates/sync', [\App\Http\Controllers\PlatformWhatsAppOperationsController::class, 'sync'])->middleware('platform.permission:platform_whatsapp.manage');
+            Route::patch('templates/{id}/purpose', [\App\Http\Controllers\PlatformWhatsAppOperationsController::class, 'purpose'])->whereNumber('id')->middleware('platform.permission:platform_whatsapp.manage');
+            Route::get('messages', [\App\Http\Controllers\PlatformWhatsAppOperationsController::class, 'messages'])->middleware('platform.permission:platform_whatsapp.view');
+            Route::post('messages', [\App\Http\Controllers\PlatformWhatsAppOperationsController::class, 'send'])->middleware('platform.permission:platform_whatsapp.send');
+        });
         Route::get('whatsapp/connections', [\App\Http\Controllers\PlatformWhatsAppController::class, 'index'])->middleware('platform.permission:settings.view');
         Route::prefix('support-tickets')->middleware('platform.permission:support_tickets.view')->group(function () {
             Route::get('/', [\App\Http\Controllers\PlatformSupportTicketController::class, 'index']);

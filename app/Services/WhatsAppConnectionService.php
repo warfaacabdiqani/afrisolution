@@ -36,6 +36,7 @@ class WhatsAppConnectionService
 
     public function save(int $tenantId, int $actorId, array $values): WhatsAppConnection
     {
+        abort_if(DB::table('platform_whatsapp_connections')->where('phone_number_id', $values['phone_number_id'])->exists(), 422, 'This number is assigned to the platform.');
         return DB::transaction(function () use ($tenantId, $actorId, $values) {
             $connection = WhatsAppConnection::where('tenant_id', $tenantId)->lockForUpdate()->first();
             $created = !$connection;
