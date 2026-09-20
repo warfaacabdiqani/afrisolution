@@ -1,12 +1,12 @@
 <script setup>
 import { onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { useClinicContextStore } from '../../stores/clinicContext';
 import { billingApi } from '../../services/billing';
 import FormErrors from '../../components/ui/FormErrors.vue';
 
-const auth = useAuthStore(), context = useClinicContextStore(), router = useRouter();
+const auth = useAuthStore(), context = useClinicContextStore(), router = useRouter(), route = useRoute();
 const report = ref(null), error = ref(null), busy = ref(false);
 const from = ref(''), to = ref(''), branch = ref('all');
 let generation = 0, controller, previousTenant;
@@ -41,7 +41,7 @@ onUnmounted(reset);
 </script>
 <template>
     <div class="billing-report">
-        <header class="report-actions patient-page-header"><div><RouterLink to="/app/billing/invoices">← Billing</RouterLink><h1>Billing Report</h1><p>Issued invoices and recorded payments.</p></div><button class="btn-secondary" :disabled="!report" @click="printReport">Print / Save PDF</button></header>
+        <header class="report-actions patient-page-header"><div><RouterLink :to="route.query.from === 'reports' ? '/app/reports' : '/app/billing/invoices'">← {{ route.query.from === 'reports' ? 'Reports' : 'Billing' }}</RouterLink><h1>Billing Report</h1><p>Issued invoices and recorded payments.</p></div><button class="btn-secondary" :disabled="!report" @click="printReport">Print / Save PDF</button></header>
         <form class="report-actions clinic-panel p-5 report-filters" @submit.prevent="load(1)"><label>From Date<input v-model="from" type="date" required></label><label>To Date<input v-model="to" type="date" :min="from" required></label><label v-if="(context.data?.branches?.length || 0) > 1">Branch<select v-model="branch"><option value="all">All Authorized Branches</option><option v-for="b in context.data?.branches || []" :key="b.id" :value="String(b.id)">{{ b.name }}</option></select></label><span v-else>Branch: {{ context.data?.branches?.[0]?.name || 'Current branch' }}</span><button class="btn" :disabled="busy">Apply</button></form>
         <FormErrors :error="error"/><p v-if="busy" role="status">Loading billing report…</p>
         <article v-if="report" class="report-paper">

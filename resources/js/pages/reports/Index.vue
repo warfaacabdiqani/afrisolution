@@ -56,7 +56,7 @@ const categories = [
     {
         section: 'BILLING REPORTS',
         items: [
-            { key: 'billing', title: 'Billing Report', description: 'Invoices, collections, balances, and payment methods from the shared ledger', icon: 'revenue', route: '/app/billing/report' },
+            { key: 'billing', title: 'Billing Report', description: 'Invoices, collections, balances, and payment methods from the shared ledger', icon: 'revenue', route: '/app/billing/report?from=reports' },
         ],
     },
     {
