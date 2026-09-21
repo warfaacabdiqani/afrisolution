@@ -24,8 +24,8 @@ async function logout() {
 
 <template>
     <div class="min-h-screen bg-slate-50 text-slate-900">
-        <a href="#main" class="sr-only focus:not-sr-only focus:block focus:p-4">Skip to content</a>
-        <header v-if="!['login', 'register'].includes(route.name) && !route.meta.adminLayout && !route.meta.clinicLayout" class="border-b border-slate-200 bg-white">
+        <a :href="route.name === 'home' ? '#landing-title' : '#main'" class="sr-only focus:not-sr-only focus:block focus:p-4">Skip to content</a>
+        <header v-if="!['home', 'login', 'register'].includes(route.name) && !route.meta.adminLayout && !route.meta.clinicLayout" class="border-b border-slate-200 bg-white">
             <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
                 <RouterLink :to="{ name: 'home' }" class="text-xl font-semibold tracking-tight text-teal-800">
                     {{ platformSettings.name }}
@@ -38,7 +38,7 @@ async function logout() {
                 </nav>
             </div>
         </header>
-        <main v-if="!route.meta.adminLayout && !route.meta.clinicLayout" id="main" :class="['login', 'register'].includes(route.name) ? '' : 'mx-auto max-w-5xl space-y-6 px-6 py-10'">
+        <main v-if="!route.meta.adminLayout && !route.meta.clinicLayout" id="main" :class="['home', 'login', 'register'].includes(route.name) ? '' : 'mx-auto max-w-5xl space-y-6 px-6 py-10'">
             <FormErrors :error="error" />
             <RouterView />
         </main>
