@@ -10,8 +10,7 @@ use App\Services\SystemSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
+use App\Support\RegistrationRules;
 
 class RegistrationController extends Controller
 {
@@ -24,18 +23,21 @@ class RegistrationController extends Controller
         ]]);
     }
 
+    public function validateStep(Request $request, SystemSettingsService $settings)
+    {
+        abort_unless((bool) $settings->get('general.registration_enabled', true), 403, 'Registration is unavailable.');
+        $step = $request->validate(['step' => ['required', 'integer', 'between:1,4']])['step'];
+        $request->validate(RegistrationRules::forStep((int) $step));
+
+        // Validation only: no account/session changes, provisioning, or notifications.
+        return response()->json(['valid' => true]);
+    }
+
     public function store(Request $request, PlatformService $platform, SystemSettingsService $settings)
     {
         abort_unless((bool) $settings->get('general.registration_enabled', true), 403, 'Registration is unavailable.');
-        $data = $request->validate([
-            'owner_name' => ['required', 'string', 'max:150'],
-            'owner_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'owner_password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()],
-            'business_type_id' => ['required', 'integer', Rule::exists('business_types', 'id')->where('status', 'active')],
-            'plan_id' => ['required', 'integer', Rule::exists('plans', 'id')->where(fn ($query) => $query->where('status', 'active')->where('trial_days', '>', 0))],
-            'name' => ['required', 'string', 'max:150'],
-            'timezone' => ['required', 'timezone'],
-        ]);
+        $data = $request->validate(RegistrationRules::all());
+        unset($data['owner_password_confirmation']);
 
         [$user, $tenant, $subscription, $plan] = DB::transaction(function () use ($data, $platform) {
             $user = User::create(['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password']]);

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import api from '../services/api';
 import { useAuthStore } from '../stores/auth';
@@ -12,6 +12,26 @@ const auth = useAuthStore();
 const step = ref(0);
 const busy = ref(false);
 const error = ref(null);
+const fieldErrors = ref({});
+const registrationForm = ref(null);
+const stepFields = [
+    ['owner_name', 'owner_email', 'owner_password', 'owner_password_confirmation'],
+    ['business_type_id'], ['plan_id'], ['name', 'timezone'],
+];
+function fieldAttributes(field) {
+    return { name: field, disabled: busy.value, 'aria-invalid': fieldErrors.value[field] ? 'true' : undefined,
+        'aria-describedby': fieldErrors.value[field] ? `${field}-error` : undefined };
+}
+async function showError(failure) {
+    const errors = failure.response?.status === 422 ? failure.response.data.errors : null;
+    if (!errors) { error.value = failure; return; }
+    fieldErrors.value = { ...fieldErrors.value, ...errors };
+    const affected = stepFields.findIndex(fields => fields.some(field => errors[field]));
+    if (affected < 0) { error.value = failure; return; }
+    step.value = affected;
+    await nextTick();
+    registrationForm.value?.querySelector('[aria-invalid="true"]')?.focus();
+}
 const options = ref({ enabled: true, business_types: [], plans: [] });
 const success = ref(null);
 const steps = ['Account', 'Business Type', 'Plan', 'Business Details', 'Trial Started'];
@@ -34,18 +54,22 @@ onMounted(async () => {
     catch (e) { error.value = e; }
 });
 
-function next() { if (step.value < 3) { error.value = null; step.value++; } else submit(); }
-async function submit() {
-    if (busy.value) return;
+async function next() {
+    if (busy.value || success.value) return;
     busy.value = true; error.value = null;
+    const currentStep = step.value;
+    for (const field of stepFields[currentStep]) delete fieldErrors.value[field];
     try {
         await api.get('/sanctum/csrf-cookie', { baseURL: '/' });
+        const values = Object.fromEntries(stepFields[currentStep].map(field => [field, form[field]]));
+        await api.post('/register/validate', { step: currentStep + 1, ...values }, { baseURL: '/' });
+        if (currentStep < 3) { step.value++; return; }
         success.value = (await api.post('/register', form, { baseURL: '/' })).data.data;
-        await auth.restore();
         form.owner_password = '';
         form.owner_password_confirmation = '';
         step.value = 4;
-    } catch (e) { error.value = e; }
+        await auth.restore();
+    } catch (e) { busy.value = false; await showError(e); }
     finally { busy.value = false; }
 }
 </script>
@@ -62,35 +86,37 @@ async function submit() {
                 </ol>
                 <FormErrors :error="error" />
                 <p v-if="!options.enabled" class="registration-notice">New business registration is currently unavailable.</p>
-                <form v-else-if="step < 4" @submit.prevent="next" :aria-busy="busy">
+                <form ref="registrationForm" novalidate v-else-if="step < 4" @submit.prevent="next" :aria-busy="busy">
                     <template v-if="step === 0">
                         <div class="registration-heading"><h1>Create your account</h1><p>Let's start with your information. You will be the owner and administrator of the new business.</p></div>
                         <div class="registration-form-grid">
-                            <label>Full name<input v-model.trim="form.owner_name" required maxlength="150" autocomplete="name" placeholder="Enter your full name"></label>
-                            <label>Email address<input v-model.trim="form.owner_email" type="email" required maxlength="255" autocomplete="email" placeholder="you@yourcompany.com"></label>
-                            <label>Password<input v-model="form.owner_password" type="password" required minlength="12" autocomplete="new-password" placeholder="Create a strong password"></label>
-                            <label>Confirm password<input v-model="form.owner_password_confirmation" type="password" required minlength="12" autocomplete="new-password" placeholder="Confirm your password"></label>
+                            <label>Full name<input v-model.trim="form.owner_name" required maxlength="150" autocomplete="name" placeholder="Enter your full name" v-bind="fieldAttributes('owner_name')"><span v-if="fieldErrors.owner_name" id="owner_name-error" class="registration-field-error" role="alert">{{ fieldErrors.owner_name.join(' ') }}</span></label>
+                            <label>Email address<input v-model.trim="form.owner_email" type="email" required maxlength="255" autocomplete="email" placeholder="you@yourcompany.com" v-bind="fieldAttributes('owner_email')"><span v-if="fieldErrors.owner_email" id="owner_email-error" class="registration-field-error" role="alert">{{ fieldErrors.owner_email.join(' ') }}</span></label>
+                            <label>Password<input v-model="form.owner_password" type="password" required minlength="12" autocomplete="new-password" placeholder="Create a strong password" v-bind="fieldAttributes('owner_password')"><span v-if="fieldErrors.owner_password" id="owner_password-error" class="registration-field-error" role="alert">{{ fieldErrors.owner_password.join(' ') }}</span></label>
+                            <label>Confirm password<input v-model="form.owner_password_confirmation" type="password" required minlength="12" autocomplete="new-password" placeholder="Confirm your password" v-bind="fieldAttributes('owner_password_confirmation')"><span v-if="fieldErrors.owner_password_confirmation" id="owner_password_confirmation-error" class="registration-field-error" role="alert">{{ fieldErrors.owner_password_confirmation.join(' ') }}</span></label>
                         </div>
                         <p class="registration-assurance"><AppIcon name="check" :size="16" /> Your account information is protected.</p>
                     </template>
                     <template v-if="step === 1">
                         <div class="registration-heading"><h1>Select Business Type</h1><p>Choose the kind of business you are creating.</p></div>
                         <div class="registration-options">
-                            <label v-for="type in options.business_types" :key="type.id" class="registration-option business-option"><span class="business-option-icon"><AppIcon :name="businessPresentation(type).icon" :size="25" /></span><input v-model="form.business_type_id" type="radio" :value="type.id" required><span class="business-option-copy"><strong>{{ type.name }}</strong><small>{{ businessPresentation(type).description }}</small></span></label>
+                            <label v-for="type in options.business_types" :key="type.id" class="registration-option business-option"><span class="business-option-icon"><AppIcon :name="businessPresentation(type).icon" :size="25" /></span><input v-model="form.business_type_id" v-bind="fieldAttributes('business_type_id')" type="radio" :value="type.id" required><span class="business-option-copy"><strong>{{ type.name }}</strong><small>{{ businessPresentation(type).description }}</small></span></label>
                         </div>
+                        <p v-if="fieldErrors.business_type_id" id="business_type_id-error" class="registration-field-error" role="alert">{{ fieldErrors.business_type_id.join(' ') }}</p>
                     </template>
                     <template v-if="step === 2">
                         <div class="registration-heading"><h1>Select Subscription Plan</h1><p>Your free trial uses the selected plan's existing trial period.</p></div>
                         <div class="registration-options registration-plans">
-                            <label v-for="plan in options.plans" :key="plan.id" class="registration-option registration-plan"><input v-model="form.plan_id" type="radio" :value="plan.id" required><span><strong>{{ plan.name }}</strong><small class="plan-price"><b>{{ plan.currency }} {{ plan.price }}</b><span> / {{ plan.billing_period }}</span></small><small v-if="plan.description">{{ plan.description }}</small><em>{{ plan.trial_days }} trial days</em></span></label>
+                            <label v-for="plan in options.plans" :key="plan.id" class="registration-option registration-plan"><input v-model="form.plan_id" v-bind="fieldAttributes('plan_id')" type="radio" :value="plan.id" required><span><strong>{{ plan.name }}</strong><small class="plan-price"><b>{{ plan.currency }} {{ plan.price }}</b><span> / {{ plan.billing_period }}</span></small><small v-if="plan.description">{{ plan.description }}</small><em>{{ plan.trial_days }} trial days</em></span></label>
                         </div>
+                        <p v-if="fieldErrors.plan_id" id="plan_id-error" class="registration-field-error" role="alert">{{ fieldErrors.plan_id.join(' ') }}</p>
                     </template>
                     <template v-if="step === 3">
                         <div class="registration-heading"><h1>Business Information</h1><p>We will create your main location and generate a business code automatically.</p></div>
-                        <div class="registration-form-grid"><label>Business name<input v-model.trim="form.name" required maxlength="150" autocomplete="organization" placeholder="Enter your business name"></label><label>Timezone<input v-model="form.timezone" required placeholder="Africa/Nairobi"></label></div>
+                        <div class="registration-form-grid"><label>Business name<input v-model.trim="form.name" required maxlength="150" autocomplete="organization" placeholder="Enter your business name" v-bind="fieldAttributes('name')"><span v-if="fieldErrors.name" id="name-error" class="registration-field-error" role="alert">{{ fieldErrors.name.join(' ') }}</span></label><label>Timezone<input v-model="form.timezone" required placeholder="Africa/Nairobi" v-bind="fieldAttributes('timezone')"><span v-if="fieldErrors.timezone" id="timezone-error" class="registration-field-error" role="alert">{{ fieldErrors.timezone.join(' ') }}</span></label></div>
                         <p v-if="selectedPlan" class="registration-notice">{{ selectedPlan.name }} · {{ selectedPlan.currency }} · {{ selectedPlan.trial_days }} trial days</p>
                     </template>
-                    <div class="registration-actions"><RouterLink v-if="step === 0" to="/app/login" class="registration-signin">Already have an account? <strong>Sign in</strong></RouterLink><button v-else type="button" class="registration-back" @click="step--">Back</button><button class="registration-next" :disabled="busy || (step === 1 && !form.business_type_id) || (step === 2 && !form.plan_id)">{{ busy ? 'Starting trial…' : step === 3 ? 'Start Free Trial' : 'Continue →' }}</button></div>
+                    <div class="registration-actions"><RouterLink v-if="step === 0" to="/app/login" class="registration-signin">Already have an account? <strong>Sign in</strong></RouterLink><button v-else type="button" class="registration-back" :disabled="busy" @click="step--">Back</button><button class="registration-next" :disabled="busy">{{ busy ? (step === 3 ? 'Starting trial…' : 'Checking…') : step === 3 ? 'Start Free Trial' : 'Continue →' }}</button></div>
                 </form>
                 <section v-else class="registration-success"><div class="success-mark"><AppIcon name="check" :size="30" /></div><h1>Your free trial has started</h1><p>{{ success?.verification_email_sent === false ? 'We could not send the verification email. Use the resend button on the next screen.' : 'Your business workspace is ready. Verify your email to continue.' }}</p><dl><div><dt>Business</dt><dd>{{ success?.business_name }}</dd></div><div v-if="success?.business_type"><dt>Business type</dt><dd>{{ success.business_type }}</dd></div><div><dt>Plan</dt><dd>{{ success?.plan }}</dd></div><div><dt>Trial ends</dt><dd>{{ success?.trial_ends_at ? new Date(success.trial_ends_at).toLocaleDateString() : '' }}</dd></div><div><dt>Email</dt><dd>{{ success?.email }}</dd></div><div><dt>Status</dt><dd>Email verification required</dd></div></dl><button class="registration-next" @click="router.replace('/app/verify-email')">Verify Email →</button></section>
             </div>
@@ -99,6 +125,7 @@ async function submit() {
 </template>
 
 <style scoped>
+.registration-field-error{color:#b91c1c;font-size:12px;font-weight:400;line-height:1.5;margin:0!important}.registration-form-grid input[aria-invalid=true]{border-color:#b91c1c}
 .registration-page{min-height:100svh;display:grid;grid-template-columns:minmax(0,55fr) minmax(540px,45fr);background:#f7fbfc;color:#101b39}
 .registration-main{min-width:0;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:28px clamp(24px,2.6vw,50px);background:radial-gradient(ellipse at center,#fff 20%,#f4fafc 100%)}
 .registration-top{width:100%;max-width:760px;margin:0 auto 16px;color:#58728d;font-size:13px}.registration-top a{display:inline-flex;align-items:center;min-height:24px}
