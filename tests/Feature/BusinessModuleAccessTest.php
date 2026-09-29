@@ -37,6 +37,7 @@ class BusinessModuleAccessTest extends TestCase
             $allowed = collect($data['modules'])->where('allowed', true)->pluck('key')->all();
             $expected = ['dashboard', 'patients', 'appointments', 'doctors', 'consultations', 'prescriptions', 'billing', 'reports', 'staff', 'support', 'settings'];
             if ($slug === 'clinic') array_splice($expected, 6, 0, ['pharmacy']);
+            if ($slug === 'dental') array_unshift($expected, 'dental');
             $this->assertSame($expected, $allowed);
             $this->getJson('/api/v1/clinic/prescriptions')->assertOk();
         }

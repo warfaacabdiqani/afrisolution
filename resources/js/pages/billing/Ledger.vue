@@ -7,7 +7,7 @@ const props = defineProps({ customer: { type: Object, default: null } });
 const { context, data, error, busy, loading, amount, method, reference, methods, invoiceId, load, pay } = useBillingLedger(() => props.customer);
 const customerLabel = computed(() => context.label('customer', 'Customer'));
 const money = value => Number(value ?? 0).toFixed(2);
-const sourceLabel = source => ({ clinic_appointment: 'Consultation', salon_appointment: 'Appointment' }[source?.type] || 'Charge');
+const sourceLabel = source => ({ dental_treatment: 'Dental Treatment', clinic_appointment: 'Consultation', salon_appointment: 'Appointment' }[source?.type] || 'Charge');
 </script>
 <template>
     <div>

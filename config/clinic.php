@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'dental_permissions' => ['dental.view', 'dental.chart', 'dental.procedures.manage', 'dental.plans.manage', 'dental.treatments.complete'],
     'billing_permissions' => ['billing.view', 'billing.create', 'billing.payments'],
     'whatsapp_permissions' => ['whatsapp.view', 'whatsapp.manage', 'whatsapp.send'],
     'salon_permissions' => ['appointments.start_service','appointments.override_conflict','appointments.discount','clients.view','clients.create','clients.update','clients.archive','salon_staff.view','salon_staff.manage','services.view','services.create','services.update','services.archive','service_categories.manage','clinic_settings.salon.update'],
@@ -11,6 +12,7 @@ return [
     'patient_permissions' => ['patients.view', 'patients.create', 'patients.update', 'patients.archive', 'patients.restore', 'patients.documents.view', 'patients.documents.upload', 'patients.documents.delete', 'patients.medical_history.view', 'patients.medical_history.update'],
     // Additional capabilities protect workspace implementations that remain clinical.
     'business_module_map' => [
+        'dental' => ['dental'],
         'clients' => ['salon_core','customers'], 'stylists' => ['salon_core','staff'], 'services' => ['salon_core','services'], 'salon' => ['salon_core'],
         'dashboard' => ['dashboard'], 'patients' => ['customers', 'patients'],
         'appointments' => ['bookings', 'appointment_engine'], 'doctors' => ['clinical'],
@@ -19,6 +21,7 @@ return [
         'staff' => ['staff'], 'settings' => ['settings'], 'support' => ['support'],
     ],
     'modules' => [
+        'dental' => ['Dental Procedures', 'dental.view', 'emr', 'activity', 'Clinical'],
         'clients' => ['Clients','clients.view','clients','members','Clients'],
         'stylists' => ['Stylists','salon_staff.view','salon_staff','doctor','Services'],
         'services' => ['Services','services.view','services','activity','Services'],
@@ -40,7 +43,7 @@ return [
         'admin' => ['*', 'support.view', 'support.tickets.create', 'support.tickets.view_own', 'support.tickets.view_clinic'],
         'staff' => ['dashboard.view', 'support.view', 'support.tickets.create', 'support.tickets.view_own'],
         'receptionist' => ['doctors.view', 'doctors.schedule.view', 'dashboard.view', 'patients.view', 'patients.create', 'patients.update', 'appointments.view', 'appointments.view_all', 'appointments.create', 'appointments.update', 'appointments.reschedule', 'appointments.cancel', 'appointments.check_in', 'support.view', 'support.tickets.create', 'support.tickets.view_own'],
-        'doctor' => ['doctors.view', 'doctors.schedule.view', 'dashboard.view', 'patients.view', 'patients.medical_history.view', 'patients.medical_history.update', 'patients.documents.view', 'patients.documents.upload', 'appointments.view', 'appointments.start_consultation', 'appointments.complete', 'consultations.view', 'consultations.create', 'consultations.update', 'prescriptions.view', 'prescriptions.create', 'prescriptions.update', 'prescriptions.cancel', 'prescriptions.print', 'support.view', 'support.tickets.create', 'support.tickets.view_own'],
+        'doctor' => ['dental.view', 'dental.chart', 'dental.plans.manage', 'dental.treatments.complete', 'doctors.view', 'doctors.schedule.view', 'dashboard.view', 'patients.view', 'patients.medical_history.view', 'patients.medical_history.update', 'patients.documents.view', 'patients.documents.upload', 'appointments.view', 'appointments.start_consultation', 'appointments.complete', 'consultations.view', 'consultations.create', 'consultations.update', 'prescriptions.view', 'prescriptions.create', 'prescriptions.update', 'prescriptions.cancel', 'prescriptions.print', 'support.view', 'support.tickets.create', 'support.tickets.view_own'],
         'nurse' => ['dashboard.view', 'patients.view', 'patients.medical_history.view', 'patients.medical_history.update', 'appointments.view', 'appointments.view_all', 'appointments.check_in', 'consultations.view', 'support.view', 'support.tickets.create', 'support.tickets.view_own'],
         'pharmacist' => ['dashboard.view', 'pharmacy.view', 'pharmacy.manage', 'prescriptions.view', 'prescriptions.view_all_doctors', 'prescriptions.dispense', 'prescriptions.print', 'support.view', 'support.tickets.create', 'support.tickets.view_own'],
         'cashier' => ['dashboard.view', 'billing.view', 'billing.create', 'billing.payments', 'support.view', 'support.tickets.create', 'support.tickets.view_own'],

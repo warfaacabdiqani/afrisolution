@@ -73,7 +73,7 @@ return [
             'billing' => true,
             'reports' => true,
             'inventory' => false,
-            'clinical' => true, 'appointment_engine' => true,
+            'clinical' => true, 'appointment_engine' => true, 'dental' => true,
             'prescriptions' => true,
             'pharmacy' => false,
             'facilities' => false,
@@ -82,7 +82,7 @@ return [
         'navigation_profile' => [
             ['label' => 'Dashboard', 'items' => ['dashboard']],
             ['label' => 'Patient Care', 'items' => ['patients', 'appointments']],
-            ['label' => 'Clinical', 'items' => ['doctors', 'consultations', 'prescriptions']],
+            ['label' => 'Clinical', 'items' => ['doctors', 'consultations', 'prescriptions', 'dental']],
             ['label' => 'Operations', 'items' => ['billing']],
             ['label' => 'Analytics', 'items' => ['reports']],
             ['label' => 'Administration', 'items' => ['staff', 'support', 'settings']],

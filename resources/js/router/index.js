@@ -151,6 +151,8 @@ const router = createRouter({
                 { path: path+'/:id/edit', component: () => import('../pages/salon/Form.vue'), props: { kind }, meta: { clinicModule: module, permission: update } },
                 { path: path+'/:id', component: () => import('../pages/salon/Show.vue'), props: { kind }, meta: { clinicModule: module } },
             ]),
+            { path: 'dental', redirect: '/app/dental/procedures', meta: { clinicModule: 'dental' } },
+            { path: 'dental/procedures', component: () => import('../pages/dental/Procedures.vue'), meta: { clinicModule: 'dental' } },
             { path: 'patients', component: PatientsIndex, meta: { clinicModule: 'patients', patientList: true } },
             { path: 'appointments', component: BusinessAppointments, meta: { clinicModule: 'appointments', appointmentCalendar: true } },
             { path: 'appointments/hours', component: () => import('../pages/salon/bookings/Hours.vue'), meta: { clinicModule: 'appointments', salonOnly: true } },
@@ -175,6 +177,7 @@ const router = createRouter({
             { path: 'patients/:id', component: PatientShow, meta: { clinicModule: 'patients' }, children: [
                 { path: '', redirect: to => `/app/patients/${to.params.id}/overview` },
                 { path: 'overview', component: PatientOverview },
+                { path: 'dental', component: () => import('../pages/dental/PatientDental.vue'), meta: { clinicModule: 'dental', permission: 'patients.view', feature: 'patient_management' } },
                 { path: 'medical-history', component: PatientHistory, meta: { permission: 'patients.medical_history.view' } },
                 { path: 'documents', component: PatientDocuments, meta: { permission: 'patients.documents.view' } },
                 { path: 'activity', component: PatientActivity },

@@ -96,6 +96,22 @@ Route::middleware(['auth:sanctum', 'email.verified'])->prefix('v1')->group(funct
         Route::get('tenants/{tenant}/branches', [ProvisioningController::class, 'branches'])->middleware('platform.permission:tenants.view');
         Route::post('tenants/{tenant}/branches', [ProvisioningController::class, 'addBranch'])->middleware('platform.permission:tenants.manage');
     });
+    Route::prefix('dental')->middleware(['platform.available','tenant'])->group(function () {
+        Route::get('options', [\App\Http\Controllers\DentalController::class, 'options']);
+        Route::get('patients/{patient}/plans', [\App\Http\Controllers\DentalPlanController::class, 'index'])->whereNumber('patient');
+        Route::post('patients/{patient}/plans', [\App\Http\Controllers\DentalPlanController::class, 'store'])->whereNumber('patient');
+        Route::get('plans/{plan}', [\App\Http\Controllers\DentalPlanController::class, 'show'])->whereNumber('plan');
+        Route::put('plans/{plan}', [\App\Http\Controllers\DentalPlanController::class, 'update'])->whereNumber('plan');
+        Route::post('plans/{plan}/status', [\App\Http\Controllers\DentalPlanController::class, 'status'])->whereNumber('plan');
+        Route::post('plans/{plan}/items/{item}/complete', [\App\Http\Controllers\DentalPlanController::class, 'complete'])->whereNumber(['plan', 'item']);
+        Route::post('plans/{plan}/items/{item}/invoice', [\App\Http\Controllers\DentalPlanController::class, 'invoice'])->whereNumber(['plan', 'item']);
+        Route::get('procedures', [\App\Http\Controllers\DentalController::class, 'procedures']);
+        Route::post('procedures', [\App\Http\Controllers\DentalController::class, 'saveProcedure']);
+        Route::put('procedures/{id}', [\App\Http\Controllers\DentalController::class, 'saveProcedure'])->whereNumber('id');
+        Route::get('patients/{patient}/chart', [\App\Http\Controllers\DentalController::class, 'chart'])->whereNumber('patient');
+        Route::post('patients/{patient}/findings', [\App\Http\Controllers\DentalController::class, 'finding'])->whereNumber('patient');
+        Route::post('patients/{patient}/findings/{finding}/void', [\App\Http\Controllers\DentalController::class, 'voidFinding'])->whereNumber(['patient', 'finding']);
+    });
     Route::prefix('billing')->middleware(['platform.available','tenant'])->group(function () {
         Route::get('reports/summary', [\App\Http\Controllers\BillingReportController::class, 'summary']);
         Route::get('invoices', [\App\Http\Controllers\BillingController::class, 'index']);

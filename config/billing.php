@@ -3,6 +3,7 @@
 return [
     // Only registered server-side adapters can supply charges to the ledger.
     'sources' => [
+        'dental_treatment' => App\Services\Billing\DentalTreatmentBillingAdapter::class,
         'clinic_appointment' => App\Services\Billing\ClinicAppointmentBillingAdapter::class,
         'salon_appointment' => App\Services\Billing\SalonBillingAdapter::class,
     ],
