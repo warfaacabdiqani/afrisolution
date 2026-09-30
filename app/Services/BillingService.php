@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\{BillingInvoice, BillingPayment, BillingReceipt, Branch};
+use App\Models\{BillingDepositAllocation, BillingInvoice, BillingPayment, BillingReceipt, Branch};
 use App\Services\Billing\{BillingCustomerResolver, BillingDocumentSnapshot, BillingLock, BillingMoney, InvoiceSource};
 use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +36,7 @@ class BillingService
             if ($limit !== null && BillingInvoice::where('created_at', '>=', $month)->where('created_at', '<', $nextMonth)->count() >= $limit) {
                 throw ValidationException::withMessages(['plan' => 'Your monthly invoice limit has been reached.']);
             }
-            $calculation = app(BillingMoney::class)->calculate($snapshot['items'], $snapshot['discount'], $snapshot['tax_rate']);
+            $calculation = app(BillingMoney::class)->calculate($snapshot['items'], $snapshot['discount'], $snapshot['tax_rate'], $snapshot['credit'] ?? '0.00');
             foreach ($snapshot['expected_totals'] ?? [] as $field => $value) {
                 if (BillingMoney::cents($calculation['totals'][$field]) !== BillingMoney::cents($value)) {
                     throw ValidationException::withMessages(['source' => 'The charge snapshots do not reconcile with the source totals.']);
@@ -56,6 +56,10 @@ class BillingService
                 'document_snapshot' => app(BillingDocumentSnapshot::class)->identity($context, $branch->name, $snapshot['customer_type']),
             ]);
             $invoice->items()->createMany($calculation['items']);
+            if (!empty($snapshot['deposit_invoice_id']) && BillingMoney::cents($calculation['totals']['credit']) > 0) {
+                BillingDepositAllocation::create(['deposit_invoice_id' => $snapshot['deposit_invoice_id'], 'final_invoice_id' => $invoice->id,
+                    'amount' => $calculation['totals']['credit']]);
+            }
             app(PlatformService::class)->audit(request()->user()->id, 'billing.invoice.created', 'tenant', $tenant->id,
                 ['invoice_id' => $invoice->id, 'source_type' => $sourceType, 'source_id' => $sourceId] + ($snapshot['audit'] ?? []));
             return $invoice->load(['branch', 'items', 'payments.receipt']);
@@ -111,6 +115,39 @@ class BillingService
             app(PlatformService::class)->audit(request()->user()->id, 'billing.payment.recorded', 'tenant', $context['clinic']->id, ['invoice_id' => $id, 'amount' => $amount / 100, 'method' => $data['method']]);
             app(PlatformService::class)->audit(request()->user()->id, 'billing.receipt.created', 'tenant', $context['clinic']->id,
                 ['invoice_id' => $id, 'payment_id' => $payment->id, 'receipt_id' => $receipt->id, 'receipt_number' => $number]);
+            return $invoice->load(['branch', 'items', 'payments.receipt']);
+        }, 5);
+    }
+
+    public function refundDepositPayments(array $context, BillingInvoice $invoice, string $idempotencyKey): BillingInvoice
+    {
+        return DB::transaction(function () use ($context, $invoice, $idempotencyKey) {
+            $tenant = app(BillingLock::class)->acquire((int) $context['clinic']->id);
+            $invoice = $this->visible($context)->with(['branch', 'payments.reversal'])->findOrFail($invoice->id);
+            $settings = app(ClinicSettingsService::class)->section($tenant->id, 'billing');
+            if (empty($settings['refunds'])) throw ValidationException::withMessages(['deposit_disposition' => 'Refunds are disabled in billing settings.']);
+            foreach ($invoice->payments->where('type', 'payment')->whereNull('reversal') as $original) {
+                $key = $idempotencyKey.'-'.$original->id;
+                if (BillingPayment::where('idempotency_key', $key)->exists()) continue;
+                $amount = BillingMoney::cents($original->amount);
+                $refund = $invoice->payments()->create(['type' => 'refund', 'reverses_payment_id' => $original->id,
+                    'amount' => BillingMoney::decimal(-$amount), 'method' => $original->method, 'reference' => $original->reference,
+                    'idempotency_key' => $key, 'recorded_by' => request()->user()->id, 'paid_at' => now()]);
+                do {
+                    $tenant->increment('billing_receipt_sequence');
+                    $number = $settings['receipt_prefix'].str_pad((string) $tenant->billing_receipt_sequence, (int) $settings['number_length'], '0', STR_PAD_LEFT);
+                } while (BillingReceipt::where('number', $number)->exists());
+                $refund->receipt()->create(['invoice_id' => $invoice->id, 'number' => $number, 'snapshot' =>
+                    app(BillingDocumentSnapshot::class)->identity($context, $invoice->branch->name, $invoice->salon_client_id ? 'salon_client' : 'patient') +
+                    ['invoice_number' => $invoice->number, 'customer_name' => $invoice->customer_name, 'currency' => $invoice->currency,
+                     'payment_amount' => BillingMoney::decimal(-$amount), 'payment_method' => $refund->method, 'payment_reference' => $refund->reference,
+                     'payment_at' => now()->utc()->format('Y-m-d\TH:i:s\Z'), 'invoice_total' => $invoice->total,
+                     'previously_paid' => $invoice->paid, 'balance_after' => $invoice->total, 'recorded_by_name' => request()->user()->name,
+                     'reverses_payment_id' => $original->id]]);
+            }
+            $paid = max(0, BillingMoney::signedCents((string) $invoice->payments()->sum('amount')));
+            $invoice->update(['paid' => BillingMoney::decimal($paid), 'status' => $paid > 0 ? 'partial' : 'unpaid']);
+            app(PlatformService::class)->audit(request()->user()->id, 'billing.deposit.refunded', 'tenant', $tenant->id, ['invoice_id' => $invoice->id]);
             return $invoice->load(['branch', 'items', 'payments.receipt']);
         }, 5);
     }

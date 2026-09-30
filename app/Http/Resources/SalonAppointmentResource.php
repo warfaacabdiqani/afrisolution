@@ -9,6 +9,7 @@ class SalonAppointmentResource extends JsonResource {
             'stylist'=>['id'=>$this->stylist->id, 'name'=>$this->stylist->display_name], 'location'=>$this->branch->name,
             'items'=>$this->items->map(fn ($i) => $i->only(['service_id','name','duration_minutes','unit_price','amount','deposit_amount'])),
             'invoice_id'=>$this->invoice?->id,
+            'deposit'=>app(\App\Services\Billing\BillingDepositService::class)->summary($this->depositInvoice, $this->deposit_required),
         ];
     }
 }

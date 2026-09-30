@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Models\SalonAppointment;
+use App\Models\BillingInvoice;
 use App\Services\{ClinicAccessService, SalonBookingService};
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -44,11 +45,16 @@ class SalonBillingAdapter implements InvoiceSource
         if ($appointment->status !== 'completed') {
             throw ValidationException::withMessages(['status' => 'Complete the appointment before creating its invoice.']);
         }
+        $deposit = BillingInvoice::where('source_type', 'salon_appointment_deposit')->where('source_id', $appointment->id)
+            ->whereNull('voided_at')->first();
+        $credit = $deposit ? min(BillingMoney::cents($deposit->total), BillingMoney::cents($appointment->total)) : 0;
         return [
             'tenant_id' => $appointment->tenant_id, 'branch_id' => $appointment->branch_id,
             'source_id' => $appointment->id, 'customer_type' => 'salon_client', 'customer_id' => $appointment->client_id,
             'currency' => $appointment->currency, 'discount' => $appointment->discount, 'tax_rate' => $appointment->tax_rate,
-            'expected_totals' => $appointment->only(['subtotal', 'discount', 'tax', 'total']),
+            'credit' => BillingMoney::decimal($credit), 'deposit_invoice_id' => $deposit?->id,
+            'expected_totals' => $appointment->only(['subtotal', 'discount', 'tax']) +
+                ['total' => BillingMoney::decimal(BillingMoney::cents($appointment->total) - $credit)],
             'items' => $appointment->items->map(fn ($item) => [
                 'source_type' => 'salon_appointment_service', 'source_id' => $item->id,
                 'description' => $item->name, 'quantity' => 1, 'unit_price' => $item->unit_price,

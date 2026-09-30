@@ -1,9 +1,10 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Http\Requests\BillingSourceRequest;
+use App\Http\Requests\{BillingPaymentRequest, BillingSourceRequest};
 use App\Http\Resources\BillingInvoiceResource;
 use App\Services\{BillingService, ClinicAccessService, DentalAccessService, DentalPlanService};
+use App\Services\Billing\BillingDepositService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -13,6 +14,8 @@ class DentalPlanController extends Controller
     {
         return [
             'title' => 'required|string|max:150', 'notes' => 'nullable|string|max:4000',
+            'deposit_mode' => ['sometimes', Rule::in(['none', 'fixed', 'percentage'])],
+            'deposit_value' => 'nullable|required_if:deposit_mode,fixed|required_if:deposit_mode,percentage|numeric|min:0|max:99999999',
             'version' => $editing ? 'required|integer|min:1' : 'prohibited',
             'items' => 'required|array|min:1|max:100', 'items.*' => 'array:procedure_id,tooth,surfaces,visit_number,quantity,unit_price,notes',
             'items.*.procedure_id' => 'required|integer', 'items.*.tooth' => ['nullable', 'string', Rule::in(config('dental.teeth'))],
@@ -64,7 +67,9 @@ class DentalPlanController extends Controller
     {
         $context = $access->context($request, 'dental.plans.manage');
         $data = $request->validate(['status' => ['required', Rule::in(['accepted', 'cancelled'])],
-            'version' => 'required|integer|min:1', 'reason' => 'required_if:status,cancelled|nullable|string|max:2000']);
+            'version' => 'required|integer|min:1', 'reason' => 'required_if:status,cancelled|nullable|string|max:2000',
+            'deposit_disposition' => 'nullable|in:refund,forfeit',
+            'deposit_idempotency_key' => 'nullable|string|max:100']);
         return response()->json(['data' => $plans->present($plans->transition($context, $plan, $data), $context)]);
     }
 
@@ -81,5 +86,14 @@ class DentalPlanController extends Controller
         app(ClinicAccessService::class)->authorize($request, 'billing', 'billing.create');
         $plans->find($context, $plan)->items()->findOrFail($item);
         return (new BillingInvoiceResource($billing->createFromSource($context, 'dental_treatment', $item)))->response()->setStatusCode(201);
+    }
+
+    public function deposit(BillingPaymentRequest $request, int $plan, DentalAccessService $access, DentalPlanService $plans, BillingDepositService $deposits)
+    {
+        $context = $access->context($request);
+        app(ClinicAccessService::class)->authorize($request, 'billing', 'billing.create');
+        app(ClinicAccessService::class)->authorize($request, 'billing', 'billing.payments');
+        $plans->find($context, $plan);
+        return new BillingInvoiceResource($deposits->collect($context, 'dental_plan_deposit', $plan, $request->validated()));
     }
 }

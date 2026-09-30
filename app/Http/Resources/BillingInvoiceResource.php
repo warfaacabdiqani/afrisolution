@@ -14,7 +14,7 @@ class BillingInvoiceResource extends JsonResource
         foreach (['created_at', 'issued_at', 'due_at'] as $field) {
             $data[$field] = $this->$field ? \Illuminate\Support\Carbon::parse($this->$field)->utc()->format('Y-m-d\TH:i:s\Z') : null;
         }
-        foreach (['subtotal', 'discount', 'tax', 'total', 'paid', 'tax_rate'] as $field) {
+        foreach (['subtotal', 'discount', 'tax', 'credit', 'total', 'paid', 'tax_rate'] as $field) {
             $data[$field] = $this->$field === null ? null : BillingMoney::decimal(BillingMoney::cents($this->$field));
         }
         return $data + [

@@ -33,8 +33,11 @@ class AppointmentStatusService
                 $a->{$definition['timestamp']} = now();
             }
             if ($action === 'cancel') {
+                app(\App\Services\Billing\BillingDepositService::class)->resolveCancellation($context, $a->depositInvoice, $data['deposit_disposition'] ?? '', $data['deposit_idempotency_key'] ?? 'cancel-'.$a->id);
                 $a->cancelled_by = request()->user()->id;
                 $a->cancellation_reason = $data['reason'];
+                $a->deposit_disposition = \App\Services\Billing\BillingMoney::cents($a->depositInvoice?->paid ?? 0) ? $data['deposit_disposition'] : 'void';
+                $a->deposit_disposition_at = now(); $a->deposit_disposition_by = request()->user()->id;
             }
             $a->updated_by = request()->user()->id;
             $a->save();

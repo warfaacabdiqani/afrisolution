@@ -61,7 +61,8 @@ class AppointmentController extends Controller
     public function storeType(Request $request, ClinicAccessService $access)
     {
         $c = $access->authorize($request, 'appointments', 'appointments.types.manage');
-        $data = $request->validate(['name' => ['required', 'string', 'max:100', Rule::unique('appointment_types')->where('tenant_id', $c['clinic']->id)], 'default_duration' => ['required', 'integer', 'between:5,480']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:100', Rule::unique('appointment_types')->where('tenant_id', $c['clinic']->id)], 'default_duration' => ['required', 'integer', 'between:5,480'],
+            'deposit_mode' => ['nullable', Rule::in(['none', 'fixed', 'percentage'])], 'deposit_value' => 'nullable|required_unless:deposit_mode,null,none|numeric|min:0|max:99999999']);
 
         return response()->json(['data' => AppointmentType::create($data)], 201);
     }
@@ -96,7 +97,9 @@ class AppointmentController extends Controller
     public function status(Request $request, ClinicAccessService $access, AppointmentStatusService $service, int $appointment, string $action)
     {
         $c = $access->authorize($request, 'appointments');
-        $data = $request->validate(['reason' => [$action === 'cancel' ? 'required' : 'nullable', 'string', 'max:2000']]);
+        $data = $request->validate(['reason' => [$action === 'cancel' ? 'required' : 'nullable', 'string', 'max:2000'],
+            'deposit_disposition' => [$action === 'cancel' ? 'nullable' : 'prohibited', Rule::in(['refund', 'forfeit'])],
+            'deposit_idempotency_key' => $action === 'cancel' ? 'nullable|string|max:100' : 'prohibited']);
 
         return new AppointmentResource($service->transition($c, $appointment, $action, $data));
     }

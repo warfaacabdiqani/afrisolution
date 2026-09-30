@@ -9,9 +9,9 @@ class BillingInvoiceItemResource extends JsonResource
 {
     public function toArray($request): array
     {
-        $data = $this->resource->only(['id', 'description', 'quantity']);
+        $data = $this->resource->only(['id', 'description', 'quantity', 'kind']);
         foreach (['unit_price', 'amount', 'discount_amount', 'tax_rate', 'tax_amount', 'line_total'] as $field) {
-            $data[$field] = $this->$field === null ? null : BillingMoney::decimal(BillingMoney::cents($this->$field));
+            $data[$field] = $this->$field === null ? null : BillingMoney::decimal(BillingMoney::signedCents($this->$field));
         }
         return $data + ['source' => $this->source_type ? ['type' => $this->source_type, 'id' => $this->source_id] : null];
     }

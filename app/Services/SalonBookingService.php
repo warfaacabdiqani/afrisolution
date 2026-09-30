@@ -25,7 +25,7 @@ class SalonBookingService
 
     public function find(array $c, int $id): SalonAppointment
     {
-        return $this->visible($c)->with(['client', 'stylist', 'branch', 'items', 'invoice'])->findOrFail($id);
+        return $this->visible($c)->with(['client', 'stylist', 'branch', 'items', 'invoice', 'depositInvoice.payments'])->findOrFail($id);
     }
 
     public function audit(SalonAppointment $a, string $action, array $extra = []): void
@@ -121,7 +121,12 @@ class SalonBookingService
             if ($action === 'no-show' && $a->starts_at > $now->format('Y-m-d H:i:s')) throw ValidationException::withMessages(['status'=>'A future appointment cannot be marked no show.']);
             $a->status = $definition['to'];
             if (isset($definition['timestamp'])) $a->{$definition['timestamp']} = now();
-            if ($action === 'cancel') { $a->cancelled_at = now(); $a->cancelled_by = request()->user()->id; $a->cancellation_reason = $data['reason']; }
+            if ($action === 'cancel') {
+                app(\App\Services\Billing\BillingDepositService::class)->resolveCancellation($c, $a->depositInvoice, $data['deposit_disposition'] ?? '', $data['deposit_idempotency_key'] ?? 'cancel-'.$a->id);
+                $a->cancelled_at = now(); $a->cancelled_by = request()->user()->id; $a->cancellation_reason = $data['reason'];
+                $a->deposit_disposition = Billing\BillingMoney::cents($a->depositInvoice?->paid ?? 0) ? $data['deposit_disposition'] : 'void';
+                $a->deposit_disposition_at = now(); $a->deposit_disposition_by = request()->user()->id;
+            }
             $a->updated_by = request()->user()->id; $a->save(); $this->audit($a, $action);
             return $this->find($c, $id);
         }, 5);

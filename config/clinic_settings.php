@@ -59,6 +59,8 @@ return [
         'tax_rate'=>$f('Default Tax Rate (%)','number',0,'required|numeric|between:0,100'),
         'discount_policy'=>$f('Default Discount Policy','select','approval_required','required|in:disabled,approval_required',['disabled','approval_required']),
         'consultation_fee'=>$f('Default Consultation Fee','number',0,'required|numeric|between:0,99999999'),'currency'=>$currency,
+        'deposit_mode'=>$f('Appointment Deposit','select','none','required|in:none,fixed,percentage',['none','fixed','percentage']),
+        'deposit_value'=>$f('Appointment Deposit Value','number',0,'required|numeric|between:0,99999999'),
         'partial_payments'=>$bool('Allow Partial Payments',true),'refunds'=>$bool('Allow Refunds'),
         'payment_methods'=>$f('Enabled Payment Methods','multiselect',['cash'],'required|array|min:1',['cash','card','mobile_money','bank_transfer']),
     ]],

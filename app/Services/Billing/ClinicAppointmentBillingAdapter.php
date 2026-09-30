@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing;
 
+use App\Models\BillingInvoice;
 use App\Services\{AppointmentService, ClinicSettingsService};
 use Illuminate\Validation\ValidationException;
 
@@ -21,11 +22,16 @@ class ClinicAppointmentBillingAdapter implements InvoiceSource
         if (!$appointment->doctor) throw ValidationException::withMessages(['doctor' => 'The appointment clinician is unavailable.']);
         $billing = app(ClinicSettingsService::class)->section($appointment->tenant_id, 'billing');
         $fee = $appointment->doctor->consultation_fee ?? $billing['consultation_fee'];
+        $deposit = BillingInvoice::where('source_type', 'clinic_appointment_deposit')->where('source_id', $appointment->id)
+            ->whereNull('voided_at')->first();
+        $gross = app(BillingMoney::class)->calculate([['description' => 'Consultation', 'unit_price' => $fee, 'quantity' => 1]], '0.00', $billing['tax_rate']);
+        $credit = $deposit ? min(BillingMoney::cents($deposit->total), BillingMoney::cents($gross['totals']['total'])) : 0;
 
         return [
             'tenant_id' => $appointment->tenant_id, 'branch_id' => $appointment->branch_id, 'source_id' => $appointment->id,
             'customer_type' => 'patient', 'customer_id' => $appointment->patient_id,
             'currency' => $billing['currency'], 'discount' => '0.00', 'tax_rate' => $billing['tax_rate'],
+            'credit' => BillingMoney::decimal($credit), 'deposit_invoice_id' => $deposit?->id,
             'items' => [[
                 'source_type' => 'clinic_appointment', 'source_id' => $appointment->id,
                 'description' => 'Consultation - Dr. '.$appointment->doctor->full_name,

@@ -11,4 +11,5 @@ class DentalPlan extends Model
     protected function casts(): array { return ['tax_rate' => 'decimal:2', 'version' => 'integer', 'accepted_at' => 'datetime', 'completed_at' => 'datetime', 'cancelled_at' => 'datetime']; }
     public function items() { return $this->hasMany(DentalPlanItem::class, 'plan_id')->orderBy('visit_number')->orderBy('id'); }
     public function patient() { return $this->belongsTo(Patient::class); }
+    public function depositInvoice() { return $this->hasOne(BillingInvoice::class, 'source_id')->where('source_type', 'dental_plan_deposit'); }
 }

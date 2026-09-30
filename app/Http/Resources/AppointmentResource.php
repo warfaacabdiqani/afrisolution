@@ -26,6 +26,7 @@ class AppointmentResource extends JsonResource
             'consultation_fee' => $consultationFee,
             'consultation_fee_source' => $consultationFeeSource,
             'currency' => $billing['currency'] ?? 'USD',
+            'deposit' => app(\App\Services\Billing\BillingDepositService::class)->summary($this->depositInvoice, $this->deposit_required),
             'patient' => ['id' => $this->patient->id, 'full_name' => $this->patient->full_name, 'patient_number' => $this->patient->patient_number, 'phone' => $this->patient->phone],
             'doctor' => ['id' => $this->doctor->id, 'full_name' => $this->doctor->full_name], 'branch' => $this->branch->name, 'type' => $this->type?->name,
         ];

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\{BillingInvoiceIndexRequest, BillingPaymentRequest, BillingSourceRequest};
 use App\Http\Resources\BillingInvoiceResource;
 use App\Services\{BillingService, ClinicAccessService, ClinicSettingsService};
-use App\Services\Billing\SalonBillingAdapter;
+use App\Services\Billing\{BillingDepositService, SalonBillingAdapter};
 use App\Http\Resources\SalonBillingSourceResource;
 use Illuminate\Http\Request;
 
@@ -69,6 +69,23 @@ class BillingController extends Controller
     {
         $context = app(SalonBillingAdapter::class)->context($request);
         return (new BillingInvoiceResource($billing->createFromSource($context, 'salon_appointment', $id)))->response()->setStatusCode(201);
+    }
+
+    public function salonDeposit(BillingPaymentRequest $request, int $id, BillingDepositService $deposits)
+    {
+        $context = app(SalonBillingAdapter::class)->context($request);
+        app(ClinicAccessService::class)->authorize($request, 'billing', 'billing.payments');
+        return new BillingInvoiceResource($deposits->collect($context, 'salon_appointment_deposit', $id, $request->validated()));
+    }
+
+    public function clinicDeposit(BillingPaymentRequest $request, int $appointment, BillingDepositService $deposits)
+    {
+        $access = app(ClinicAccessService::class);
+        $context = $access->authorize($request, 'appointments');
+        $access->authorizeBusiness($context, 'consultations');
+        $access->authorize($request, 'billing', 'billing.create');
+        $access->authorize($request, 'billing', 'billing.payments');
+        return new BillingInvoiceResource($deposits->collect($context, 'clinic_appointment_deposit', $appointment, $request->validated()));
     }
 
     public function salonSources(Request $request, SalonBillingAdapter $adapter)

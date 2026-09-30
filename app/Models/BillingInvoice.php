@@ -11,4 +11,5 @@ class BillingInvoice extends Model {
     public function salonClient() { return $this->belongsTo(SalonClient::class); }
     public function items() { return $this->hasMany(BillingInvoiceItem::class, 'invoice_id'); }
     public function payments() { return $this->hasMany(BillingPayment::class, 'invoice_id'); }
+    public function depositAllocations() { return $this->hasMany(BillingDepositAllocation::class, 'deposit_invoice_id'); }
 }

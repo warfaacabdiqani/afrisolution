@@ -25,7 +25,7 @@ class AppointmentService
 
     public function find(array $context, int $id): Appointment
     {
-        return $this->visible($context)->with(['patient', 'doctor', 'branch', 'type', 'creator', 'invoice'])->findOrFail($id);
+        return $this->visible($context)->with(['patient', 'doctor', 'branch', 'type', 'creator', 'invoice', 'depositInvoice.payments'])->findOrFail($id);
     }
 
     public function audit(Appointment $appointment, string $action, array $extra = []): void
@@ -88,6 +88,13 @@ class AppointmentService
                 $a->appointment_number = app(BookingCore::class)->number($tenant);
                 $a->created_by = request()->user()->id;
                 $a->status = $walkIn ? ($data['status'] ?? 'waiting') : 'scheduled';
+                $billing = app(ClinicSettingsService::class)->section($tenant->id, 'billing');
+                $type = !empty($data['appointment_type_id']) ? AppointmentType::find($data['appointment_type_id']) : null;
+                $mode = $type?->deposit_mode ?? ($billing['deposit_mode'] ?? 'none');
+                $value = $type?->deposit_mode !== null ? $type->deposit_value : ($billing['deposit_value'] ?? 0);
+                $basis = $doctor->consultation_fee ?? ($billing['consultation_fee'] ?? 0);
+                $a->deposit_mode = $mode; $a->deposit_value = $value; $a->deposit_basis = $basis;
+                $a->deposit_required = app(\App\Services\Billing\BillingDepositService::class)->required($mode, $value, $basis);
             } elseif ($changed) {
                 $a->status = 'scheduled';
                 $a->checked_in_at = null;

@@ -9,5 +9,5 @@ class AppointmentType extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['name', 'default_duration', 'color_key', 'status'];
+    protected $fillable = ['name', 'default_duration', 'color_key', 'status', 'deposit_mode', 'deposit_value'];
 }

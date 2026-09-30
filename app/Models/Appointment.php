@@ -42,4 +42,5 @@ class Appointment extends Model
     }
     public function prescriptions() { return $this->hasMany(Prescription::class); }
     public function invoice() { return $this->hasOne(BillingInvoice::class, 'source_id')->where('source_type', 'clinic_appointment'); }
+    public function depositInvoice() { return $this->hasOne(BillingInvoice::class, 'source_id')->where('source_type', 'clinic_appointment_deposit'); }
 }

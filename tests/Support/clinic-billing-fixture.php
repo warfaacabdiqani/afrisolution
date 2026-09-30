@@ -5,8 +5,10 @@ function clinicBillingFixture(string $name = 'clinic-billing', string $business 
 {
     (new \Database\Seeders\BusinessTypeSeeder)->run();
     $actor = \App\Models\User::factory()->create();
+    $features = ['appointments', 'billing', 'patient_management', 'clinicians', 'multi_branch'];
+    if ($business === 'dental') $features[] = 'emr';
     $plan = \App\Models\Plan::create(['name' => 'Clinic Billing Test', 'branch_limit' => 3, 'member_limit' => 10, 'trial_days' => 14,
-        'features' => array_fill_keys(['appointments', 'billing', 'patient_management', 'clinicians', 'multi_branch'], true)]);
+        'features' => array_fill_keys($features, true)]);
     $tenant = app(\App\Services\PlatformService::class)->createTenant(['name' => $name, 'timezone' => 'Africa/Nairobi',
         'business_type_id' => \App\Models\BusinessType::where('slug', $business)->value('id'), 'plan_id' => $plan->id,
         'owner_name' => 'Clinic Owner', 'owner_email' => $name.'@example.test', 'owner_password' => 'SecurePass12345'], $actor->id);

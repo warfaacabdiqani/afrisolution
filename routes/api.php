@@ -106,6 +106,7 @@ Route::middleware(['auth:sanctum', 'email.verified'])->prefix('v1')->group(funct
         Route::post('plans/{plan}/status', [\App\Http\Controllers\DentalPlanController::class, 'status'])->whereNumber('plan');
         Route::post('plans/{plan}/items/{item}/complete', [\App\Http\Controllers\DentalPlanController::class, 'complete'])->whereNumber(['plan', 'item']);
         Route::post('plans/{plan}/items/{item}/invoice', [\App\Http\Controllers\DentalPlanController::class, 'invoice'])->whereNumber(['plan', 'item']);
+        Route::post('plans/{plan}/deposit/payments', [\App\Http\Controllers\DentalPlanController::class, 'deposit'])->whereNumber('plan');
         Route::get('procedures', [\App\Http\Controllers\DentalController::class, 'procedures']);
         Route::post('procedures', [\App\Http\Controllers\DentalController::class, 'saveProcedure']);
         Route::put('procedures/{id}', [\App\Http\Controllers\DentalController::class, 'saveProcedure'])->whereNumber('id');
@@ -135,6 +136,7 @@ Route::middleware(['auth:sanctum', 'email.verified'])->prefix('v1')->group(funct
         Route::post('appointments/{id}/reschedule', [\App\Http\Controllers\SalonBookingController::class, 'reschedule'])->whereNumber('id');
         Route::get('appointments/{id}/activity', [\App\Http\Controllers\SalonBookingController::class, 'activity'])->whereNumber('id');
         Route::post('appointments/{id}/invoice', [\App\Http\Controllers\BillingController::class, 'fromSalon'])->whereNumber('id');
+        Route::post('appointments/{id}/deposit/payments', [\App\Http\Controllers\BillingController::class, 'salonDeposit'])->whereNumber('id');
         Route::post('appointments/{id}/{action}', [\App\Http\Controllers\SalonBookingController::class, 'status'])->whereNumber('id')->whereIn('action', array_keys(config('salon_booking.actions')));
         Route::get('location-hours', [\App\Http\Controllers\SalonScheduleController::class, 'hours']);
         Route::put('location-hours', [\App\Http\Controllers\SalonScheduleController::class, 'saveHours']);
@@ -193,6 +195,7 @@ Route::middleware(['auth:sanctum', 'email.verified'])->prefix('v1')->group(funct
         Route::post('appointments/{appointment}/reschedule', [\App\Http\Controllers\AppointmentController::class, 'reschedule'])->whereNumber('appointment')->name('appointments.reschedule');
         Route::get('appointments/{appointment}/activity', [\App\Http\Controllers\AppointmentController::class, 'activity'])->whereNumber('appointment');
         Route::post('appointments/{appointment}/invoice', [\App\Http\Controllers\BillingController::class, 'fromClinic'])->whereNumber('appointment');
+        Route::post('appointments/{appointment}/deposit/payments', [\App\Http\Controllers\BillingController::class, 'clinicDeposit'])->whereNumber('appointment');
         Route::post('appointments/{appointment}/{action}', [\App\Http\Controllers\AppointmentController::class, 'status'])->whereNumber('appointment')->whereIn('action',array_keys(config('appointments.actions')));
         Route::get('doctors/{doctor}/available-slots', [\App\Http\Controllers\AppointmentAvailabilityController::class, 'slots'])->whereNumber('doctor');
         Route::get('doctors/options', [\App\Http\Controllers\DoctorController::class, 'options']);

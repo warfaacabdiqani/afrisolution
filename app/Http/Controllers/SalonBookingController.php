@@ -89,7 +89,9 @@ class SalonBookingController extends Controller
     public function update(Request $r, int $id, SalonBookingService $bookings) { $c=$bookings->context($r,'appointments.update'); return new SalonAppointmentResource($bookings->save($c,$r->validate(SalonBookingService::rules()),$id)); }
     public function reschedule(Request $r, int $id, SalonBookingService $bookings) { $c=$bookings->context($r,'appointments.reschedule'); return new SalonAppointmentResource($bookings->save($c,$r->validate(SalonBookingService::rules()),$id,true)); }
     public function status(Request $r, int $id, string $action, SalonBookingService $bookings) {
-        $c=$bookings->context($r); $data=$r->validate(['reason'=>($action==='cancel'?'required':'nullable').'|string|max:1000']);
+        $c=$bookings->context($r); $data=$r->validate(['reason'=>($action==='cancel'?'required':'nullable').'|string|max:1000',
+            'deposit_disposition'=>$action==='cancel'?'nullable|in:refund,forfeit':'prohibited',
+            'deposit_idempotency_key'=>$action==='cancel'?'nullable|string|max:100':'prohibited']);
         return new SalonAppointmentResource($bookings->transition($c,$id,$action,$data));
     }
     public function activity(Request $r, int $id, SalonBookingService $bookings) {

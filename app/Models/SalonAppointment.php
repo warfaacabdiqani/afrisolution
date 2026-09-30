@@ -10,4 +10,5 @@ class SalonAppointment extends Model {
     public function branch() { return $this->belongsTo(Branch::class); }
     public function items() { return $this->hasMany(SalonAppointmentService::class, 'appointment_id'); }
     public function invoice() { return $this->hasOne(BillingInvoice::class, 'source_id')->where('source_type', 'salon_appointment'); }
+    public function depositInvoice() { return $this->hasOne(BillingInvoice::class, 'source_id')->where('source_type', 'salon_appointment_deposit'); }
 }

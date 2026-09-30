@@ -2,7 +2,7 @@
 namespace App\Services;
 
 use App\Models\{Appointment, DentalPlan, DentalProcedure};
-use App\Services\Billing\{BillingLock, BillingMoney};
+use App\Services\Billing\{BillingDepositService, BillingLock, BillingMoney};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -22,7 +22,7 @@ class DentalPlanService
 
     public function present(DentalPlan $plan, array $context): array
     {
-        $plan->load(['items.completedBy']);
+        $plan->load(['items.completedBy', 'depositInvoice.payments']);
         if (app(ClinicAccessService::class)->can($context['permissions'], 'billing.view') && !empty($context['features']['billing'])) {
             $plan->load('items.invoice:id,source_id,source_type');
         }
@@ -33,7 +33,8 @@ class DentalPlanService
             unset($data['invoice']);
             return $data;
         })->all();
-        return array_replace($plan->toArray(), $this->totals($items, $plan->tax_rate), ['items' => $items]);
+        return array_replace($plan->toArray(), $this->totals($items, $plan->tax_rate), ['items' => $items,
+            'deposit' => app(BillingDepositService::class)->summary($plan->depositInvoice, $plan->deposit_required)]);
     }
 
     private function totals(array $items, string $taxRate): array
@@ -78,7 +79,8 @@ class DentalPlanService
                 $plan->version++;
             }
             $this->totals($rows, $plan->tax_rate);
-            $plan->fill(['title' => $data['title'], 'notes' => $data['notes'] ?? null])->save();
+            $plan->fill(['title' => $data['title'], 'notes' => $data['notes'] ?? null,
+                'deposit_mode' => $data['deposit_mode'] ?? 'none', 'deposit_value' => $data['deposit_value'] ?? 0])->save();
             // Only unaccepted draft items are replaceable; accepted/completed records are never deleted.
             if ($id) $plan->items()->delete();
             $plan->items()->createMany($rows);
@@ -103,9 +105,19 @@ class DentalPlanService
                 throw ValidationException::withMessages(['status' => 'This plan cannot make that status change.']);
             }
             $plan->status = $target; $plan->version++;
-            if ($target === 'accepted') $plan->accepted_at = now();
+            if ($target === 'accepted') {
+                $totals = $this->totals($plan->items()->get()->map(fn ($item) => $item->toArray())->all(), $plan->tax_rate);
+                $plan->deposit_basis = $totals['total'];
+                $plan->deposit_required = app(BillingDepositService::class)->required($plan->deposit_mode ?? 'none', $plan->deposit_value ?? 0, $totals['total']);
+                $plan->accepted_at = now();
+            }
             else {
+                $depositInvoice = $plan->depositInvoice()->with('payments')->first();
+                $hadPaidDeposit = BillingMoney::cents($depositInvoice?->paid ?? 0) > 0;
+                app(BillingDepositService::class)->resolveCancellation($context, $depositInvoice, $data['deposit_disposition'] ?? '', $data['deposit_idempotency_key'] ?? 'cancel-'.$plan->id);
                 $plan->cancelled_at = now(); $plan->cancellation_reason = $data['reason'];
+                $plan->deposit_disposition = $hadPaidDeposit ? $data['deposit_disposition'] : 'void';
+                $plan->deposit_disposition_at = now(); $plan->deposit_disposition_by = request()->user()->id;
                 $plan->items()->where('status', 'planned')->update(['status' => 'cancelled']);
             }
             $plan->save();
