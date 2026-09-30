@@ -37,7 +37,7 @@ Fixed deposits are capped at the source total. Percentages accept 0–100 and us
 
 ## Final invoices and allocation
 
-The existing explicit final-invoice actions remain. A final invoice includes the normal charge lines plus a negative `Deposit previously invoiced` adjustment for the applicable non-void deposit amount. This prevents double billing while retaining the deposit invoice and receipt.
+The existing explicit final-invoice actions remain. A final invoice calculates its normal subtotal, discount, and tax first, then applies a non-taxable post-tax credit named `Deposit previously invoiced` for the applicable non-void deposit amount. This prevents double billing without incorrectly reducing tax and retains the deposit invoice and receipt.
 
 Clinic and Salon each allocate the deposit once to their completed source. Dental allocates the plan deposit across completed procedure invoices in completion order; each procedure consumes the smaller of its gross charge or the plan's unallocated deposit. An immutable deposit-allocation row connects each deposit invoice to each final invoice and records the amount consumed.
 
@@ -64,6 +64,8 @@ Add the minimum shared fields:
 
 - `billing_payments.type`: `payment` by default or `refund`.
 - `billing_payments.reverses_payment_id`: nullable self-reference.
+- `billing_invoices.credit`: non-negative post-tax credits, default zero; invoice total is subtotal minus discount plus tax minus credit.
+- `billing_invoice_items.kind`: `charge` by default or `credit`, allowing the document to explain the post-tax deposit adjustment.
 - A deposit-allocation table linking deposit and final invoices with an immutable amount.
 - Consistent deposit requirement, mode/value where relevant, disposition, timestamp, and actor fields on Clinic appointments, Dental plans, and Salon appointments.
 - Deposit mode/value fields on appointment types and Clinic billing settings; Dental plan fields; Salon retains service fields.
