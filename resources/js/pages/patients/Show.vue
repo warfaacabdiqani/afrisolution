@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { usePatientStore } from '../../stores/patients';
 import { useClinicContextStore } from '../../stores/clinicContext';
@@ -9,7 +9,8 @@ import FormErrors from '../../components/ui/FormErrors.vue';
 const store = usePatientStore(), context = useClinicContextStore(), route = useRoute();
 const tabs = computed(() => [['overview','Overview'],...(context.allowed('dental') ? [['dental','Dental Chart & Plans']] : []),['medical-history','Medical History','patients.medical_history.view'],['appointments','Appointments',null,'appointments'],['consultations','Consultations',null,'emr'],['vitals','Vital Signs',null,'vital_signs'],['prescriptions','Prescriptions','prescriptions.view','prescriptions'],['laboratory','Laboratory'],['documents','Documents','patients.documents.view'],['billing','Billing','billing.view','billing'],['activity','Activity']].filter(([, , permission, feature]) => (!permission || context.can(permission)) && (permission !== 'billing.view' || context.allowed('billing')) && (!feature || context.data.features[feature])));
 function load() { store.load(route.params.id); }
-onMounted(load);
+watch(() => [route.params.id, context.data?.clinic.id], ([id, clinic]) => { if (id && clinic) load(); else store.clearProfile(); }, { immediate: true });
+onBeforeUnmount(() => store.clearProfile());
 </script>
 <template>
     <RouterLink class="back-link" to="/app/patients">← Patients</RouterLink><p v-if="store.notice" class="clinic-trial mt-4" role="status">{{ store.notice }}<button class="ml-auto" aria-label="Dismiss notification" @click="store.notice = ''">×</button></p><FormErrors class="mt-4" :error="store.error" />

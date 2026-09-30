@@ -10,10 +10,12 @@ export const usePatientStore = defineStore('patients', {
             finally { if (generation === this.generation) this.busy = false; }
         },
         async load(id) {
+            const generation = ++this.generation;
             this.patient = null; this.busy = true; this.error = null;
-            try { this.patient = (await patientService.get(id)).data.data; }
-            catch (error) { this.error = error; }
-            finally { this.busy = false; }
+            try { const patient = (await patientService.get(id)).data.data; if (generation === this.generation) this.patient = patient; }
+            catch (error) { if (generation === this.generation) this.error = error; }
+            finally { if (generation === this.generation) this.busy = false; }
         },
+        clearProfile() { ++this.generation; this.patient = null; this.error = null; this.busy = false; },
     },
 });

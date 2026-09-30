@@ -25,30 +25,40 @@ app/Services/DentalAccessService.php; app/Services/DentalChartService.php;
 app/Http/Controllers/DentalController.php; tests/Feature/DentalWorkflowTest.php.
 Interfaces: /api/v1/dental/options, /procedures, /patients/{patient}/chart,
 /patients/{patient}/findings, /patients/{patient}/findings/{finding}/void.
-- [ ] Write API tests for missing endpoints and isolation; run and observe failures.
-- [ ] Implement migration/models, access, validated catalog and dated chart history.
-- [ ] Run php artisan test --compact --filter=DentalWorkflowTest; expect pass.
+- [x] Write API tests for missing endpoints and isolation; run and observe failures.
+- [x] Implement migration/models, access, validated catalog and dated chart history.
+- [x] Run php artisan test --compact --filter=DentalWorkflowTest; expect pass.
 
 ## Task 2: Plans, visit completion, invoices
 Files: app/Services/DentalPlanService.php, app/Services/Billing/DentalTreatmentBillingAdapter.php,
 config/billing.php, DentalController.php, DentalWorkflowTest.php.
 Interfaces: /patients/{patient}/plans, /plans/{plan}, /plans/{plan}/status,
 /plans/{plan}/items/{item}/complete, /plans/{plan}/items/{item}/invoice.
-- [ ] Add failing tests for lifecycle, immutable prices, foreign appointments and retries.
-- [ ] Implement atomic draft edits, accept/cancel, completion and source billing adapter.
-- [ ] Run DentalWorkflowTest; expect pass including rejected foreign/invalid writes.
+- [x] Add failing tests for lifecycle, immutable prices, foreign appointments and retries.
+- [x] Implement atomic draft edits, accept/cancel, completion and source billing adapter.
+- [x] Run DentalWorkflowTest; expect pass including rejected foreign/invalid writes.
 
 ## Task 3: User interface and regression
 Files: resources/js/pages/dental/{PatientDental,Procedures}.vue,
 resources/js/components/dental/ToothChart.vue, resources/js/services/dental.js,
 resources/js/router/index.js, patients/Show.vue, staff permissions, billing source label.
 Interfaces consume task 1/2 APIs using shared context headers.
-- [ ] Add browser test for catalog, tooth finding, two-visit plan and invoicing.
-- [ ] Implement accessible tooth chart and catalog/plan forms with contextual actions.
-- [ ] Run browser test, full PHP suite, npm run build and git diff --check.
-- [ ] Independent final code review; address material findings and rerun affected checks.
-- [ ] Apply additive local migration and document permissions/usage and validation results.
+- [x] Add browser test for catalog, tooth finding, two-visit plan and invoicing.
+- [x] Implement accessible tooth chart and catalog/plan forms with contextual actions.
+- [x] Run browser test, full PHP suite, npm run build and git diff --check.
+- [x] Independent final code review; address material findings and rerun affected checks.
+- [x] Apply additive local migration and document permissions/usage and validation results.
 
 ## Progress
 - Baseline: 173 tests passed (3,146 assertions); build passed during preceding audit.
 - Numbering: user selected Universal (1–32 adult, A–T primary).
+
+- Tasks 1/2 complete: missing endpoint tests observed failing; 19 focused tests passed (354 assertions).
+- Full PHP suite: 186 passed, 3,283 assertions. Vite build passed with existing bundle warning.
+- Review fixes: preserve independent surface findings; round quoted tax per treatment invoice.
+- Database: local MySQL started; Dental and prerequisite receipt/report migrations applied.
+- UI: full workflow, mobile read-only and surface summary pass; patient-switch race regression now passes.
+
+- Browser suite: 4 passed, including the patient-switch regression. Root cause: prior component cleanup ran after the next profile started; onBeforeUnmount now invalidates the old load first.
+
+- Independent review complete: no remaining consequential findings; verified surface summary and per-treatment tax corrections, isolation, permissions, immutable quotes, retries and patient guards.

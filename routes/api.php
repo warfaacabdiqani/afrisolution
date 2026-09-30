@@ -101,6 +101,7 @@ Route::middleware(['auth:sanctum', 'email.verified'])->prefix('v1')->group(funct
         Route::get('patients/{patient}/plans', [\App\Http\Controllers\DentalPlanController::class, 'index'])->whereNumber('patient');
         Route::post('patients/{patient}/plans', [\App\Http\Controllers\DentalPlanController::class, 'store'])->whereNumber('patient');
         Route::get('plans/{plan}', [\App\Http\Controllers\DentalPlanController::class, 'show'])->whereNumber('plan');
+        Route::get('plans/{plan}/appointments', [\App\Http\Controllers\DentalPlanController::class, 'appointments'])->whereNumber('plan');
         Route::put('plans/{plan}', [\App\Http\Controllers\DentalPlanController::class, 'update'])->whereNumber('plan');
         Route::post('plans/{plan}/status', [\App\Http\Controllers\DentalPlanController::class, 'status'])->whereNumber('plan');
         Route::post('plans/{plan}/items/{item}/complete', [\App\Http\Controllers\DentalPlanController::class, 'complete'])->whereNumber(['plan', 'item']);

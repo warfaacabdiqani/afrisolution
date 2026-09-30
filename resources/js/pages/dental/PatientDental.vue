@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { dentalService } from '../../services/dental';
 import { useClinicContextStore } from '../../stores/clinicContext';
@@ -15,6 +15,8 @@ const options = ref(null), chart = ref({ findings: [], treatments: [] }), plans 
 const error = ref(null), loading = ref(false), saving = ref(false), notice = ref(''), editor = ref(false), editingPlan = ref(null), action = ref(null);
 const finding = reactive({ condition: 'sound', surfaces: [], notes: '' });
 const actionForm = reactive({ reason: '', notes: '', appointment_id: '' });
+const dialog = ref(null), appointments = ref([]), appointmentsLoading = ref(false);
+let actionGeneration = 0, returnFocus = null;
 const writable = computed(() => patients.patient?.id === patientId.value && patients.patient?.status !== 'archived');
 const findings = computed(() => chart.value.findings.filter(f => historyAll.value || f.tooth === selected.value));
 const treatments = computed(() => chart.value.treatments.filter(t => historyAll.value || t.tooth === selected.value));
@@ -49,9 +51,26 @@ function newPlan(plan = null) { editingPlan.value = plan; editor.value = true; e
 function savePlan(data) {
     mutate(() => dentalService.savePlan(patientId.value, editingPlan.value?.id, data), 'Treatment plan saved.', () => { editor.value = false; editingPlan.value = null; });
 }
-function openAction(type, plan = null, item = null) {
+async function openAction(type, plan = null, item = null) {
+    returnFocus = document.activeElement;
     action.value = { type, plan, item }; Object.assign(actionForm, { reason: '', notes: '', appointment_id: '' }); error.value = null;
+    appointments.value = []; const token = ++actionGeneration;
+    await nextTick(); dialog.value?.querySelector('textarea, input, button')?.focus();
+    if (type === 'complete') {
+        appointmentsLoading.value = true;
+        try { const { data } = await dentalService.appointments(plan.id); if (token === actionGeneration) appointments.value = data.data; }
+        catch (e) { if (token === actionGeneration) error.value = e; }
+        finally { if (token === actionGeneration) appointmentsLoading.value = false; }
+    }
 }
+function trapFocus(event) {
+    if (event.key !== 'Tab') return;
+    const controls = [...dialog.value.querySelectorAll('button:not(:disabled), input, textarea, select, a[href]')];
+    const first = controls[0], last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+}
+watch(action, async value => { if (!value) { ++actionGeneration; appointmentsLoading.value = false; await nextTick(); returnFocus?.focus(); } });
 function confirmAction() {
     const a = action.value;
     if (a.type === 'void') mutate(() => dentalService.voidFinding(patientId.value, a.item.id, actionForm.reason), 'Finding marked as entered in error. Original retained.');
@@ -65,7 +84,7 @@ watch(scope, () => {
     saving.value = false; notice.value = ''; Object.assign(finding, { condition: 'sound', surfaces: [], notes: '' });
     if (context.allowed('dental')) load();
 }, { immediate: true });
-onUnmounted(() => { ++generation; });
+onUnmounted(() => { ++generation; ++actionGeneration; });
 </script>
 
 <template>
@@ -82,7 +101,7 @@ onUnmounted(() => { ++generation; });
                     <h3>{{ selected ? `Tooth ${selected}` : 'Select a tooth' }}</h3>
                     <p v-if="!selected" class="hint">Select an adult or primary tooth on the chart to record a finding.</p>
                     <form v-else-if="writable && context.can('dental.chart')" @submit.prevent="recordFinding">
-                        <label class="field">Finding<select v-model="finding.condition"><option v-for="(label, value) in options.conditions" :key="value" :value="value">{{ label }}</option></select></label>
+                        <label class="field">Finding<select v-model="finding.condition" aria-label="Finding"><option v-for="(label, value) in options.conditions" :key="value" :value="value">{{ label }}</option></select></label>
                         <fieldset class="surface-picker"><legend>Surfaces (optional)</legend><label v-for="(label, key) in options.surfaces" :key="key"><input v-model="finding.surfaces" type="checkbox" :value="key">{{ label }}</label></fieldset>
                         <label class="field">Finding notes<textarea v-model="finding.notes" maxlength="4000" rows="3"></textarea></label>
                         <button class="btn mt-4" :disabled="saving || loading">Record Finding</button>
@@ -122,11 +141,11 @@ onUnmounted(() => { ++generation; });
             </article>
         </template>
         <div v-if="action" class="dental-dialog-backdrop" @keydown.esc="!saving && (action = null)">
-            <section class="dental-dialog clinic-panel" role="dialog" aria-modal="true" aria-labelledby="dental-action-title" tabindex="-1">
+            <section ref="dialog" class="dental-dialog clinic-panel" role="dialog" aria-modal="true" aria-labelledby="dental-action-title" tabindex="-1" @keydown="trapFocus">
                 <h2 id="dental-action-title">{{ action.type === 'complete' ? 'Complete treatment' : action.type === 'void' ? 'Correct a finding' : 'Cancel treatment plan' }}</h2>
                 <FormErrors :error="error" />
                 <form @submit.prevent="confirmAction">
-                    <template v-if="action.type === 'complete'"><p>{{ action.item.procedure_name }} · {{ action.item.tooth ? `Tooth ${action.item.tooth}` : 'Whole mouth' }}</p><label class="field">Completion notes<textarea v-model="actionForm.notes" maxlength="4000" rows="4"></textarea></label><label class="field">Appointment ID (optional)<input v-model="actionForm.appointment_id" type="number" min="1"><small>Must belong to this patient and plan branch and be in consultation or completed.</small></label></template>
+                    <template v-if="action.type === 'complete'"><p>{{ action.item.procedure_name }} · {{ action.item.tooth ? `Tooth ${action.item.tooth}` : 'Whole mouth' }}</p><label class="field">Completion notes<textarea v-model="actionForm.notes" maxlength="4000" rows="4"></textarea></label><label class="field">Linked appointment (optional)<select v-model="actionForm.appointment_id" aria-label="Linked appointment" :disabled="appointmentsLoading"><option value="">No linked appointment</option><option v-for="appointment in appointments" :key="appointment.id" :value="appointment.id">{{ appointment.appointment_number }} · {{ appointment.starts_at }} · {{ appointment.status.replaceAll('_', ' ') }}</option></select><small>In-consultation and completed appointments for this patient and plan branch.</small></label></template>
                     <template v-else><p>{{ action.type === 'void' ? 'The original finding stays in the history with your correction reason.' : 'Completed treatments remain in the history and can still be invoiced.' }}</p><label class="field">Reason<textarea v-model.trim="actionForm.reason" required maxlength="2000" rows="4"></textarea></label></template>
                     <div class="plan-actions"><button class="btn" :disabled="saving">{{ action.type === 'complete' ? 'Confirm Completion' : 'Confirm' }}</button><button type="button" class="btn-secondary" :disabled="saving" @click="action = null">Back</button></div>
                 </form>

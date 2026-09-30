@@ -8,10 +8,23 @@ const arches = computed(() => primary.value
     : [Array.from({ length: 16 }, (_, i) => String(i + 1)), Array.from({ length: 16 }, (_, i) => String(32 - i))]);
 const latest = computed(() => {
     const map = {};
-    for (const finding of props.findings) if (!finding.voided_at && !map[finding.tooth]) map[finding.tooth] = finding;
-    return map;
+    for (const finding of props.findings) {
+        if (finding.voided_at) continue;
+        const tooth = map[finding.tooth] ||= {};
+        for (const surface of finding.surfaces?.length ? finding.surfaces : ['whole']) {
+            if (!tooth[surface]) tooth[surface] = finding.condition;
+        }
+    }
+    return Object.fromEntries(Object.entries(map).map(([tooth, surfaces]) => [tooth, [...new Set(Object.values(surfaces))]]));
 });
-const label = tooth => props.conditions[latest.value[tooth]?.condition] || 'Uncharted';
+const label = tooth => latest.value[tooth]?.map(c => props.conditions[c] || c).sort().join(', ') || 'Uncharted';
+const tone = tooth => {
+    const conditions = latest.value[tooth];
+    if (!conditions) return 'uncharted';
+    if (conditions.every(c => c === 'sound')) return 'sound';
+    if (conditions.every(c => ['missing', 'unerupted'].includes(c))) return 'missing';
+    return 'recorded';
+};
 </script>
 
 <template>
@@ -20,18 +33,18 @@ const label = tooth => props.conditions[latest.value[tooth]?.condition] || 'Unch
             <button type="button" :aria-pressed="!primary" :class="{ active: !primary }" @click="primary = false">Adult teeth</button>
             <button type="button" :aria-pressed="primary" :class="{ active: primary }" @click="primary = true">Primary teeth</button>
         </div>
-        <p class="chart-help">Universal numbering · Patient’s right is on your left. Select a tooth to see its history.</p>
+        <p class="chart-help">Universal numbering · Patient’s right is on your left. Markers summarize the latest finding for each recorded surface and whole-tooth finding.</p>
         <div class="chart-scroll" tabindex="0" aria-label="Tooth chart, scroll horizontally on small screens">
             <div class="chart-inner" :class="{ primary }">
                 <div class="chart-directions"><span>Patient’s right</span><span>Patient’s left</span></div>
                 <div v-for="(arch, index) in arches" :key="index" class="arch" :class="{ lower: index === 1 }" role="group" :aria-label="index ? 'Lower teeth' : 'Upper teeth'">
                     <span class="arch-label">{{ index ? 'Lower' : 'Upper' }}</span>
                     <div class="tooth-row">
-                        <button v-for="tooth in arch" :key="tooth" type="button" class="tooth" :class="[latest[tooth]?.condition || 'uncharted', { selected: modelValue === tooth }]"
+                        <button v-for="tooth in arch" :key="tooth" type="button" class="tooth" :class="[tone(tooth), { selected: modelValue === tooth }]"
                             :aria-label="`Tooth ${tooth}, ${label(tooth)}`" :aria-pressed="modelValue === tooth" :title="`Tooth ${tooth}: ${label(tooth)}`" @click="emit('update:modelValue', tooth)">
                             <span class="tooth-number">{{ tooth }}</span>
                             <svg viewBox="0 0 36 46" aria-hidden="true"><path d="M9 4C4 5 3 11 5 19l3 18c1 7 5 7 7 0l3-10 3 10c2 7 6 7 7 0l3-18C33 8 28 1 21 4l-3 1-3-1Z"/><path d="M11 12l7 4 7-4M18 16v7" class="tooth-detail"/></svg>
-                            <span class="tooth-marker">{{ latest[tooth] ? (latest[tooth].condition === 'sound' ? '✓' : '●') : '–' }}</span>
+                            <span class="tooth-marker">{{ latest[tooth] ? (tone(tooth) === 'sound' ? '✓' : '●') : '–' }}</span>
                         </button>
                     </div>
                 </div>

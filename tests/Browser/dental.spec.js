@@ -29,6 +29,9 @@ async function fixture(page, permissions = ['*']) {
         if (p === '/api/v1/public/settings') return json({});
         if (p === '/api/v1/clinic/context') return json(context);
         if (p === '/api/v1/clinic/patients/17') return json(patient);
+        if (p === '/api/v1/clinic/patients/18') return json({ ...patient, id: 18, first_name: 'Safiya', full_name: 'Safiya Yusuf', patient_number: 'PAT-18' });
+        if (p === '/api/v1/dental/patients/18/chart') return json({ findings: [], treatments: [] });
+        if (p === '/api/v1/dental/patients/18/plans') return json([]);
         if (p === '/api/v1/dental/options') return json(options);
         if (p === '/api/v1/dental/procedures') {
             if (req.method() === 'POST') {
@@ -51,6 +54,7 @@ async function fixture(page, permissions = ['*']) {
             return json(plans);
         }
         if (p === '/api/v1/dental/plans/1/status') { plans[0].status = req.postDataJSON().status; plans[0].version++; return json(plans[0]); }
+        if (p === '/api/v1/dental/plans/1/appointments') return json([]);
         const complete = p.match(/\/plans\/1\/items\/(\d+)\/complete$/);
         if (complete) {
             const plan = plans[0]; const item = plan.items.find(i => i.id === Number(complete[1]));
@@ -103,6 +107,7 @@ test('catalog, Universal tooth chart and two-visit treatment plan work together'
     await page.getByRole('button', { name: 'Confirm Completion', exact: true }).click();
     await expect(page.getByText('Plan completed', { exact: true })).toBeVisible();
     expect(state.errors).toEqual([]);
+    await page.screenshot({ path: 'test-results/dental-desktop.png', fullPage: true });
 });
 
 test('mobile chart remains usable and read-only staff see no clinical write actions', async ({ page }) => {
@@ -116,4 +121,31 @@ test('mobile chart remains usable and read-only staff see no clinical write acti
     await expect(page.getByRole('button', { name: 'New Treatment Plan', exact: true })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     expect(state.errors).toEqual([]);
+    await page.screenshot({ path: 'test-results/dental-mobile.png', fullPage: true });
+});
+
+test('sound on one surface does not hide another surface finding', async ({ page }) => {
+    const state = await fixture(page);
+    state.findings.push(
+        { id: 2, tooth: '3', condition: 'sound', surfaces: ['M'], created_at: '2026-09-29T10:00:00Z' },
+        { id: 1, tooth: '3', condition: 'caries', surfaces: ['O'], created_at: '2026-09-29T09:00:00Z' },
+    );
+    await page.goto('/app/patients/17/dental');
+    await expect(page.getByRole('button', { name: 'Tooth 3, Caries, Sound', exact: true })).toBeVisible();
+});
+
+test('switching patients discards a delayed response for the previous patient', async ({ page }) => {
+    await fixture(page);
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/v1/clinic/patients/17', async route => {
+        await gate;
+        await route.fulfill({ json: { data: { id: 17, first_name: 'Amina', last_name: 'Yusuf', full_name: 'Amina Yusuf', patient_number: 'PAT-17', age: 30, status: 'active', allergies: [] } } }).catch(() => {});
+    });
+    const requested = page.waitForRequest('**/api/v1/clinic/patients/17');
+    await page.goto('/app/patients/17/dental'); await requested;
+    await page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$router.push('/app/patients/18/dental'));
+    release();
+    await expect(page.getByRole('heading', { name: 'Safiya Yusuf', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Amina Yusuf', exact: true })).toHaveCount(0);
 });

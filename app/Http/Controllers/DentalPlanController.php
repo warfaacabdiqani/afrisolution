@@ -18,7 +18,7 @@ class DentalPlanController extends Controller
             'items.*.procedure_id' => 'required|integer', 'items.*.tooth' => ['nullable', 'string', Rule::in(config('dental.teeth'))],
             'items.*.surfaces' => 'sometimes|array|max:6', 'items.*.surfaces.*' => ['string', Rule::in(array_keys(config('dental.surfaces')))],
             'items.*.visit_number' => 'required|integer|min:1|max:100', 'items.*.quantity' => 'required|integer|min:1|max:100',
-            'items.*.unit_price' => 'sometimes|numeric|decimal:0,2|min:0|max:999999.99', 'items.*.notes' => 'nullable|string|max:2000',
+            'items.*.unit_price' => 'sometimes|numeric|decimal:0,2|min:0|max:9999999.99', 'items.*.notes' => 'nullable|string|max:2000',
             'tenant_id' => 'prohibited', 'patient_id' => 'prohibited', 'branch_id' => 'prohibited', 'status' => 'prohibited', 'currency' => 'prohibited', 'tax_rate' => 'prohibited',
         ];
     }
@@ -34,6 +34,15 @@ class DentalPlanController extends Controller
     {
         $context = $access->context($request);
         return response()->json(['data' => $plans->present($plans->find($context, $plan), $context)]);
+    }
+
+    public function appointments(Request $request, int $plan, DentalAccessService $access, DentalPlanService $plans)
+    {
+        $context = $access->context($request, 'dental.treatments.complete');
+        $record = $plans->find($context, $plan);
+        return response()->json(['data' => \App\Models\Appointment::where('patient_id', $record->patient_id)
+            ->where('branch_id', $record->branch_id)->whereIn('status', ['in_consultation', 'completed'])
+            ->orderByDesc('starts_at')->limit(100)->get(['id', 'appointment_number', 'starts_at', 'status'])]);
     }
 
     public function store(Request $request, int $patient, DentalAccessService $access, DentalPlanService $plans)

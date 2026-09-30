@@ -33,9 +33,20 @@ class DentalPlanService
             unset($data['invoice']);
             return $data;
         })->all();
-        $calculation = app(BillingMoney::class)->calculate(array_map(fn ($item) => ['description' => $item['procedure_name'],
-            'unit_price' => $item['unit_price'], 'quantity' => $item['quantity']], $items), '0.00', $plan->tax_rate);
-        return array_replace($plan->toArray(), $calculation['totals'], ['items' => $items]);
+        return array_replace($plan->toArray(), $this->totals($items, $plan->tax_rate), ['items' => $items]);
+    }
+
+    private function totals(array $items, string $taxRate): array
+    {
+        // Each completed treatment issues its own invoice: round tax at that same boundary.
+        $sums = ['subtotal' => 0, 'tax' => 0, 'total' => 0];
+        foreach ($items as $item) {
+            $calculation = app(BillingMoney::class)->calculate([['description' => $item['procedure_name'],
+                'unit_price' => $item['unit_price'], 'quantity' => $item['quantity']]], '0.00', $taxRate);
+            foreach ($sums as $field => $sum) $sums[$field] += BillingMoney::cents($calculation['totals'][$field]);
+        }
+        if ($sums['total'] > 999999999999) throw ValidationException::withMessages(['items' => 'The plan exceeds the supported amount.']);
+        return array_map(fn ($value) => BillingMoney::decimal($value), $sums) + ['discount' => '0.00', 'tax_rate' => $taxRate];
     }
 
     public function save(array $context, int $patient, array $data, ?int $id = null): DentalPlan
@@ -66,8 +77,7 @@ class DentalPlanService
             } else {
                 $plan->version++;
             }
-            app(BillingMoney::class)->calculate(array_map(fn ($row) => ['description' => $row['procedure_name'],
-                'unit_price' => $row['unit_price'], 'quantity' => $row['quantity']], $rows), '0.00', $plan->tax_rate);
+            $this->totals($rows, $plan->tax_rate);
             $plan->fill(['title' => $data['title'], 'notes' => $data['notes'] ?? null])->save();
             // Only unaccepted draft items are replaceable; accepted/completed records are never deleted.
             if ($id) $plan->items()->delete();

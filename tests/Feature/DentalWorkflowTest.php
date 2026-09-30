@@ -200,7 +200,7 @@ class DentalWorkflowTest extends TestCase
     public function test_accepted_plan_total_matches_sum_of_individually_invoiced_treatments(): void
     {
         $f = $this->fixture();
-        app(\App\Services\ClinicSettingsService::class)->save($f['tenant'], 'billing', ['tax_rate' => 10]);
+        app(\App\Services\ClinicSettingsService::class)->set($f['tenant'], 'billing', ['tax_rate' => 10], $f['user']);
         $p = $this->procedure(['price' => '0.05']);
         $plan = $this->treatmentPlan($f, array_fill(0, 2, ['procedure_id' => $p['id'], 'visit_number' => 1, 'quantity' => 1]));
         $url = '/api/v1/dental/plans/'.$plan['id'];
@@ -211,5 +211,14 @@ class DentalWorkflowTest extends TestCase
             $sum += \App\Services\Billing\BillingMoney::cents($this->postJson($url.'/items/'.$item['id'].'/invoice')->assertCreated()->json('data.total'));
         }
         $this->assertSame(\App\Services\Billing\BillingMoney::cents($plan['total']), $sum);
+    }
+
+    public function test_linkable_appointments_are_limited_to_plan_patient_branch_and_valid_status(): void
+    {
+        $f = $this->fixture(); $p = $this->treatmentPlan($f);
+        $url = '/api/v1/dental/plans/'.$p['id'].'/appointments';
+        $this->getJson($url)->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $f['appointment']);
+        DB::table('appointments')->where('id', $f['appointment'])->update(['status' => 'cancelled']);
+        $this->getJson($url)->assertOk()->assertJsonCount(0, 'data');
     }
 }
