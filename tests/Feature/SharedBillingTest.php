@@ -131,7 +131,8 @@ class SharedBillingTest extends TestCase
         $row['source_id'] = 999998; $row['number'] = 'FOREIGN-TENANT'; $row['created_by'] = $other['user'];
         $row['salon_client_id'] = null;
         DB::table('billing_invoices')->insert($row);
-        $base = '/api/v1/billing/reports/summary?from=2026-09-01&to=2026-09-30';
+        $reportDate = now('Africa/Nairobi')->toDateString();
+        $base = '/api/v1/billing/reports/summary?from='.$reportDate.'&to='.$reportDate;
         $this->getJson($base)->assertOk()->assertJsonPath('data.currencies.0.total_invoiced', '90.00')
             ->assertJsonPath('data.currencies.0.total_collected', '15.00');
         $member = DB::table('tenant_memberships')->where('tenant_id', $f['tenant'])->where('user_id', $f['user'])->first();

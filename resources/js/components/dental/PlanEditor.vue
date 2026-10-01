@@ -4,7 +4,7 @@ import { dentalService } from '../../services/dental';
 import FormErrors from '../ui/FormErrors.vue';
 const props = defineProps({ plan: { type: Object, default: null }, options: { type: Object, required: true }, selectedTooth: { type: String, default: '' }, saving: Boolean });
 const emit = defineEmits(['save', 'cancel']);
-const form = reactive({ title: props.plan?.title || '', notes: props.plan?.notes || '', items: (props.plan?.items || []).map(i => ({ procedure_id: i.procedure_id, procedure_name: i.procedure_name, tooth: i.tooth || '', surfaces: i.surfaces || [], visit_number: i.visit_number, quantity: i.quantity, unit_price: i.unit_price, notes: i.notes || '' })) });
+const form = reactive({ title: props.plan?.title || '', notes: props.plan?.notes || '', deposit_mode: props.plan?.deposit_mode || 'none', deposit_value: props.plan?.deposit_value || 0, items: (props.plan?.items || []).map(i => ({ procedure_id: i.procedure_id, procedure_name: i.procedure_name, tooth: i.tooth || '', surfaces: i.surfaces || [], visit_number: i.visit_number, quantity: i.quantity, unit_price: i.unit_price, notes: i.notes || '' })) });
 const line = reactive({ procedure_id: '', tooth: props.selectedTooth, surfaces: [], visit_number: 1, quantity: 1, unit_price: '', notes: '' });
 const search = ref(''), procedures = ref([]), error = ref(null), loading = ref(false), page = ref(1), lastPage = ref(1);
 let generation = 0;
@@ -21,7 +21,7 @@ function add() {
 }
 const estimate = computed(() => form.items.reduce((sum, i) => sum + Number(i.unit_price) * i.quantity, 0));
 function save() {
-    emit('save', { title: form.title, notes: form.notes, ...(props.plan ? { version: props.plan.version } : {}), items: form.items.map(({ procedure_name, ...item }) => ({ ...item, tooth: item.tooth || null })) });
+    emit('save', { title: form.title, notes: form.notes, deposit_mode: form.deposit_mode, deposit_value: form.deposit_mode === 'none' ? 0 : form.deposit_value, ...(props.plan ? { version: props.plan.version } : {}), items: form.items.map(({ procedure_name, ...item }) => ({ ...item, tooth: item.tooth || null })) });
 }
 find(); onUnmounted(() => { ++generation; });
 </script>
@@ -31,7 +31,7 @@ find(); onUnmounted(() => { ++generation; });
         <h3>{{ plan ? 'Edit draft plan' : 'New treatment plan' }}</h3>
         <FormErrors :error="error" />
         <form @submit.prevent="save">
-            <div class="form-grid"><label class="field">Plan title<input v-model.trim="form.title" required maxlength="150"></label><label class="field">Plan notes<textarea v-model="form.notes" maxlength="4000"></textarea></label></div>
+            <div class="form-grid"><label class="field">Plan title<input v-model.trim="form.title" required maxlength="150"></label><label class="field">Plan notes<textarea v-model="form.notes" maxlength="4000"></textarea></label><label class="field">Deposit<select v-model="form.deposit_mode"><option value="none">No deposit</option><option value="fixed">Fixed amount</option><option value="percentage">Percentage</option></select></label><label v-if="form.deposit_mode!=='none'" class="field">Deposit value<input v-model="form.deposit_value" type="number" min="0" :max="form.deposit_mode==='percentage'?100:99999999" step="0.01" required><small>{{ form.deposit_mode==='percentage' ? 'Percent of accepted plan total' : (plan?.currency || options.currency) }}</small></label></div>
             <fieldset class="line-editor"><legend>Add a treatment</legend>
                 <div class="procedure-search"><label class="field">Find procedure<input v-model="search" type="search" placeholder="Search code or name" @keydown.enter.prevent="find()"></label><button type="button" class="btn-secondary" :disabled="loading" @click="find()">Find</button></div>
                 <div class="form-grid"><label class="field">Procedure<select aria-label="Procedure" v-model="line.procedure_id" @change="selectProcedure"><option value="">Select a procedure</option><option v-for="p in procedures" :key="p.id" :value="p.id">{{ p.code }} — {{ p.name }}</option></select></label><label class="field">Treatment tooth<select aria-label="Treatment tooth" v-model="line.tooth"><option value="">Whole mouth / no specific tooth</option><option v-for="tooth in options.teeth" :key="tooth" :value="tooth">{{ tooth }}</option></select></label><label class="field">Visit number<input v-model="line.visit_number" type="number" min="1" max="100"></label><label class="field">Quantity<input v-model="line.quantity" type="number" min="1" max="100"></label><label class="field">Agreed unit price<input v-model="line.unit_price" type="number" min="0" max="9999999.99" step="0.01"><small>{{ plan?.currency || options.currency }}</small></label><label class="field">Treatment notes<input v-model="line.notes" maxlength="2000"></label></div>

@@ -15,7 +15,7 @@ class DentalPlanController extends Controller
         return [
             'title' => 'required|string|max:150', 'notes' => 'nullable|string|max:4000',
             'deposit_mode' => ['sometimes', Rule::in(['none', 'fixed', 'percentage'])],
-            'deposit_value' => 'nullable|required_if:deposit_mode,fixed|required_if:deposit_mode,percentage|numeric|min:0|max:99999999',
+            'deposit_value' => ['nullable', 'required_if:deposit_mode,fixed', 'required_if:deposit_mode,percentage', 'numeric', 'min:0', 'max:'.(request()->input('deposit_mode') === 'percentage' ? 100 : 99999999)],
             'version' => $editing ? 'required|integer|min:1' : 'prohibited',
             'items' => 'required|array|min:1|max:100', 'items.*' => 'array:procedure_id,tooth,surfaces,visit_number,quantity,unit_price,notes',
             'items.*.procedure_id' => 'required|integer', 'items.*.tooth' => ['nullable', 'string', Rule::in(config('dental.teeth'))],

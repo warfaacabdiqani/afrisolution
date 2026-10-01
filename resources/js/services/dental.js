@@ -12,7 +12,7 @@ export const dentalService = {
     voidFinding: (patient, id, reason) => api.post(`${root}/patients/${patient}/findings/${id}/void`, { reason }, config()),
     plans: patient => api.get(`${root}/patients/${patient}/plans`, config()),
     savePlan: (patient, id, data) => id ? api.put(`${root}/plans/${id}`, data, config()) : api.post(`${root}/patients/${patient}/plans`, data, config()),
-    status: (plan, status, reason) => api.post(`${root}/plans/${plan.id}/status`, { status, version: plan.version, reason }, config()),
+    status: (plan, status, reason, deposit = {}) => api.post(`${root}/plans/${plan.id}/status`, { status, version: plan.version, reason, ...deposit }, config()),
     complete: (plan, item, data) => api.post(`${root}/plans/${plan}/items/${item}/complete`, data, config()),
     appointments: plan => api.get(`${root}/plans/${plan}/appointments`, config()),
     invoice: (plan, item) => api.post(`${root}/plans/${plan}/items/${item}/invoice`, {}, config()),

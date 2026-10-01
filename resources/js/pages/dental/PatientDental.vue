@@ -7,6 +7,7 @@ import { usePatientStore } from '../../stores/patients';
 import FormErrors from '../../components/ui/FormErrors.vue';
 import ToothChart from '../../components/dental/ToothChart.vue';
 import PlanEditor from '../../components/dental/PlanEditor.vue';
+import DepositPanel from '../../components/billing/DepositPanel.vue';
 
 const route = useRoute(), context = useClinicContextStore(), patients = usePatientStore();
 const patientId = computed(() => Number(route.params.id));
@@ -14,7 +15,7 @@ const scope = computed(() => `${context.data?.clinic.id || ''}:${context.data?.b
 const options = ref(null), chart = ref({ findings: [], treatments: [] }), plans = ref([]), selected = ref(''), historyAll = ref(false);
 const error = ref(null), loading = ref(false), saving = ref(false), notice = ref(''), editor = ref(false), editingPlan = ref(null), action = ref(null);
 const finding = reactive({ condition: 'sound', surfaces: [], notes: '' });
-const actionForm = reactive({ reason: '', notes: '', appointment_id: '' });
+const actionForm = reactive({ reason: '', notes: '', appointment_id: '', deposit_disposition: 'refund' });
 const dialog = ref(null), appointments = ref([]), appointmentsLoading = ref(false);
 let actionGeneration = 0, returnFocus = null;
 const writable = computed(() => patients.patient?.id === patientId.value && patients.patient?.status !== 'archived');
@@ -53,7 +54,7 @@ function savePlan(data) {
 }
 async function openAction(type, plan = null, item = null) {
     returnFocus = document.activeElement;
-    action.value = { type, plan, item }; Object.assign(actionForm, { reason: '', notes: '', appointment_id: '' }); error.value = null;
+    action.value = { type, plan, item }; Object.assign(actionForm, { reason: '', notes: '', appointment_id: '', deposit_disposition: 'refund' }); error.value = null;
     appointments.value = []; const token = ++actionGeneration;
     await nextTick(); dialog.value?.querySelector('textarea, input, button')?.focus();
     if (type === 'complete') {
@@ -74,7 +75,7 @@ watch(action, async value => { if (!value) { ++actionGeneration; appointmentsLoa
 function confirmAction() {
     const a = action.value;
     if (a.type === 'void') mutate(() => dentalService.voidFinding(patientId.value, a.item.id, actionForm.reason), 'Finding marked as entered in error. Original retained.');
-    if (a.type === 'cancel') mutate(() => dentalService.status(a.plan, 'cancelled', actionForm.reason), 'Remaining planned treatments cancelled.');
+    if (a.type === 'cancel') mutate(() => dentalService.status(a.plan, 'cancelled', actionForm.reason, Number(a.plan.deposit?.collected)>0 ? { deposit_disposition: actionForm.deposit_disposition, deposit_idempotency_key: crypto.randomUUID() } : {}), 'Remaining planned treatments cancelled.');
     if (a.type === 'complete') mutate(() => dentalService.complete(a.plan.id, a.item.id, { notes: actionForm.notes, appointment_id: actionForm.appointment_id ? Number(actionForm.appointment_id) : null }), 'Treatment completed and added to tooth history.');
 }
 watch(selected, () => { finding.surfaces = []; finding.notes = ''; });
@@ -128,6 +129,7 @@ onUnmounted(() => { ++generation; ++actionGeneration; });
                 <header class="plan-header"><div><h3>{{ plan.title }}</h3><p>Plan #{{ plan.id }} · {{ context.data?.branches?.find(b => b.id === plan.branch_id)?.name || 'Authorized branch' }}</p></div><span class="plan-status" :class="plan.status">{{ plan.status === 'completed' ? 'Plan completed' : plan.status }}</span></header>
                 <p v-if="plan.notes" class="plan-notes">{{ plan.notes }}</p>
                 <p v-if="plan.cancellation_reason" class="dental-notice">Cancelled: {{ plan.cancellation_reason }}</p>
+                <DepositPanel v-if="plan.status !== 'draft'" type="dental" :source-id="plan.id" :deposit="plan.deposit" :currency="plan.currency" :can-collect="context.allowed('billing')&&context.can('billing.payments')&&plan.status==='accepted'" @collected="load"/>
                 <section v-for="visit in visits(plan)" :key="visit" class="plan-visit"><h4>Visit {{ visit }}</h4>
                     <div v-for="item in plan.items.filter(i => i.visit_number === visit)" :key="item.id" class="treatment-row">
                         <div><strong>{{ item.procedure_name }}</strong><p>{{ item.tooth ? `Tooth ${item.tooth}` : 'Whole mouth / general procedure' }}{{ item.surfaces.length ? ` · ${item.surfaces.join(', ')}` : '' }} · {{ item.quantity }} × {{ plan.currency }} {{ money(item.unit_price) }}</p><p v-if="item.notes">{{ item.notes }}</p><small class="item-status">{{ item.status }}<span v-if="item.completed_at"> · {{ date(item.completed_at) }}</span></small></div>
@@ -146,7 +148,7 @@ onUnmounted(() => { ++generation; ++actionGeneration; });
                 <FormErrors :error="error" />
                 <form @submit.prevent="confirmAction">
                     <template v-if="action.type === 'complete'"><p>{{ action.item.procedure_name }} · {{ action.item.tooth ? `Tooth ${action.item.tooth}` : 'Whole mouth' }}</p><label class="field">Completion notes<textarea v-model="actionForm.notes" maxlength="4000" rows="4"></textarea></label><label class="field">Linked appointment (optional)<select v-model="actionForm.appointment_id" aria-label="Linked appointment" :disabled="appointmentsLoading"><option value="">No linked appointment</option><option v-for="appointment in appointments" :key="appointment.id" :value="appointment.id">{{ appointment.appointment_number }} · {{ appointment.starts_at }} · {{ appointment.status.replaceAll('_', ' ') }}</option></select><small>In-consultation and completed appointments for this patient and plan branch.</small></label></template>
-                    <template v-else><p>{{ action.type === 'void' ? 'The original finding stays in the history with your correction reason.' : 'Completed treatments remain in the history and can still be invoiced.' }}</p><label class="field">Reason<textarea v-model.trim="actionForm.reason" required maxlength="2000" rows="4"></textarea></label></template>
+                    <template v-else><p>{{ action.type === 'void' ? 'The original finding stays in the history with your correction reason.' : 'Completed treatments remain in the history and can still be invoiced.' }}</p><label class="field">Reason<textarea v-model.trim="actionForm.reason" required maxlength="2000" rows="4"></textarea></label><label v-if="action.type==='cancel'&&Number(action.plan.deposit?.collected)>0" class="field">Deposit handling<select v-model="actionForm.deposit_disposition"><option value="refund">Refund deposit</option><option value="forfeit">Forfeit deposit</option></select></label></template>
                     <div class="plan-actions"><button class="btn" :disabled="saving">{{ action.type === 'complete' ? 'Confirm Completion' : 'Confirm' }}</button><button type="button" class="btn-secondary" :disabled="saving" @click="action = null">Back</button></div>
                 </form>
             </section>

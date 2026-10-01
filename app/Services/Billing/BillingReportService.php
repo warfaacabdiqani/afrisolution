@@ -55,7 +55,7 @@ class BillingReportService
                 'total_collected' => '0.00', 'outstanding' => '0.00', 'invoice_count' => 0,
                 'statuses' => ['paid' => 0, 'partial' => 0, 'unpaid' => 0], 'payment_methods' => []];
             $currency = &$currencies[$row->currency];
-            $currency['total_collected'] = BillingMoney::decimal(BillingMoney::cents($currency['total_collected']) + BillingMoney::cents($row->collected));
+            $currency['total_collected'] = BillingMoney::decimal(BillingMoney::signedCents($currency['total_collected']) + BillingMoney::signedCents($row->collected));
             $currency['payment_methods'][] = ['method' => $row->method, 'amount' => $this->money($row->collected), 'count' => (int) $row->count];
             unset($currency);
         }
@@ -88,6 +88,6 @@ class BillingReportService
 
     private function money(mixed $value): string
     {
-        return BillingMoney::decimal(BillingMoney::cents($value ?? '0'));
+        return BillingMoney::decimal(BillingMoney::signedCents($value ?? '0'));
     }
 }

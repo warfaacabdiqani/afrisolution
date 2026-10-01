@@ -62,7 +62,8 @@ class AppointmentController extends Controller
     {
         $c = $access->authorize($request, 'appointments', 'appointments.types.manage');
         $data = $request->validate(['name' => ['required', 'string', 'max:100', Rule::unique('appointment_types')->where('tenant_id', $c['clinic']->id)], 'default_duration' => ['required', 'integer', 'between:5,480'],
-            'deposit_mode' => ['nullable', Rule::in(['none', 'fixed', 'percentage'])], 'deposit_value' => 'nullable|required_unless:deposit_mode,null,none|numeric|min:0|max:99999999']);
+            'deposit_mode' => ['nullable', Rule::in(['none', 'fixed', 'percentage'])],
+            'deposit_value' => ['nullable', 'required_if:deposit_mode,fixed', 'required_if:deposit_mode,percentage', 'numeric', 'min:0', 'max:'.($request->input('deposit_mode') === 'percentage' ? 100 : 99999999)]]);
 
         return response()->json(['data' => AppointmentType::create($data)], 201);
     }

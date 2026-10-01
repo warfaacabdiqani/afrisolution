@@ -23,5 +23,6 @@ class ClinicSettingsRequest extends FormRequest {
         if($section==='pharmacy' && $this->filled('default_branch_id') && !$c['branches']->contains('id',$this->integer('default_branch_id'))) $v->errors()->add('default_branch_id','Select an accessible branch in this clinic.');
         if($section==='general' && $this->input('timezone')!==$c['clinic']->timezone && \Illuminate\Support\Facades\DB::table('appointments')->where('tenant_id',$c['clinic']->id)->exists()) $v->errors()->add('timezone','Existing appointments use this timezone. Contact the platform administrator to migrate scheduled times before changing it.');
         if($section==='notifications') foreach(['email','sms','whatsapp'] as $channel) if($this->boolean($channel.'_enabled') && empty($c['features'][$channel.'_notifications'])) $v->errors()->add($channel.'_enabled','This notification channel is not included in your plan.');
+        if($section==='billing' && $this->input('deposit_mode')==='percentage' && (float)$this->input('deposit_value')>100) $v->errors()->add('deposit_value','A percentage deposit cannot exceed 100.');
     }]; }
 }
