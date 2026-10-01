@@ -65,9 +65,10 @@ class SystemSettingsController extends Controller
     }
     public function testEmail(Request $request, SystemSettingsService $settings)
     {
-        abort_unless($request->user()->hasPlatformPermission('settings.update'),403); $data=$request->validate(['email'=>['required','email']]); $email=array_replace(self::DEFAULTS['email'],$settings->section('email',false));
+        abort_unless($request->user()->hasPlatformPermission('settings.update'),403); $data=$request->validate(['email'=>['required','email']]);
         app(\App\Services\PlatformMailConfigurator::class)->apply();
-        Mail::raw('Your Afri Clinic email configuration is working.',fn($message)=>$message->to($data['email'])->subject('Email configuration test'));
+        $platformName = $settings->get('general.platform_name', self::DEFAULTS['general']['platform_name']);
+        Mail::raw("Your {$platformName} email configuration is working.",fn($message)=>$message->to($data['email'])->subject('Email configuration test'));
         return response()->json(['message'=>'Email sent successfully.']);
     }
     public function systemInfo(Request $request)

@@ -44,6 +44,24 @@ class SaasFoundationTest extends TestCase
         return app(PlatformService::class)->createTenant(['name' => $slug, 'slug' => $slug, 'timezone' => 'Africa/Nairobi', 'plan_id' => $plan->id, 'owner_name' => 'Owner', 'owner_email' => $slug.'@example.test', 'owner_password' => 'SecurePass12345'], $admin->id);
     }
 
+    public function test_configuration_email_uses_the_current_system_name(): void
+    {
+        $this->actingAs($this->admin());
+        $settings = app(\App\Services\SystemSettingsService::class);
+        $settings->setSection('email', ['mailer' => 'array', 'from_name' => 'Mail Sender']);
+
+        foreach (['Afri Solutions', 'Renamed Platform'] as $name) {
+            $settings->setSection('general', ['platform_name' => $name]);
+            $this->postJson('/api/v1/platform/settings/email/test', ['email' => 'recipient@example.test'])
+                ->assertOk();
+
+            $message = \Illuminate\Support\Facades\Mail::mailer()->getSymfonyTransport()
+                ->messages()->last()->getOriginalMessage();
+            $this->assertSame("Your {$name} email configuration is working.", $message->getTextBody());
+            $this->assertSame('Mail Sender', $message->getFrom()[0]->getName());
+        }
+    }
+
     public function test_login_session_and_logout(): void
     {
         $u = User::factory()->create(['password' => Hash::make('SecurePass12345')]);
