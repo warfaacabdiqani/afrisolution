@@ -1,8 +1,8 @@
 *.log
 .DS_Store
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -25,5 +25,33 @@ Thumbs.db
 /test-results/
 /playwright-report/
 /storage/framework/testing/
-*.zip
 
+# Archives and local backups
+*.[zZ][iI][pP]
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.bak
+*.orig
+
+# Temporary editor and operating system files
+*.tmp
+*.swp
+*.swo
+*~
+Desktop.ini
+._*
+
+# Generated test reports and tool caches
+/coverage/
+/blob-report/
+/playwright/.cache/
+/.vite/
+/.superpowers/
+
+# Local SQLite database sidecar files
+/database/*.sqlite-journal
+/database/*.sqlite-wal
+/database/*.sqlite-shm
