@@ -99,3 +99,17 @@ jobs:
             index.php
             .htaccess
             storage
+
+      # The server index.php loads Laravel from afriso-clinic without
+      # overriding public_path(). Keep its Vite manifest and assets in sync
+      # with the domain build, after the browser assets have been uploaded.
+      - name: Deploy build to Laravel public path
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: ./public/build/
+          server-dir: ./afriso-clinic/public/build/
+          dangerous-clean-slate: false
