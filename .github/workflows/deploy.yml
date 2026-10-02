@@ -40,8 +40,9 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      # Deploy Laravel application.
-      # .env is intentionally excluded and remains unchanged on the server.
+      # -------------------------------------------------------
+      # Laravel application
+      # -------------------------------------------------------
       - name: Deploy Laravel application
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -49,24 +50,38 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
+
           local-dir: ./
           server-dir: ./afriso-clinic/
+
           dangerous-clean-slate: false
+
           exclude: |
             **/.git*
             **/.git*/**
             **/.github/**
-            **/node_modules/**
             **/.env
             **/.env.*
-            public/**
-            storage/logs/**
-            storage/framework/cache/**
-            storage/framework/sessions/**
-            storage/framework/views/**
+            **/node_modules/**
 
-      # Deploy Laravel public directory separately to the domain document root.
-      # index.php is intentionally excluded and remains unchanged on the server.
+            public/**
+
+            tests/**
+            docs/**
+
+            storage/app/**
+            storage/logs/**
+            storage/framework/**
+
+            bootstrap/cache/*.php
+
+            phpunit.xml
+            phpunit.xml.dist
+            **/*.log
+
+      # -------------------------------------------------------
+      # Public domain directory
+      # -------------------------------------------------------
       - name: Deploy public files
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -74,9 +89,12 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
+
           local-dir: ./public/
           server-dir: ./public_html/clinic.afriso.so/
+
           dangerous-clean-slate: false
+
           exclude: |
             index.php
             .htaccess
