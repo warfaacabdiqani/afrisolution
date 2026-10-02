@@ -38,16 +38,16 @@ function toggleCollapsed() { collapsed.value = !collapsed.value; localStorage.se
     <div class="admin-shell">
         <div v-if="menu" class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" @click="menu = false"></div>
         <aside :class="['admin-sidebar', collapsed ? 'lg:w-20' : 'lg:w-64', menu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']">
-            <div :class="['flex h-20 items-center gap-3 border-b border-white/10',collapsed?'lg:justify-center lg:px-3':'px-6']">
+            <div :class="['flex h-20 shrink-0 items-center gap-3 border-b border-white/10',collapsed?'lg:justify-center lg:px-3':'px-6']">
                 <div class="grid size-11 place-items-center overflow-hidden rounded-2xl bg-white text-xl text-teal-800"><img v-if="platformSettings.smallLogo" :src="platformSettings.smallLogo" alt=""><span v-else>&hearts;</span></div>
                 <div :class="collapsed?'lg:hidden':''"><p class="text-xl font-bold">{{ platformSettings.name }}</p><p class="text-xs text-teal-100">{{ platformSettings.footer }}</p></div>
             </div>
-            <nav class="flex-1 space-y-1 px-3 py-6" aria-label="Platform administration">
+            <nav class="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-6" aria-label="Platform administration">
                 <RouterLink v-for="[name, label, icon] in visibleLinks" :key="name" :to="{ name }" :data-tooltip="collapsed?label:null" :class="['admin-nav', collapsed?'admin-nav-tooltip lg:justify-center lg:px-2':'', route.name === name || route.name?.startsWith(name + '.') ? 'admin-nav-active' : '']" @click="menu = false">
                     <span class="admin-nav-icon"><AppIcon :name="icon" :size="21"/></span><span :class="collapsed?'lg:hidden':''">{{ label }}</span>
                 </RouterLink>
             </nav>
-            <div class="border-t border-white/10 p-4">
+            <div class="shrink-0 border-t border-white/10 p-4">
                 <div :class="['flex items-center gap-3 rounded-xl bg-white/10 p-3',collapsed?'lg:justify-center lg:p-2':'']">
                     <div class="grid size-10 place-items-center rounded-full bg-white font-bold text-teal-800">{{ auth.user?.name?.charAt(0) }}</div>
                     <div :class="['min-w-0',collapsed?'lg:hidden':'']"><p class="truncate text-sm font-semibold">{{ auth.user?.name }}</p><p class="text-xs text-teal-100">Platform Administrator</p></div>
