@@ -148,6 +148,21 @@ test('sidebar keeps clinic identity fixed while navigation and business controls
     await expect(bottom.getByRole('link', { name: /Switch Business/ })).toBeVisible();
 });
 
+test('branch switcher stays beside the sidebar toggle and closes on outside click', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await fixture(page);
+    await page.goto('https://billing.test/app/billing');
+    const toggle = page.getByRole('button', { name: 'Collapse sidebar' });
+    const switcher = page.locator('.clinic-switcher');
+    const toggleBounds = await toggle.boundingBox();
+    const switcherBounds = await switcher.boundingBox();
+    expect(switcherBounds.x - (toggleBounds.x + toggleBounds.width)).toBeLessThan(30);
+    await switcher.locator('summary').click();
+    await expect(switcher).toHaveAttribute('open', '');
+    await page.locator('.clinic-content').click({ position: { x: 20, y: 20 } });
+    await expect(switcher).not.toHaveAttribute('open');
+});
+
 for (const status of ['scheduled', 'cancelled', 'no_show']) {
     test(`${status} appointment does not offer invoice creation`, async ({ page }) => {
         const state = await fixture(page, status);

@@ -11,6 +11,10 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const drawer = ref(false);
+const branchSwitcher = ref(null);
+function closeBranchSwitcher(event) {
+    if (branchSwitcher.value?.open && !branchSwitcher.value.contains(event.target)) branchSwitcher.value.open = false;
+}
 const sidebarCollapsed = ref(localStorage.getItem('clinic-sidebar-collapsed') === 'true');
 const sidebarTooltip = ref({ visible: false, label: '', top: 0, left: 0 });
 function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value; localStorage.setItem('clinic-sidebar-collapsed', String(sidebarCollapsed.value)); sidebarTooltip.value.visible = false; }
@@ -66,6 +70,7 @@ function interaction() {
 watch(() => clinic.data?.idle_timeout_minutes, interaction);
 onMounted(() => {
     for (const event of ['pointerdown','keydown','touchstart']) window.addEventListener(event, interaction, { passive: true });
+    document.addEventListener('pointerdown', closeBranchSwitcher);
     interaction();
     heartbeatTimer = setInterval(async () => {
         if (clinic.data?.operational && lastInteraction > lastHeartbeat && Date.now() - lastInteraction < idleDuration()) {
@@ -74,7 +79,7 @@ onMounted(() => {
         }
     }, 60000);
 });
-onUnmounted(() => { clearTimeout(idleTimer); clearInterval(heartbeatTimer); for(const event of ['pointerdown','keydown','touchstart']) window.removeEventListener(event, interaction); });
+onUnmounted(() => { clearTimeout(idleTimer); clearInterval(heartbeatTimer); for(const event of ['pointerdown','keydown','touchstart']) window.removeEventListener(event, interaction); document.removeEventListener('pointerdown', closeBranchSwitcher); });
 watch(() => route.fullPath, () => { drawer.value = false; });
 const error = ref(null);
 const trialDays = computed(() => Math.max(0, Math.ceil((new Date(clinic.data?.subscription?.trial_ends_at) - new Date()) / 86400000)));
@@ -117,7 +122,7 @@ async function logout() {
             <header class="clinic-topbar">
                 <button class="clinic-menu" aria-label="Open navigation" :aria-expanded="drawer" @click="drawer = !drawer"><AppIcon name="menu" /></button>
                 <button class="clinic-sidebar-toggle" :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" @click="toggleSidebar"><AppIcon :name="sidebarCollapsed ? 'chevronRight' : 'chevronLeft'" /></button>
-                <details class="clinic-switcher">
+                <details ref="branchSwitcher" class="clinic-switcher">
                     <summary><AppIcon name="clinics" :size="25" /><span><strong>{{ clinic.data?.clinic.name || 'Clinic workspace' }}</strong><small>{{ clinic.data?.branch?.name || 'Select a branch' }}</small></span><span>⌄</span></summary>
                     <div class="clinic-switcher-panel"><small>CURRENT BUSINESS</small><strong>{{ clinic.data?.clinic.name }}</strong><label class="field">Branch<select :value="clinic.data?.branch?.id" :disabled="clinic.busy || !clinic.data?.operational" @change="switchBranch"><option v-for="branch in clinic.data?.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label><RouterLink to="/app/clinics?switch=1">Switch Business →</RouterLink></div>
                 </details>
