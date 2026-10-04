@@ -11,6 +11,15 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const drawer = ref(false);
+const sidebarCollapsed = ref(localStorage.getItem('clinic-sidebar-collapsed') === 'true');
+const sidebarTooltip = ref({ visible: false, label: '', top: 0, left: 0 });
+function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value; localStorage.setItem('clinic-sidebar-collapsed', String(sidebarCollapsed.value)); sidebarTooltip.value.visible = false; }
+function showSidebarTooltip(event, label) {
+    if (!sidebarCollapsed.value || !window.matchMedia('(min-width: 1024px)').matches) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    sidebarTooltip.value = { visible: true, label, top: bounds.top + bounds.height / 2, left: bounds.right + 12 };
+}
+function hideSidebarTooltip() { sidebarTooltip.value.visible = false; }
 let idleTimer, heartbeatTimer, lastInteraction = Date.now(), lastHeartbeat = Date.now();
 const idleDuration = () => (clinic.data?.idle_timeout_minutes || 120) * 60000;
 const navigationSections = computed(() => {
@@ -83,30 +92,31 @@ async function logout() {
 <template>
     <div class="clinic-shell" @keydown.esc="drawer = false">
         <button v-if="drawer" class="clinic-overlay" aria-label="Close navigation" @click="drawer = false"></button>
-        <aside class="clinic-sidebar" :class="{ 'is-open': drawer }">
-            <RouterLink class="clinic-brand" to="/app/dashboard"><span class="clinic-logo"><AppIcon name="activity" :size="28" /></span><span>{{ clinic.data?.clinic.name || 'Clinic workspace' }}<small>{{ clinic.businessProfile?.subtitle || 'Business workspace' }}</small></span></RouterLink>
+        <aside class="clinic-sidebar" :class="{ 'is-open': drawer, 'is-collapsed': sidebarCollapsed }">
+            <RouterLink class="clinic-brand" to="/app/dashboard"><span class="clinic-logo"><AppIcon name="activity" :size="28" /></span><span class="clinic-brand-copy">{{ clinic.data?.clinic.name || 'Clinic workspace' }}<small>{{ clinic.businessProfile?.subtitle || 'Business workspace' }}</small></span></RouterLink>
             <div class="clinic-sidebar-scroll">
             <nav class="clinic-navigation" aria-label="Business navigation">
                 <template v-for="(section, sectionIndex) in navigationSections" :key="section.label || sectionIndex">
-                    <p v-if="section.label" class="clinic-nav-label">{{ section.label }}</p>
+                    <p v-if="section.label" class="clinic-nav-label clinic-section-heading">{{ section.label }}</p>
                     <template v-for="item in section.items" :key="item.key">
-                        <div v-if="item.children" class="clinic-nav-label" style="margin-top: 8px; display: flex; align-items: center; gap: 10px"><AppIcon :name="item.icon" />{{ item.label }}</div>
-                        <template v-if="item.children"><RouterLink v-for="child in item.children" :key="child.key" :to="child.to" :class="{ selected: route.path === child.to }" style="padding-left: 42px" @click="drawer = false">{{ child.label }}</RouterLink></template>
-                        <RouterLink v-else :to="item.to" :class="{ selected: route.path.split('/')[2] === item.key }" @click="drawer = false"><AppIcon :name="item.icon" />{{ item.label }}</RouterLink>
+                        <div v-if="item.children" class="clinic-nav-label clinic-child-heading"><AppIcon :name="item.icon" /><span>{{ item.label }}</span></div>
+                        <template v-if="item.children"><RouterLink v-for="child in item.children" :key="child.key" :to="child.to" class="clinic-child-link" :class="{ selected: route.path === child.to }" :aria-label="sidebarCollapsed ? child.label : undefined" @click="drawer = false" @mouseenter="showSidebarTooltip($event, child.label)" @mouseleave="hideSidebarTooltip" @focus="showSidebarTooltip($event, child.label)" @blur="hideSidebarTooltip"><AppIcon :name="item.icon" :size="18" /><span>{{ child.label }}</span></RouterLink></template>
+                        <RouterLink v-else :to="item.to" :class="{ selected: route.path.split('/')[2] === item.key }" :aria-label="sidebarCollapsed ? item.label : undefined" @click="drawer = false" @mouseenter="showSidebarTooltip($event, item.label)" @mouseleave="hideSidebarTooltip" @focus="showSidebarTooltip($event, item.label)" @blur="hideSidebarTooltip"><AppIcon :name="item.icon" /><span>{{ item.label }}</span></RouterLink>
                     </template>
                 </template>
             </nav>
             <div class="clinic-sidebar-bottom">
-                <small>MY BUSINESS</small><div class="clinic-current"><AppIcon name="clinics" /><span>{{ clinic.data?.clinic.name || 'Select clinic' }}<small>{{ clinic.data?.branch?.name || 'No branch selected' }}</small></span></div>
-                <RouterLink to="/app/clinics?switch=1">＋ Switch Business</RouterLink>
-                <RouterLink v-if="clinic.allowed('support')" to="/app/support"><AppIcon name="roles" />Help &amp; Support</RouterLink>
-                <button @click="logout"><AppIcon name="chevronLeft" />Sign out</button>
+                <small>MY BUSINESS</small><div class="clinic-current" @mouseenter="showSidebarTooltip($event, clinic.data?.clinic.name || 'Select clinic')" @mouseleave="hideSidebarTooltip"><AppIcon name="clinics" /><span>{{ clinic.data?.clinic.name || 'Select clinic' }}<small>{{ clinic.data?.branch?.name || 'No branch selected' }}</small></span></div>
+                <RouterLink to="/app/clinics?switch=1" :aria-label="sidebarCollapsed ? 'Switch Business' : undefined" @mouseenter="showSidebarTooltip($event, 'Switch Business')" @mouseleave="hideSidebarTooltip" @focus="showSidebarTooltip($event, 'Switch Business')" @blur="hideSidebarTooltip"><AppIcon name="chevronRight" /><span>Switch Business</span></RouterLink>
+                <RouterLink v-if="clinic.allowed('support')" to="/app/support" :aria-label="sidebarCollapsed ? 'Help & Support' : undefined" @mouseenter="showSidebarTooltip($event, 'Help & Support')" @mouseleave="hideSidebarTooltip" @focus="showSidebarTooltip($event, 'Help & Support')" @blur="hideSidebarTooltip"><AppIcon name="roles" /><span>Help &amp; Support</span></RouterLink>
+                <button aria-label="Sign out" @click="logout" @mouseenter="showSidebarTooltip($event, 'Sign out')" @mouseleave="hideSidebarTooltip" @focus="showSidebarTooltip($event, 'Sign out')" @blur="hideSidebarTooltip"><AppIcon name="chevronLeft" /><span>Sign out</span></button>
             </div>
             </div>
         </aside>
         <div class="clinic-workspace">
             <header class="clinic-topbar">
                 <button class="clinic-menu" aria-label="Open navigation" :aria-expanded="drawer" @click="drawer = !drawer"><AppIcon name="menu" /></button>
+                <button class="clinic-sidebar-toggle" :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" @click="toggleSidebar"><AppIcon :name="sidebarCollapsed ? 'chevronRight' : 'chevronLeft'" /></button>
                 <details class="clinic-switcher">
                     <summary><AppIcon name="clinics" :size="25" /><span><strong>{{ clinic.data?.clinic.name || 'Clinic workspace' }}</strong><small>{{ clinic.data?.branch?.name || 'Select a branch' }}</small></span><span>⌄</span></summary>
                     <div class="clinic-switcher-panel"><small>CURRENT BUSINESS</small><strong>{{ clinic.data?.clinic.name }}</strong><label class="field">Branch<select :value="clinic.data?.branch?.id" :disabled="clinic.busy || !clinic.data?.operational" @change="switchBranch"><option v-for="branch in clinic.data?.branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option></select></label><RouterLink to="/app/clinics?switch=1">Switch Business →</RouterLink></div>
@@ -125,5 +135,6 @@ async function logout() {
                 </template>
             </div>
         </div>
+        <Teleport to="body"><Transition name="admin-tooltip"><div v-if="sidebarTooltip.visible" class="admin-fixed-tooltip" role="tooltip" :style="{ top: `${sidebarTooltip.top}px`, left: `${sidebarTooltip.left}px` }">{{ sidebarTooltip.label }}</div></Transition></Teleport>
     </div>
 </template>

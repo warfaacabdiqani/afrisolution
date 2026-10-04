@@ -31,7 +31,7 @@ async function fixture(page, status = 'completed') {
             if (!file.startsWith(path.resolve('public/build') + path.sep)) return route.abort();
             return route.fulfill({ body: await readFile(file), contentType: file.endsWith('.css') ? 'text/css' : 'text/javascript' });
         }
-        if (url.pathname === '/api/v1/session') return json({ data: { id: 1, name: 'Owner', active_tenant_id: 1 } });
+        if (url.pathname === '/api/v1/session') return json({ data: { id: 1, name: 'Owner', active_tenant_id: 1, email_verified: true, is_platform_admin: false } });
         if (url.pathname === '/api/v1/clinic/context') return json({ data: context });
         if (url.pathname === '/api/v1/clinic/dashboard') return json({ data: {
             business: { id: 1, name: 'Clinic A', workspace_label: 'clinic' }, today: '2026-09-16',
@@ -116,11 +116,19 @@ test('dashboard revenue links to the shared Billing ledger', async ({ page }) =>
 test('sidebar keeps clinic identity fixed while navigation and business controls scroll together', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 500 });
     await fixture(page);
-    await page.goto('/app/billing');
+    await page.goto('https://billing.test/app/billing');
     const brand = page.locator('.clinic-brand'), navigation = page.getByRole('navigation', { name: 'Business navigation' });
     const scrollArea = page.locator('.clinic-sidebar-scroll');
     const bottom = page.locator('.clinic-sidebar-bottom');
     await expect(brand).toBeVisible();
+    await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+    await expect(page.locator('.clinic-sidebar')).toHaveCSS('width', '80px');
+    await expect(navigation.getByRole('link', { name: 'billing', exact: true })).toBeVisible();
+    await navigation.getByRole('link', { name: 'billing', exact: true }).hover();
+    await expect(page.getByRole('tooltip')).toHaveText('billing');
+    expect(await scrollArea.evaluate(area => area.scrollWidth <= area.clientWidth)).toBeTruthy();
+    await page.getByRole('button', { name: 'Expand sidebar' }).click();
+    await expect(page.locator('.clinic-sidebar')).toHaveCSS('width', '248px');
     await navigation.evaluate(nav => {
         const link = nav.querySelector('a');
         for (let index = 0; index < 20; index++) nav.appendChild(link.cloneNode(true));
