@@ -21,5 +21,6 @@ if (! file_exists($expected)) {
 Artisan::call('migrate:fresh', ['--force' => true]);
 $user = new User(['name' => 'Browser Admin', 'email' => 'browser-admin@example.test', 'password' => 'BrowserTestPass123']);
 $user->is_platform_admin = true;
+$user->email_verified_at = now();
 $user->save();
 $user->platformRoles()->sync([PlatformRole::where('slug', 'super-administrator')->value('id')]);

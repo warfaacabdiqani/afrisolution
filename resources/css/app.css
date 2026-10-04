@@ -17,16 +17,21 @@
     .btn-secondary { @apply rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50; }
     .btn-danger { @apply rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50; }
     .admin-shell { @apply min-h-screen bg-slate-50 text-slate-900; }
-    .admin-sidebar { @apply fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-gradient-to-b from-teal-950 to-teal-800 text-white shadow-xl transition-transform duration-200; }
-    .admin-nav { @apply flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-teal-50 transition hover:bg-white/10; }
+    .admin-sidebar { @apply fixed inset-y-0 left-0 z-40 flex w-64 max-w-full flex-col overflow-x-hidden bg-gradient-to-b from-teal-950 to-teal-800 text-white shadow-xl transition-[transform,width] duration-200; }
+    .admin-navigation { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.28) transparent; }
+    .admin-navigation::-webkit-scrollbar { width: 5px; }
+    .admin-navigation::-webkit-scrollbar-track { background: transparent; }
+    .admin-navigation::-webkit-scrollbar-thumb { border-radius: 999px; background: rgb(255 255 255 / 0.28); }
+    .admin-nav-group { @apply min-w-0 max-w-full; }
+    .admin-nav-group + .admin-nav-group { @apply mt-2; }
+    .admin-nav-heading { @apply mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-teal-200/70; }
+    .admin-nav { @apply relative flex min-h-9 w-full min-w-0 max-w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-teal-50 transition hover:bg-white/10; }
     .admin-nav-active { @apply bg-teal-600 text-white shadow-sm hover:bg-teal-600; }
-    .admin-nav-icon { @apply grid w-6 place-items-center text-lg; }
-    @media (min-width: 64rem) {
-        .admin-nav-tooltip { position: relative; }
-        .admin-nav-tooltip::after { content: attr(data-tooltip); @apply pointer-events-none absolute left-[calc(100%+0.75rem)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-xl transition-opacity; }
-        .admin-nav-tooltip::before { content: ''; @apply pointer-events-none absolute left-[calc(100%+0.5rem)] top-1/2 z-50 -translate-y-1/2 border-y-4 border-r-4 border-y-transparent border-r-slate-950 opacity-0 transition-opacity; }
-        .admin-nav-tooltip:hover::after, .admin-nav-tooltip:hover::before, .admin-nav-tooltip:focus-visible::after, .admin-nav-tooltip:focus-visible::before { @apply opacity-100; }
-    }
+    .admin-nav-active::before { content: ''; @apply absolute inset-y-2 left-0 w-0.5 rounded-full bg-white/90; }
+    .admin-nav-icon { @apply grid w-6 shrink-0 place-items-center; }
+    .admin-fixed-tooltip { @apply pointer-events-none fixed z-[100] -translate-y-1/2 whitespace-nowrap rounded-md bg-teal-950 px-3 py-2 text-xs font-semibold text-white shadow-xl; }
+    .admin-tooltip-enter-active, .admin-tooltip-leave-active { @apply transition-opacity duration-150; }
+    .admin-tooltip-enter-from, .admin-tooltip-leave-to { @apply opacity-0; }
     .admin-topbar { @apply sticky top-0 z-20 flex h-20 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8; }
     .admin-card { @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6; }
     .card-heading { @apply mb-4 flex items-center justify-between gap-4 border-b border-slate-100 pb-4; }
